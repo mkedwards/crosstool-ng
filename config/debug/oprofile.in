@@ -1,0 +1,25 @@
+# oprofile
+# depends on ! BACKEND
+
+config DEBUG_oprofile
+    select BINUTILS_FOR_TARGET
+    select POPT_TARGET
+
+choice
+    bool
+    prompt "oprofile version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config OPROFILE_V_0_9_6
+    bool
+    prompt "0.9.6 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config OPROFILE_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "0.9.6" if OPROFILE_V_0_9_6

@@ -21,6 +21,10 @@ do_debug_strace_build() {
     "${CT_SRC_DIR}/strace-${CT_STRACE_VERSION}/configure"   \
         --build=${CT_BUILD}                                 \
         --host=${CT_TARGET}                                 \
+        --sysconfdir=/etc                                   \
+        --localstatedir=/var                                \
+        --mandir=/usr/share/man                             \
+        --infodir=/usr/share/info                           \
         --prefix=/usr
 
     CT_DoLog EXTRA "Building strace"

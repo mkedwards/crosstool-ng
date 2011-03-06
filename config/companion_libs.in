@@ -44,6 +44,12 @@ config LIBELF_NEEDED
     select LIBELF
     select COMPLIBS_NEEDED
 
+config POPT_NEEDED
+    bool
+    default n
+    select POPT
+    select COMPLIBS_NEEDED
+
 config COMPLIBS
     bool
     default n
@@ -85,6 +91,13 @@ config LIBELF
 config LIBELF_TARGET
     bool
 
+config POPT
+    bool
+    select COMPLIBS
+
+config POPT_TARGET
+    bool
+
 if GMP
 source "config/companion_libs/gmp.in"
 endif
@@ -104,6 +117,11 @@ if LIBELF || LIBELF_TARGET
 comment "libelf version needed to build for target"
     depends on !LIBELF
 source "config/companion_libs/libelf.in"
+endif
+if POPT || POPT_TARGET
+comment "popt version needed to build for target"
+    depends on !POPT
+source "config/companion_libs/popt.in"
 endif
 
 config FOO
