@@ -1,0 +1,19 @@
+# elfutils config file
+
+choice
+    bool
+    prompt "elfutils version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config ELFUTILS_V_0_152
+    bool
+    prompt "0.152"
+
+endchoice
+
+config ELFUTILS_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "0.152" if ELFUTILS_V_0_152

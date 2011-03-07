@@ -15,9 +15,10 @@ myname="$0"
 doHelp() {
     cat <<-EOF
 		Usage: ${myname} <--tool> <[options] version [...]> ...
-		  'tool' in one of:
+		  'tool' may be one of:
 		    gcc, binutils, glibc, eglibc, uClibc, newlib, linux, gdb, dmalloc,
-		    duma, popt, oprofile, strace, ltrace, libelf, gmp, mpfr, ppl, cloog, mpc
+		    duma, oprofile, strace, ltrace, libunwind, elfutils, libelf, zlib, popt,
+		    gmp, mpfr, ppl, cloog, mpc
 		
 		  Valid options for all tools:
 		    --stable, -s, +x   (default)
@@ -168,6 +169,9 @@ while [ $# -gt 0 ]; do
         --cloog)    EXP=; OBS=; cat=CLOOG;          tool=cloog;     tool_prefix=companion_libs;;
         --mpc)      EXP=; OBS=; cat=MPC;            tool=mpc;       tool_prefix=companion_libs;;
         --libelf)   EXP=; OBS=; cat=LIBELF;         tool=libelf;    tool_prefix=companion_libs;;
+        --elfutils) EXP=; OBS=; cat=ELFUTILS;       tool=elfutils;  tool_prefix=companion_libs;;
+        --libunwind) EXP=; OBS=; cat=LIBUNWIND;     tool=libunwind; tool_prefix=companion_libs;;
+        --zlib)     EXP=; OBS=; cat=ZLIB;           tool=zlib;      tool_prefix=companion_libs;;
         --popt)     EXP=; OBS=; cat=POPT;           tool=popt;      tool_prefix=companion_libs;;
 
         # Tools options:

@@ -2,7 +2,6 @@
 # depends on ! BACKEND
 
 config DEBUG_ltrace
-    select LIBELF_TARGET
     help
       ltrace is a program that simply runs the specified command until it exits.
       It intercepts and records the dynamic library calls which are called by
@@ -18,25 +17,31 @@ choice
 config LTRACE_V_0_6_0
     bool
     prompt "0.6.0"
+    select ELFUTILS_TARGET
+    select LIBUNWIND_TARGET
 
 config LTRACE_V_0_5_3
     bool
     prompt "0.5.3"
+    select LIBELF_TARGET
     select LTRACE_0_5_3_or_later
 
 config LTRACE_V_0_5_2
     bool
     prompt "0.5.2"
+    select LIBELF_TARGET
 
 config LTRACE_V_0_5
     bool
     prompt "0.5 (OBSOLETE)"
     depends on OBSOLETE
+    select LIBELF_TARGET
 
 config LTRACE_V_0_4
     bool
     prompt "0.4 (OBSOLETE)"
     depends on OBSOLETE
+    select LIBELF_TARGET
 
 endchoice
 

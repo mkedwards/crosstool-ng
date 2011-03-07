@@ -22,7 +22,10 @@ CT_STEPS := libc_check_config   \
             ppl                 \
             cloog               \
             mpc                 \
+            zlib                \
             libelf              \
+            elfutils            \
+            libunwind           \
             popt                \
             binutils            \
             elf2flt             \
@@ -34,7 +37,10 @@ CT_STEPS := libc_check_config   \
             libc                \
             cc                  \
             libc_finish         \
+            zlib_target         \
             libelf_target       \
+            elfutils_target     \
+            libunwind_target    \
             popt_target         \
             binutils_target     \
             debug               \

@@ -58,6 +58,9 @@ dump_single_sample() {
                  -o -n "${CT_CLOOG}"            \
                  -o -n "${CT_MPC}"              \
                  -o -n "${CT_LIBELF}"           \
+                 -o -n "${CT_ELFUTILS}"         \
+                 -o -n "${CT_LIBUNWIND}"        \
+                 -o -n "${CT_ZLIB}"             \
                  -o -n "${CT_POPT}"             \
                  -o -n "${CT_GMP_TARGET}"       \
                  -o -n "${CT_MPFR_TARGET}"      \
@@ -65,6 +68,9 @@ dump_single_sample() {
                  -o -n "${CT_CLOOG_TARGET}"     \
                  -o -n "${CT_MPC_TARGET}"       \
                  -o -n "${CT_LIBELF_TARGET}"    \
+                 -o -n "${CT_ELFUTILS_TARGET}"  \
+                 -o -n "${CT_LIBUNWIND_TARGET}" \
+                 -o -n "${CT_ZLIB_TARGET}"      \
                  -o -n "${CT_POPT_TARGET}"      \
                ]; then
                 printf "    %-*s :" ${t_width} "Companion libs"
@@ -76,6 +82,9 @@ dump_single_sample() {
             [ -z "${CT_CLOOG}"  -a -z "${CT_CLOOG_TARGET}"  ] || printf " cloog-ppl-%s" "${CT_CLOOG_VERSION}"
             [ -z "${CT_MPC}"    -a -z "${CT_MPC_TARGET}"    ] || printf " mpc-%s"       "${CT_MPC_VERSION}"
             [ -z "${CT_LIBELF}" -a -z "${CT_LIBELF_TARGET}" ] || printf " libelf-%s"    "${CT_LIBELF_VERSION}"
+            [ -z "${CT_ELFUTILS}" -a -z "${CT_ELFUTILS_TARGET}" ] || printf " elfutils-%s"  "${CT_ELFUTILS_VERSION}"
+            [ -z "${CT_LIBUNWIND}" -a -z "${CT_LIBUNWIND_TARGET}" ] || printf " libunwind-%s" "${CT_LIBUNWIND_VERSION}"
+            [ -z "${CT_ZLIB}"   -a -z "${CT_ZLIB_TARGET}"   ] || printf " zlib-%s"      "${CT_ZLIB_VERSION}"
             [ -z "${CT_POPT}"   -a -z "${CT_POPT_TARGET}"   ] || printf " popt-%s"      "${CT_POPT_VERSION}"
             [ -z "${complibs}"  ] || printf "\n"
             printf  "    %-*s : %s\n" ${t_width} "binutils" "binutils-${CT_BINUTILS_VERSION}"

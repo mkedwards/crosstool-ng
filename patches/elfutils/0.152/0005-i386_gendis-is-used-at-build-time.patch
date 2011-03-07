@@ -1,0 +1,576 @@
+From 73c2dd074b7d23503f57c27c9ccb41d434ac1448 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Sun, 6 Mar 2011 22:45:56 +0000
+Subject: [PATCH 5/5] i386_gendis is used at build time
+
+---
+ Makefile.in          |    3 +++
+ backends/Makefile.in |    3 +++
+ config/Makefile.in   |    3 +++
+ configure            |   17 +++++++++++++++++
+ configure.ac         |   14 ++++++++++++++
+ lib/Makefile.am      |   12 ++++++++++++
+ lib/Makefile.in      |   18 +++++++++++++++++-
+ libasm/Makefile.in   |    3 +++
+ libcpu/Makefile.am   |   12 ++++++++++--
+ libcpu/Makefile.in   |   15 +++++++++++++--
+ libdw/Makefile.in    |    3 +++
+ libdwfl/Makefile.in  |    3 +++
+ libebl/Makefile.in   |    3 +++
+ libelf/Makefile.in   |    3 +++
+ m4/Makefile.in       |    3 +++
+ src/Makefile.in      |    3 +++
+ tests/Makefile.in    |    3 +++
+ 17 files changed, 116 insertions(+), 5 deletions(-)
+
+diff --git a/Makefile.in b/Makefile.in
+index 9ff83ca..a80f5da 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -130,12 +130,14 @@ distuninstallcheck_listfiles = find . -type f -print
+ distcleancheck_listfiles = find . -type f -print
+ ACLOCAL = @ACLOCAL@
+ AMTAR = @AMTAR@
++AR_FOR_BUILD = @AR_FOR_BUILD@
+ AUTOCONF = @AUTOCONF@
+ AUTOHEADER = @AUTOHEADER@
+ AUTOMAKE = @AUTOMAKE@
+ AWK = @AWK@
+ CC = @CC@
+ CCDEPMODE = @CCDEPMODE@
++CC_FOR_BUILD = @CC_FOR_BUILD@
+ CFLAGS = @CFLAGS@
+ CPPFLAGS = @CPPFLAGS@
+ CYGPATH_W = @CYGPATH_W@
+@@ -180,6 +182,7 @@ PACKAGE_URL = @PACKAGE_URL@
+ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PATH_SEPARATOR = @PATH_SEPARATOR@
+ RANLIB = @RANLIB@
++RANLIB_FOR_BUILD = @RANLIB_FOR_BUILD@
+ SET_MAKE = @SET_MAKE@
+ SHELL = @SHELL@
+ STRIP = @STRIP@
+diff --git a/backends/Makefile.in b/backends/Makefile.in
+index 2b25fa2..5d81a95 100644
+--- a/backends/Makefile.in
++++ b/backends/Makefile.in
+@@ -140,12 +140,14 @@ CTAGS = ctags
+ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+ ACLOCAL = @ACLOCAL@
+ AMTAR = @AMTAR@
++AR_FOR_BUILD = @AR_FOR_BUILD@
+ AUTOCONF = @AUTOCONF@
+ AUTOHEADER = @AUTOHEADER@
+ AUTOMAKE = @AUTOMAKE@
+ AWK = @AWK@
+ CC = @CC@
+ CCDEPMODE = @CCDEPMODE@
++CC_FOR_BUILD = @CC_FOR_BUILD@
+ CFLAGS = @CFLAGS@
+ CPPFLAGS = @CPPFLAGS@
+ CYGPATH_W = @CYGPATH_W@
+@@ -190,6 +192,7 @@ PACKAGE_URL = @PACKAGE_URL@
+ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PATH_SEPARATOR = @PATH_SEPARATOR@
+ RANLIB = @RANLIB@
++RANLIB_FOR_BUILD = @RANLIB_FOR_BUILD@
+ SET_MAKE = @SET_MAKE@
+ SHELL = @SHELL@
+ STRIP = @STRIP@
+diff --git a/config/Makefile.in b/config/Makefile.in
+index 54113d9..4b7170d 100644
+--- a/config/Makefile.in
++++ b/config/Makefile.in
+@@ -51,12 +51,14 @@ DIST_SOURCES =
+ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+ ACLOCAL = @ACLOCAL@
+ AMTAR = @AMTAR@
++AR_FOR_BUILD = @AR_FOR_BUILD@
+ AUTOCONF = @AUTOCONF@
+ AUTOHEADER = @AUTOHEADER@
+ AUTOMAKE = @AUTOMAKE@
+ AWK = @AWK@
+ CC = @CC@
+ CCDEPMODE = @CCDEPMODE@
++CC_FOR_BUILD = @CC_FOR_BUILD@
+ CFLAGS = @CFLAGS@
+ CPPFLAGS = @CPPFLAGS@
+ CYGPATH_W = @CYGPATH_W@
+@@ -101,6 +103,7 @@ PACKAGE_URL = @PACKAGE_URL@
+ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PATH_SEPARATOR = @PATH_SEPARATOR@
+ RANLIB = @RANLIB@
++RANLIB_FOR_BUILD = @RANLIB_FOR_BUILD@
+ SET_MAKE = @SET_MAKE@
+ SHELL = @SHELL@
+ STRIP = @STRIP@
+diff --git a/configure b/configure
+index 508c070..ca56662 100755
+--- a/configure
++++ b/configure
+@@ -563,6 +563,9 @@ ac_subst_vars='am__EXEEXT_FALSE
+ am__EXEEXT_TRUE
+ LTLIBOBJS
+ LIBOBJS
++RANLIB_FOR_BUILD
++CC_FOR_BUILD
++AR_FOR_BUILD
+ eu_version
+ XGETTEXT_EXTRA_OPTIONS
+ MSGMERGE
+@@ -2557,6 +2560,16 @@ fi
+ 
+ 
+ 
++if test "${build}" != "${host}" ; then
++  AR_FOR_BUILD=${AR_FOR_BUILD-ar}
++  CC_FOR_BUILD=${CC_FOR_BUILD-gcc}
++  RANLIB_FOR_BUILD=${RANLIB_FOR_BUILD-ranlib}
++else
++  AR_FOR_BUILD="\$(AR)"
++  CC_FOR_BUILD="\$(CC)"
++  RANLIB_FOR_BUILD="\$(RANLIB)"
++fi
++
+ ac_ext=c
+ ac_cpp='$CPP $CPPFLAGS'
+ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+@@ -5041,6 +5054,10 @@ esac
+ # Round up to the next release API (x.y) version.
+ eu_version=`expr \( $eu_version + 999 \) / 1000`
+ 
++
++
++
++
+ cat >confcache <<\_ACEOF
+ # This file is a shell script that caches the results of configure
+ # tests run on this system so they can be shared between configure
+diff --git a/configure.ac b/configure.ac
+index 9e19923..4bc52f9 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -55,6 +55,16 @@ AS_IF([test "$use_locks" = yes], [AC_DEFINE(USE_LOCKS)])
+ 
+ AH_TEMPLATE([USE_LOCKS], [Defined if libraries should be thread-safe.])
+ 
++if test "${build}" != "${host}" ; then
++  AR_FOR_BUILD=${AR_FOR_BUILD-ar}
++  CC_FOR_BUILD=${CC_FOR_BUILD-gcc}
++  RANLIB_FOR_BUILD=${RANLIB_FOR_BUILD-ranlib}
++else
++  AR_FOR_BUILD="\$(AR)"
++  CC_FOR_BUILD="\$(CC)"
++  RANLIB_FOR_BUILD="\$(RANLIB)"
++fi
++
+ AC_PROG_CC
+ AC_PROG_RANLIB
+ AC_PROG_YACC
+@@ -330,4 +340,8 @@ esac
+ # Round up to the next release API (x.y) version.
+ eu_version=`expr \( $eu_version + 999 \) / 1000`
+ 
++AC_SUBST(AR_FOR_BUILD)
++AC_SUBST(CC_FOR_BUILD)
++AC_SUBST(RANLIB_FOR_BUILD)
++
+ AC_OUTPUT
+diff --git a/lib/Makefile.am b/lib/Makefile.am
+index 50d55c5..e4a0557 100644
+--- a/lib/Makefile.am
++++ b/lib/Makefile.am
+@@ -40,3 +40,15 @@ EXTRA_DIST = dynamicsizehash.c
+ if !GPROF
+ xmalloc_CFLAGS = -ffunction-sections
+ endif
++
++build/%.o: %.c
++	mkdir -p build
++	$(CC_FOR_BUILD) -c $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
++		$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -o $@ $<
++
++build/libeu.a: build/xstrndup.o build/xmalloc.o build/next_prime.o \
++		build/crc32.o build/crc32_file.o build/md5.o build/sha1.o
++	$(AR_FOR_BUILD) rc $@ $^
++	$(RANLIB_FOR_BUILD) $@
++
++noinst_DATA = build/libeu.a
+diff --git a/lib/Makefile.in b/lib/Makefile.in
+index 28d81cc..bf19b26 100644
+--- a/lib/Makefile.in
++++ b/lib/Makefile.in
+@@ -16,6 +16,7 @@
+ @SET_MAKE@
+ 
+ 
++
+ VPATH = @srcdir@
+ pkgdatadir = $(datadir)/@PACKAGE@
+ pkgincludedir = $(includedir)/@PACKAGE@
+@@ -68,18 +69,21 @@ CCLD = $(CC)
+ LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+ SOURCES = $(libeu_a_SOURCES)
+ DIST_SOURCES = $(libeu_a_SOURCES)
++DATA = $(noinst_DATA)
+ HEADERS = $(noinst_HEADERS)
+ ETAGS = etags
+ CTAGS = ctags
+ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+ ACLOCAL = @ACLOCAL@
+ AMTAR = @AMTAR@
++AR_FOR_BUILD = @AR_FOR_BUILD@
+ AUTOCONF = @AUTOCONF@
+ AUTOHEADER = @AUTOHEADER@
+ AUTOMAKE = @AUTOMAKE@
+ AWK = @AWK@
+ CC = @CC@
+ CCDEPMODE = @CCDEPMODE@
++CC_FOR_BUILD = @CC_FOR_BUILD@
+ CFLAGS = @CFLAGS@
+ CPPFLAGS = @CPPFLAGS@
+ CYGPATH_W = @CYGPATH_W@
+@@ -124,6 +128,7 @@ PACKAGE_URL = @PACKAGE_URL@
+ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PATH_SEPARATOR = @PATH_SEPARATOR@
+ RANLIB = @RANLIB@
++RANLIB_FOR_BUILD = @RANLIB_FOR_BUILD@
+ SET_MAKE = @SET_MAKE@
+ SHELL = @SHELL@
+ STRIP = @STRIP@
+@@ -211,6 +216,7 @@ noinst_HEADERS = fixedsizehash.h system.h dynamicsizehash.h list.h md5.h \
+ 
+ EXTRA_DIST = dynamicsizehash.c
+ @GPROF_FALSE@xmalloc_CFLAGS = -ffunction-sections
++noinst_DATA = build/libeu.a
+ all: all-am
+ 
+ .SUFFIXES:
+@@ -365,7 +371,7 @@ distdir: $(DISTFILES)
+ 	done
+ check-am: all-am
+ check: check-am
+-all-am: Makefile $(LIBRARIES) $(HEADERS)
++all-am: Makefile $(LIBRARIES) $(DATA) $(HEADERS)
+ installdirs:
+ install: install-am
+ install-exec: install-exec-am
+@@ -487,6 +493,16 @@ uninstall-am:
+ @AMDEP_TRUE@	fi
+ @AMDEP_FALSE@	$(COMPILE.os) -c -o $@ -fpic -DPIC -DSHARED $<
+ 
++build/%.o: %.c
++	mkdir -p build
++	$(CC_FOR_BUILD) -c $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
++		$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -o $@ $<
++
++build/libeu.a: build/xstrndup.o build/xmalloc.o build/next_prime.o \
++		build/crc32.o build/crc32_file.o build/md5.o build/sha1.o
++	$(AR_FOR_BUILD) rc $@ $^
++	$(RANLIB_FOR_BUILD) $@
++
+ # Tell versions [3.59,3.63) of GNU make to not export all variables.
+ # Otherwise a system limit (for SysV at least) may be exceeded.
+ .NOEXPORT:
+diff --git a/libasm/Makefile.in b/libasm/Makefile.in
+index d4be978..3927db8 100644
+--- a/libasm/Makefile.in
++++ b/libasm/Makefile.in
+@@ -122,12 +122,14 @@ CTAGS = ctags
+ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+ ACLOCAL = @ACLOCAL@
+ AMTAR = @AMTAR@
++AR_FOR_BUILD = @AR_FOR_BUILD@
+ AUTOCONF = @AUTOCONF@
+ AUTOHEADER = @AUTOHEADER@
+ AUTOMAKE = @AUTOMAKE@
+ AWK = @AWK@
+ CC = @CC@
+ CCDEPMODE = @CCDEPMODE@
++CC_FOR_BUILD = @CC_FOR_BUILD@
+ CFLAGS = @CFLAGS@
+ CPPFLAGS = @CPPFLAGS@
+ CYGPATH_W = @CYGPATH_W@
+@@ -172,6 +174,7 @@ PACKAGE_URL = @PACKAGE_URL@
+ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PATH_SEPARATOR = @PATH_SEPARATOR@
+ RANLIB = @RANLIB@
++RANLIB_FOR_BUILD = @RANLIB_FOR_BUILD@
+ SET_MAKE = @SET_MAKE@
+ SHELL = @SHELL@
+ STRIP = @STRIP@
+diff --git a/libcpu/Makefile.am b/libcpu/Makefile.am
+index c62db6d..ca5d56a 100644
+--- a/libcpu/Makefile.am
++++ b/libcpu/Makefile.am
+@@ -46,8 +46,8 @@ x86_64_disasm.o: x86_64.mnemonics x86_64_dis.h i386_disasm.c
+ %_defs: $(srcdir)/defs/i386
+ 	m4 -D$* -DDISASSEMBLER $< > $@
+ 
+-%_dis.h: %_defs i386_gendis
+-	./i386_gendis $< > $@
++%_dis.h: %_defs build/i386_gendis
++	build/i386_gendis $< > $@
+ 
+ %.mnemonics: %_defs
+ 	sed '1,/^%%/d;/^#/d;/^[[:space:]]*$$/d;s/[^:]*:\([^[:space:]]*\).*/MNE(\1)/;s/{[^}]*}//g;/INVALID/d' \
+@@ -65,6 +65,14 @@ i386_gendis_LDADD = $(libeu) -lm $(libmudflap)
+ 
+ i386_parse.h: i386_parse.c ;
+ 
++build/i386_gendis: build/i386_gendis.o build/i386_lex.o build/i386_parse.o
++	$(CC_FOR_BUILD) $(AM_CFLAGS) $(CFLAGS) -o $@ $^ ../lib/build/libeu.a -lm
++
++build/%.o: %.c %.o
++	mkdir -p build
++	$(CC_FOR_BUILD) -c $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
++		$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -o $@ $<
++
+ noinst_HEADERS = memory-access.h i386_parse.h i386_data.h
+ 
+ EXTRA_DIST = defs/i386
+diff --git a/libcpu/Makefile.in b/libcpu/Makefile.in
+index 60367e3..d9e922a 100644
+--- a/libcpu/Makefile.in
++++ b/libcpu/Makefile.in
+@@ -91,12 +91,14 @@ CTAGS = ctags
+ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+ ACLOCAL = @ACLOCAL@
+ AMTAR = @AMTAR@
++AR_FOR_BUILD = @AR_FOR_BUILD@
+ AUTOCONF = @AUTOCONF@
+ AUTOHEADER = @AUTOHEADER@
+ AUTOMAKE = @AUTOMAKE@
+ AWK = @AWK@
+ CC = @CC@
+ CCDEPMODE = @CCDEPMODE@
++CC_FOR_BUILD = @CC_FOR_BUILD@
+ CFLAGS = @CFLAGS@
+ CPPFLAGS = @CPPFLAGS@
+ CYGPATH_W = @CYGPATH_W@
+@@ -141,6 +143,7 @@ PACKAGE_URL = @PACKAGE_URL@
+ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PATH_SEPARATOR = @PATH_SEPARATOR@
+ RANLIB = @RANLIB@
++RANLIB_FOR_BUILD = @RANLIB_FOR_BUILD@
+ SET_MAKE = @SET_MAKE@
+ SHELL = @SHELL@
+ STRIP = @STRIP@
+@@ -533,8 +536,8 @@ x86_64_disasm.o: x86_64.mnemonics x86_64_dis.h i386_disasm.c
+ %_defs: $(srcdir)/defs/i386
+ 	m4 -D$* -DDISASSEMBLER $< > $@
+ 
+-%_dis.h: %_defs i386_gendis
+-	./i386_gendis $< > $@
++%_dis.h: %_defs build/i386_gendis
++	build/i386_gendis $< > $@
+ 
+ %.mnemonics: %_defs
+ 	sed '1,/^%%/d;/^#/d;/^[[:space:]]*$$/d;s/[^:]*:\([^[:space:]]*\).*/MNE(\1)/;s/{[^}]*}//g;/INVALID/d' \
+@@ -544,6 +547,14 @@ i386_lex.o: i386_parse.h
+ 
+ i386_parse.h: i386_parse.c ;
+ 
++build/i386_gendis: build/i386_gendis.o build/i386_lex.o build/i386_parse.o
++	$(CC_FOR_BUILD) $(AM_CFLAGS) $(CFLAGS) -o $@ $^ ../lib/build/libeu.a -lm
++
++build/%.o: %.c %.o
++	mkdir -p build
++	$(CC_FOR_BUILD) -c $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
++		$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -o $@ $<
++
+ # Tell versions [3.59,3.63) of GNU make to not export all variables.
+ # Otherwise a system limit (for SysV at least) may be exceeded.
+ .NOEXPORT:
+diff --git a/libdw/Makefile.in b/libdw/Makefile.in
+index 3eb3195..93a3edf 100644
+--- a/libdw/Makefile.in
++++ b/libdw/Makefile.in
+@@ -166,12 +166,14 @@ CTAGS = ctags
+ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+ ACLOCAL = @ACLOCAL@
+ AMTAR = @AMTAR@
++AR_FOR_BUILD = @AR_FOR_BUILD@
+ AUTOCONF = @AUTOCONF@
+ AUTOHEADER = @AUTOHEADER@
+ AUTOMAKE = @AUTOMAKE@
+ AWK = @AWK@
+ CC = @CC@
+ CCDEPMODE = @CCDEPMODE@
++CC_FOR_BUILD = @CC_FOR_BUILD@
+ CFLAGS = @CFLAGS@
+ CPPFLAGS = @CPPFLAGS@
+ CYGPATH_W = @CYGPATH_W@
+@@ -217,6 +219,7 @@ PACKAGE_URL = @PACKAGE_URL@
+ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PATH_SEPARATOR = @PATH_SEPARATOR@
+ RANLIB = @RANLIB@
++RANLIB_FOR_BUILD = @RANLIB_FOR_BUILD@
+ SET_MAKE = @SET_MAKE@
+ SHELL = @SHELL@
+ STRIP = @STRIP@
+diff --git a/libdwfl/Makefile.in b/libdwfl/Makefile.in
+index 7241b6b..1f7c785 100644
+--- a/libdwfl/Makefile.in
++++ b/libdwfl/Makefile.in
+@@ -157,12 +157,14 @@ CTAGS = ctags
+ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+ ACLOCAL = @ACLOCAL@
+ AMTAR = @AMTAR@
++AR_FOR_BUILD = @AR_FOR_BUILD@
+ AUTOCONF = @AUTOCONF@
+ AUTOHEADER = @AUTOHEADER@
+ AUTOMAKE = @AUTOMAKE@
+ AWK = @AWK@
+ CC = @CC@
+ CCDEPMODE = @CCDEPMODE@
++CC_FOR_BUILD = @CC_FOR_BUILD@
+ CFLAGS = @CFLAGS@
+ CPPFLAGS = @CPPFLAGS@
+ CYGPATH_W = @CYGPATH_W@
+@@ -207,6 +209,7 @@ PACKAGE_URL = @PACKAGE_URL@
+ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PATH_SEPARATOR = @PATH_SEPARATOR@
+ RANLIB = @RANLIB@
++RANLIB_FOR_BUILD = @RANLIB_FOR_BUILD@
+ SET_MAKE = @SET_MAKE@
+ SHELL = @SHELL@
+ STRIP = @STRIP@
+diff --git a/libebl/Makefile.in b/libebl/Makefile.in
+index a0a9d3d..fbc4f8f 100644
+--- a/libebl/Makefile.in
++++ b/libebl/Makefile.in
+@@ -118,12 +118,14 @@ CTAGS = ctags
+ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+ ACLOCAL = @ACLOCAL@
+ AMTAR = @AMTAR@
++AR_FOR_BUILD = @AR_FOR_BUILD@
+ AUTOCONF = @AUTOCONF@
+ AUTOHEADER = @AUTOHEADER@
+ AUTOMAKE = @AUTOMAKE@
+ AWK = @AWK@
+ CC = @CC@
+ CCDEPMODE = @CCDEPMODE@
++CC_FOR_BUILD = @CC_FOR_BUILD@
+ CFLAGS = @CFLAGS@
+ CPPFLAGS = @CPPFLAGS@
+ CYGPATH_W = @CYGPATH_W@
+@@ -168,6 +170,7 @@ PACKAGE_URL = @PACKAGE_URL@
+ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PATH_SEPARATOR = @PATH_SEPARATOR@
+ RANLIB = @RANLIB@
++RANLIB_FOR_BUILD = @RANLIB_FOR_BUILD@
+ SET_MAKE = @SET_MAKE@
+ SHELL = @SHELL@
+ STRIP = @STRIP@
+diff --git a/libelf/Makefile.in b/libelf/Makefile.in
+index 325d528..13834e3 100644
+--- a/libelf/Makefile.in
++++ b/libelf/Makefile.in
+@@ -164,12 +164,14 @@ CTAGS = ctags
+ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+ ACLOCAL = @ACLOCAL@
+ AMTAR = @AMTAR@
++AR_FOR_BUILD = @AR_FOR_BUILD@
+ AUTOCONF = @AUTOCONF@
+ AUTOHEADER = @AUTOHEADER@
+ AUTOMAKE = @AUTOMAKE@
+ AWK = @AWK@
+ CC = @CC@
+ CCDEPMODE = @CCDEPMODE@
++CC_FOR_BUILD = @CC_FOR_BUILD@
+ CFLAGS = @CFLAGS@
+ CPPFLAGS = @CPPFLAGS@
+ CYGPATH_W = @CYGPATH_W@
+@@ -214,6 +216,7 @@ PACKAGE_URL = @PACKAGE_URL@
+ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PATH_SEPARATOR = @PATH_SEPARATOR@
+ RANLIB = @RANLIB@
++RANLIB_FOR_BUILD = @RANLIB_FOR_BUILD@
+ SET_MAKE = @SET_MAKE@
+ SHELL = @SHELL@
+ STRIP = @STRIP@
+diff --git a/m4/Makefile.in b/m4/Makefile.in
+index 38f24fe..19040d8 100644
+--- a/m4/Makefile.in
++++ b/m4/Makefile.in
+@@ -50,12 +50,14 @@ DIST_SOURCES =
+ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+ ACLOCAL = @ACLOCAL@
+ AMTAR = @AMTAR@
++AR_FOR_BUILD = @AR_FOR_BUILD@
+ AUTOCONF = @AUTOCONF@
+ AUTOHEADER = @AUTOHEADER@
+ AUTOMAKE = @AUTOMAKE@
+ AWK = @AWK@
+ CC = @CC@
+ CCDEPMODE = @CCDEPMODE@
++CC_FOR_BUILD = @CC_FOR_BUILD@
+ CFLAGS = @CFLAGS@
+ CPPFLAGS = @CPPFLAGS@
+ CYGPATH_W = @CYGPATH_W@
+@@ -100,6 +102,7 @@ PACKAGE_URL = @PACKAGE_URL@
+ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PATH_SEPARATOR = @PATH_SEPARATOR@
+ RANLIB = @RANLIB@
++RANLIB_FOR_BUILD = @RANLIB_FOR_BUILD@
+ SET_MAKE = @SET_MAKE@
+ SHELL = @SHELL@
+ STRIP = @STRIP@
+diff --git a/src/Makefile.in b/src/Makefile.in
+index 6e7ea34..5b0c32b 100644
+--- a/src/Makefile.in
++++ b/src/Makefile.in
+@@ -201,12 +201,14 @@ CTAGS = ctags
+ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+ ACLOCAL = @ACLOCAL@
+ AMTAR = @AMTAR@
++AR_FOR_BUILD = @AR_FOR_BUILD@
+ AUTOCONF = @AUTOCONF@
+ AUTOHEADER = @AUTOHEADER@
+ AUTOMAKE = @AUTOMAKE@
+ AWK = @AWK@
+ CC = @CC@
+ CCDEPMODE = @CCDEPMODE@
++CC_FOR_BUILD = @CC_FOR_BUILD@
+ CFLAGS = @CFLAGS@
+ CPPFLAGS = @CPPFLAGS@
+ CYGPATH_W = @CYGPATH_W@
+@@ -253,6 +255,7 @@ PACKAGE_URL = @PACKAGE_URL@
+ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PATH_SEPARATOR = @PATH_SEPARATOR@
+ RANLIB = @RANLIB@
++RANLIB_FOR_BUILD = @RANLIB_FOR_BUILD@
+ SET_MAKE = @SET_MAKE@
+ SHELL = @SHELL@
+ STRIP = @STRIP@
+diff --git a/tests/Makefile.in b/tests/Makefile.in
+index e5bd1df..fbf29e6 100644
+--- a/tests/Makefile.in
++++ b/tests/Makefile.in
+@@ -347,12 +347,14 @@ red=; grn=; lgn=; blu=; std=
+ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+ ACLOCAL = @ACLOCAL@
+ AMTAR = @AMTAR@
++AR_FOR_BUILD = @AR_FOR_BUILD@
+ AUTOCONF = @AUTOCONF@
+ AUTOHEADER = @AUTOHEADER@
+ AUTOMAKE = @AUTOMAKE@
+ AWK = @AWK@
+ CC = @CC@
+ CCDEPMODE = @CCDEPMODE@
++CC_FOR_BUILD = @CC_FOR_BUILD@
+ CFLAGS = @CFLAGS@
+ CPPFLAGS = @CPPFLAGS@
+ CYGPATH_W = @CYGPATH_W@
+@@ -397,6 +399,7 @@ PACKAGE_URL = @PACKAGE_URL@
+ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PATH_SEPARATOR = @PATH_SEPARATOR@
+ RANLIB = @RANLIB@
++RANLIB_FOR_BUILD = @RANLIB_FOR_BUILD@
+ SET_MAKE = @SET_MAKE@
+ SHELL = @SHELL@
+ STRIP = @STRIP@
+-- 
+1.7.0.4
+

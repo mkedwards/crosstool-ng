@@ -1,0 +1,34 @@
+From 6376e19655545c9250d62ce4d574691a1ddd3b77 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Sun, 6 Mar 2011 22:43:50 +0000
+Subject: [PATCH 4/5] fix signed comparisons in readelf.c
+
+---
+ src/readelf.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/readelf.c b/src/readelf.c
+index 15f8854..d3eaf76 100644
+--- a/src/readelf.c
++++ b/src/readelf.c
+@@ -4607,7 +4607,7 @@ print_debug_ranges_section (Dwfl_Module *dwflmod,
+ 				      offset, &readp, endp))
+ 	continue;
+ 
+-      if (unlikely (data->d_size - offset < address_size * 2))
++      if (unlikely (((ssize_t) data->d_size) - offset < ((ssize_t) address_size) * 2))
+ 	{
+ 	  printf (gettext (" [%6tx]  <INVALID DATA>\n"), offset);
+ 	  break;
+@@ -6378,7 +6378,7 @@ print_debug_loc_section (Dwfl_Module *dwflmod,
+ 				      offset, &readp, endp))
+ 	continue;
+ 
+-      if (unlikely (data->d_size - offset < address_size * 2))
++      if (unlikely (((ssize_t) data->d_size) - offset < ((ssize_t) address_size) * 2))
+ 	{
+ 	  printf (gettext (" [%6tx]  <INVALID DATA>\n"), offset);
+ 	  break;
+-- 
+1.7.0.4
+

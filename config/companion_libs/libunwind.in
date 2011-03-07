@@ -1,0 +1,19 @@
+# libunwind config file
+
+choice
+    bool
+    prompt "libunwind version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LIBUNWIND_V_0_99
+    bool
+    prompt "0.99"
+
+endchoice
+
+config LIBUNWIND_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "0.99" if LIBUNWIND_V_0_99

@@ -44,6 +44,24 @@ config LIBELF_NEEDED
     select LIBELF
     select COMPLIBS_NEEDED
 
+config ELFUTILS_NEEDED
+    bool
+    default n
+    select ELFUTILS
+    select COMPLIBS_NEEDED
+
+config LIBUNWIND_NEEDED
+    bool
+    default n
+    select LIBUNWIND
+    select COMPLIBS_NEEDED
+
+config ZLIB_NEEDED
+    bool
+    default n
+    select ZLIB
+    select COMPLIBS_NEEDED
+
 config POPT_NEEDED
     bool
     default n
@@ -91,6 +109,28 @@ config LIBELF
 config LIBELF_TARGET
     bool
 
+config ELFUTILS
+    bool
+    select COMPLIBS
+
+config ELFUTILS_TARGET
+    bool
+    select ZLIB_TARGET
+
+config LIBUNWIND
+    bool
+    select COMPLIBS
+
+config LIBUNWIND_TARGET
+    bool
+
+config ZLIB
+    bool
+    select COMPLIBS
+
+config ZLIB_TARGET
+    bool
+
 config POPT
     bool
     select COMPLIBS
@@ -117,6 +157,21 @@ if LIBELF || LIBELF_TARGET
 comment "libelf version needed to build for target"
     depends on !LIBELF
 source "config/companion_libs/libelf.in"
+endif
+if ELFUTILS || ELFUTILS_TARGET
+comment "elfutils version needed to build for target"
+    depends on !ELFUTILS
+source "config/companion_libs/elfutils.in"
+endif
+if LIBUNWIND || LIBUNWIND_TARGET
+comment "libunwind version needed to build for target"
+    depends on !LIBUNWIND
+source "config/companion_libs/libunwind.in"
+endif
+if ZLIB || ZLIB_TARGET
+comment "zlib version needed to build for target"
+    depends on !ZLIB
+source "config/companion_libs/zlib.in"
 endif
 if POPT || POPT_TARGET
 comment "popt version needed to build for target"

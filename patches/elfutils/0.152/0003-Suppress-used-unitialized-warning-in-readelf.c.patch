@@ -1,0 +1,25 @@
+From e83c21e0a22de1f06f5a6ef4b0c42d2d3c876d55 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Sun, 6 Mar 2011 22:38:12 +0000
+Subject: [PATCH 3/5] Suppress 'used unitialized' warning in readelf.c
+
+---
+ src/readelf.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/src/readelf.c b/src/readelf.c
+index a013fad..15f8854 100644
+--- a/src/readelf.c
++++ b/src/readelf.c
+@@ -8138,7 +8138,7 @@ dump_archive_index (Elf *elf, const char *fname)
+ 	{
+ 	  as_off = s->as_off;
+ 
+-	  Elf *subelf;
++	  Elf *subelf = NULL;
+ 	  if (unlikely (elf_rand (elf, as_off) == 0)
+ 	      || unlikely ((subelf = elf_begin (-1, ELF_C_READ_MMAP, elf))
+ 			   == NULL))
+-- 
+1.7.0.4
+
