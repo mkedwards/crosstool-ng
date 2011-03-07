@@ -1,0 +1,13 @@
+diff --git a/sysdeps/unix/sysv/linux/getpagesize.c b/sysdeps/unix/sysv/linux/getpagesize.c
+index 0866079..fe9bc8e 100644
+--- a/sysdeps/unix/sysv/linux/getpagesize.c
++++ b/sysdeps/unix/sysv/linux/getpagesize.c
+@@ -28,7 +28,7 @@
+ int
+ __getpagesize ()
+ {
+-#ifdef __ASSUME_AT_PAGESIZE
++#if 0 && defined __ASSUME_AT_PAGESIZE
+   assert (GLRO(dl_pagesize) != 0);
+   return GLRO(dl_pagesize);
+ #else

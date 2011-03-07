@@ -1,0 +1,41 @@
+From d0c09007f40617c36c79ed3b3cd8d9ef3f33a9be Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Thu, 24 Feb 2011 23:32:38 +0000
+Subject: [PATCH] neon-d16 and neon-d16-fp16
+
+---
+ gas/config/tc-arm.c  |    2 ++
+ include/opcode/arm.h |    4 ++++
+ 2 files changed, 6 insertions(+), 0 deletions(-)
+
+diff --git a/gas/config/tc-arm.c b/gas/config/tc-arm.c
+index f4ebdc4..f487c47 100644
+--- a/gas/config/tc-arm.c
++++ b/gas/config/tc-arm.c
+@@ -22706,6 +22706,8 @@ static const struct arm_option_fpu_value_table arm_fpus[] =
+   {"maverick",		FPU_ARCH_MAVERICK},
+   {"neon",              FPU_ARCH_VFP_V3_PLUS_NEON_V1},
+   {"neon-fp16",		FPU_ARCH_NEON_FP16},
++  {"neon-d16",          FPU_ARCH_VFP_V3D16_PLUS_NEON_D16_V1},
++  {"neon-d16-fp16",	FPU_ARCH_NEON_D16_FP16},
+   {"vfpv4",		FPU_ARCH_VFP_V4},
+   {"vfpv4-d16",		FPU_ARCH_VFP_V4D16},
+   {"fpv4-sp-d16",	FPU_ARCH_VFP_V4_SP_D16},
+diff --git a/include/opcode/arm.h b/include/opcode/arm.h
+index 50bc726..43d0186 100644
+--- a/include/opcode/arm.h
++++ b/include/opcode/arm.h
+@@ -169,6 +169,10 @@
+   ARM_FEATURE (0, FPU_VFP_V3 | FPU_NEON_EXT_V1)
+ #define FPU_ARCH_NEON_FP16 \
+   ARM_FEATURE (0, FPU_VFP_V3 | FPU_NEON_EXT_V1 | FPU_VFP_EXT_FP16)
++#define FPU_ARCH_VFP_V3D16_PLUS_NEON_D16_V1 \
++  ARM_FEATURE (0, FPU_VFP_V3D16 | FPU_NEON_EXT_V1)
++#define FPU_ARCH_NEON_D16_FP16 \
++  ARM_FEATURE (0, FPU_VFP_V3D16 | FPU_NEON_EXT_V1 | FPU_VFP_EXT_FP16)
+ #define FPU_ARCH_VFP_HARD ARM_FEATURE (0, FPU_VFP_HARD)
+ #define FPU_ARCH_VFP_V4 ARM_FEATURE(0, FPU_VFP_V4)
+ #define FPU_ARCH_VFP_V4D16 ARM_FEATURE(0, FPU_VFP_V4D16)
+-- 
+1.7.0.4
+

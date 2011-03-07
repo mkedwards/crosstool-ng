@@ -1,0 +1,25 @@
+From de61f85792a5ab5599eb1cc325650b057ff824fd Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Tue, 22 Feb 2011 02:10:25 +0000
+Subject: [PATCH 2/3] gcc bug 43999 backported from mainline
+
+---
+ gcc/config/arm/lib1funcs.asm |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/gcc/config/arm/lib1funcs.asm b/gcc/config/arm/lib1funcs.asm
+index 6163de6..1d839bd 100644
+--- a/gcc/config/arm/lib1funcs.asm
++++ b/gcc/config/arm/lib1funcs.asm
+@@ -675,7 +675,7 @@ pc		.req	r15
+ 	subhs	\dividend, \dividend, \divisor, lsr #3
+ 	orrhs	\result,   \result,   \curbit,  lsr #3
+ 	cmp	\dividend, #0			@ Early termination?
+-	do_it	hs, t
++	do_it	ne, t
+ 	movnes	\curbit,   \curbit,  lsr #4	@ No, any more bits to do?
+ 	movne	\divisor,  \divisor, lsr #4
+ 	bne	1b
+-- 
+1.7.0.4
+
