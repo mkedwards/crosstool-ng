@@ -106,6 +106,7 @@ dump_single_sample() {
             [ "${CT_DEBUG_ltrace}"  ] && printf " ltrace-${CT_LTRACE_VERSION}"
             [ "${CT_DEBUG_strace}"  ] && printf " strace-${CT_STRACE_VERSION}"
             [ "${CT_DEBUG_oprofile}"] && printf " oprofile-${CT_OPROFILE_VERSION}"
+            [ "${CT_DEBUG_valgrind}"] && printf " valgrind-${CT_VALGRIND_VERSION}"
             printf "\n"
         fi
     else

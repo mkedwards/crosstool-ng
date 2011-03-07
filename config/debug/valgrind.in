@@ -1,0 +1,23 @@
+# valgrind
+# depends on ! BACKEND
+
+config DEBUG_valgrind
+
+choice
+    bool
+    prompt "valgrind version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config VALGRIND_V_3_6_1
+    bool
+    prompt "3.6.1 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config VALGRIND_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "3.6.1" if VALGRIND_V_3_6_1
