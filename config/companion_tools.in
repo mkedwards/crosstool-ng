@@ -15,6 +15,9 @@ config COMP_TOOLS
         autoconf >= 2.63
         automake >= 1.10.2
         libtool >= 2.2.4
+        gperf >= 3.0.3
+        gettext >= 0.18
+        intltool >= 0.41.0
       
       If your system has older versions, we can build them for you,
       but you are strongly encouraged to update your system instead!
@@ -40,6 +43,18 @@ config COMP_TOOLS_automake
 config COMP_TOOLS_libtool
     bool
     prompt "libtool"
+
+config COMP_TOOLS_gperf
+    bool
+    prompt "gperf"
+
+config COMP_TOOLS_gettext
+    bool
+    prompt "gettext"
+
+config COMP_TOOLS_intltool
+    bool
+    prompt "intltool"
 
 endif
 

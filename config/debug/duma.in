@@ -2,6 +2,7 @@
 # depends on ! BACKEND
 
 config DEBUG_duma
+    bool
     help
       D.U.M.A. - Detect Unintended Memory Access
       A memory bound checker, with additional features.

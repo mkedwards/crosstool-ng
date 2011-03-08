@@ -37,12 +37,14 @@ do_elf2flt() {
     binutils_src=${CT_SRC_DIR}/binutils-${CT_BINUTILS_VERSION}
 
     CT_DoLog EXTRA "Configuring elf2flt"
+    cp ../../config.cache .
     CFLAGS="${CT_CFLAGS_FOR_HOST}"                              \
     CT_DoExecLog CFG                                            \
     "${CT_SRC_DIR}/elf2flt-cvs-${CT_ELF2FLT_VERSION}/configure" \
         --build=${CT_BUILD}                                     \
         --host=${CT_HOST}                                       \
         --target=${CT_TARGET}                                   \
+        --cache-file=config.cache                               \
         --prefix=${CT_PREFIX_DIR}                               \
         --with-bfd-include-dir=${binutils_bld}/bfd              \
         --with-binutils-include-dir=${binutils_src}/include     \

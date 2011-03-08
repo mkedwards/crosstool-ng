@@ -1,0 +1,13 @@
+diff --git a/configure.ac b/configure.ac
+index 7804b02..7415465 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -27,6 +27,8 @@ AC_PREREQ(2.59)
+ AC_INIT([GNU Bison], [2.3], [bug-bison@gnu.org])
+ AC_CONFIG_AUX_DIR([build-aux])
+ AC_CONFIG_MACRO_DIR([m4])
++AC_CANONICAL_SYSTEM
++AM_MAINTAINER_MODE
+ 
+ # We don't have a file m4/Makefile.am, so we need Automake 1.8 or later.
+ AM_INIT_AUTOMAKE([1.8 check-news readme-alpha dist-bzip2])

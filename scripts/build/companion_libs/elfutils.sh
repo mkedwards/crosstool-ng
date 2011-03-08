@@ -33,14 +33,14 @@ do_elfutils() {
         elfutils_opts+=( --disable-shared --enable-static )
     fi
 
-    CC="${CT_HOST}-gcc"                                     \
-    CFLAGS="-fPIC"                                          \
-    CT_DoExecLog CFG                                        \
+    CC="${CT_HOST}-gcc"                                         \
+    CFLAGS="-fPIC"                                              \
+    CT_DoExecLog CFG                                            \
     "${CT_SRC_DIR}/elfutils-${CT_ELFUTILS_VERSION}/configure"   \
-        --build=${CT_BUILD}                                 \
-        --host=${CT_HOST}                                   \
-        --target=${CT_TARGET}                               \
-        --prefix="${CT_COMPLIBS_DIR}"                       \
+        --build=${CT_BUILD}                                     \
+        --host=${CT_HOST}                                       \
+        --target=${CT_TARGET}                                   \
+        --prefix="${CT_COMPLIBS_DIR}"                           \
         "${elfutils_opts[@]}"
 
     CT_DoLog EXTRA "Building elfutils"
@@ -63,19 +63,21 @@ do_elfutils_target() {
     CT_Pushd "${CT_BUILD_DIR}/build-elfutils-for-target"
 
     CT_DoLog EXTRA "Configuring elfutils"
-    CC="${CT_TARGET}-gcc"                                   \
-    CFLAGS="-fPIC"                                          \
-    CT_DoExecLog CFG                                        \
+    cp ../../config.cache .
+    CC="${CT_TARGET}-gcc"                                       \
+    CFLAGS="-g -Os -fPIC"                                       \
+    CT_DoExecLog CFG                                            \
     "${CT_SRC_DIR}/elfutils-${CT_ELFUTILS_VERSION}/configure"   \
-        --build=${CT_BUILD}                                 \
-        --host=${CT_TARGET}                                 \
-        --target=${CT_TARGET}                               \
-        --sysconfdir=/etc                                   \
-        --localstatedir=/var                                \
-        --mandir=/usr/share/man                             \
-        --infodir=/usr/share/info                           \
-        --prefix=/usr                                       \
-        --enable-shared                                     \
+        --build=${CT_BUILD}                                     \
+        --host=${CT_TARGET}                                     \
+        --target=${CT_TARGET}                                   \
+        --cache-file=config.cache                               \
+        --sysconfdir=/etc                                       \
+        --localstatedir=/var                                    \
+        --mandir=/usr/share/man                                 \
+        --infodir=/usr/share/info                               \
+        --prefix=/usr                                           \
+        --enable-shared                                         \
         --enable-static
 
     CT_DoLog EXTRA "Building elfutils"

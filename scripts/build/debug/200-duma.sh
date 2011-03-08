@@ -38,6 +38,7 @@ do_debug_duma_build() {
     make HOSTCC="${CT_BUILD}-gcc"       \
          CC="${CT_TARGET}-gcc"          \
          CXX="${CT_TARGET}-gcc"         \
+         AR="${CT_TARGET}-ar"           \
          RANLIB="${CT_TARGET}-ranlib"   \
          DUMA_CPP="${DUMA_CPP}"         \
          ${libs}

@@ -41,14 +41,16 @@ do_debug_ltrace_build() {
         CFLAGS="${CT_TARGET_CFLAGS}"    \
         CT_DoExecLog CFG ./configure --prefix=/usr
     else
-        CT_DoExecLog CFG                                        \
-        ./configure                                             \
-            --build=${CT_BUILD}                                 \
-            --host=${CT_TARGET}                                 \
-            --sysconfdir=/etc                                   \
-            --localstatedir=/var                                \
-            --mandir=/usr/share/man                             \
-            --infodir=/usr/share/info                           \
+        cp ../../config.cache .
+        CT_DoExecLog CFG                                            \
+        ./configure                                                 \
+            --build=${CT_BUILD}                                     \
+            --host=${CT_TARGET}                                     \
+            --cache-file=config.cache                               \
+            --sysconfdir=/etc                                       \
+            --localstatedir=/var                                    \
+            --mandir=/usr/share/man                                 \
+            --infodir=/usr/share/info                               \
             --prefix=/usr
     fi
 

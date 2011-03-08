@@ -1,0 +1,399 @@
+From bf35a7e66e4aca330e9f2b5f08f75e741a7799a1 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Mon, 7 Mar 2011 22:41:39 +0000
+Subject: [PATCH 3/3] Linux sig(action|suspend|procmask)
+
+(see https://bugs.kde.org/show_bug.cgi?id=266035)
+---
+ coregrind/m_syswrap/priv_syswrap-linux.h  |    2 +
+ coregrind/m_syswrap/syswrap-arm-linux.c   |    6 +-
+ coregrind/m_syswrap/syswrap-linux.c       |   85 +++++++++++++++++++++++++++-
+ coregrind/m_syswrap/syswrap-ppc32-linux.c |   88 +----------------------------
+ coregrind/m_syswrap/syswrap-x86-linux.c   |   89 +----------------------------
+ 5 files changed, 93 insertions(+), 177 deletions(-)
+
+diff --git a/coregrind/m_syswrap/priv_syswrap-linux.h b/coregrind/m_syswrap/priv_syswrap-linux.h
+index e2a21d6..e46f871 100644
+--- a/coregrind/m_syswrap/priv_syswrap-linux.h
++++ b/coregrind/m_syswrap/priv_syswrap-linux.h
+@@ -238,6 +238,8 @@ DECL_TEMPLATE(linux, sys_lseek);
+ // Darwin (and probably other OSes) don't have the old_sigset_t type.
+ DECL_TEMPLATE(linux, sys_sigpending);
+ DECL_TEMPLATE(linux, sys_sigprocmask);
++DECL_TEMPLATE(linux, sys_sigaction);
++DECL_TEMPLATE(linux, sys_sigsuspend);
+ 
+ // I think these are Linux-specific?
+ DECL_TEMPLATE(linux, sys_rt_sigaction);
+diff --git a/coregrind/m_syswrap/syswrap-arm-linux.c b/coregrind/m_syswrap/syswrap-arm-linux.c
+index fb12728..c84e087 100644
+--- a/coregrind/m_syswrap/syswrap-arm-linux.c
++++ b/coregrind/m_syswrap/syswrap-arm-linux.c
+@@ -1311,13 +1311,13 @@ static SyscallTableEntry syscall_main_table[] = {
+ 
+    GENX_(__NR_getpgrp,           sys_getpgrp),        // 65
+    GENX_(__NR_setsid,            sys_setsid),         // 66
+-//      _____(__NR_sigaction,         sys_sigaction),      // 67
++   LINXY(__NR_sigaction,         sys_sigaction),      // 67
+ //zz    //   (__NR_sgetmask,          sys_sgetmask),       // 68 */* (ANSI C)
+ //zz    //   (__NR_ssetmask,          sys_ssetmask),       // 69 */* (ANSI C)
+ //zz 
+    LINX_(__NR_setreuid,          sys_setreuid16),     // 70
+    LINX_(__NR_setregid,          sys_setregid16),     // 71
+-//   _____(__NR_sigsuspend,        sys_sigsuspend),     // 72
++   LINX_(__NR_sigsuspend,        sys_sigsuspend),     // 72
+    LINXY(__NR_sigpending,        sys_sigpending),     // 73
+ //zz    //   (__NR_sethostname,       sys_sethostname),    // 74 */*
+ //zz 
+@@ -1382,7 +1382,7 @@ static SyscallTableEntry syscall_main_table[] = {
+ //zz    LINXY(__NR_adjtimex,          sys_adjtimex),       // 124
+ //zz 
+    GENXY(__NR_mprotect,          sys_mprotect),       // 125
+-   //   LINXY(__NR_sigprocmask,       sys_sigprocmask),    // 126
++   LINXY(__NR_sigprocmask,       sys_sigprocmask),    // 126
+ //zz    // Nb: create_module() was removed 2.4-->2.6
+ //   GENX_(__NR_create_module,     sys_ni_syscall),     // 127
+    LINX_(__NR_init_module,       sys_init_module),    // 128
+diff --git a/coregrind/m_syswrap/syswrap-linux.c b/coregrind/m_syswrap/syswrap-linux.c
+index b0e5ca3..0ce23f5 100644
+--- a/coregrind/m_syswrap/syswrap-linux.c
++++ b/coregrind/m_syswrap/syswrap-linux.c
+@@ -2680,7 +2680,7 @@ POST(sys_sigpending)
+ // This wrapper is only suitable for 32-bit architectures.
+ // (XXX: so how is it that PRE(sys_sigpending) above doesn't need
+ // conditional compilation like this?)
+-#if defined(VGP_x86_linux) || defined(VGP_ppc32_linux)
++#if defined(VGP_x86_linux) || defined(VGP_ppc32_linux) || defined(VGP_arm_linux)
+ PRE(sys_sigprocmask)
+ {
+    vki_old_sigset_t* set;
+@@ -2724,6 +2724,89 @@ POST(sys_sigprocmask)
+    if (RES == 0 && ARG3 != 0)
+       POST_MEM_WRITE( ARG3, sizeof(vki_old_sigset_t));
+ }
++
++/* Convert from non-RT to RT sigset_t's */
++static
++void convert_sigset_to_rt(const vki_old_sigset_t *oldset, vki_sigset_t *set)
++{
++   VG_(sigemptyset)(set);
++   set->sig[0] = *oldset;
++}
++PRE(sys_sigaction)
++{
++   vki_sigaction_toK_t   new, *newp;
++   vki_sigaction_fromK_t old, *oldp;
++
++   PRINT("sys_sigaction ( %ld, %#lx, %#lx )", ARG1,ARG2,ARG3);
++   PRE_REG_READ3(int, "sigaction",
++                 int, signum, const struct old_sigaction *, act,
++                 struct old_sigaction *, oldact);
++
++   newp = oldp = NULL;
++
++   if (ARG2 != 0) {
++      struct vki_old_sigaction *sa = (struct vki_old_sigaction *)ARG2;
++      PRE_MEM_READ( "sigaction(act->sa_handler)", (Addr)&sa->ksa_handler, sizeof(sa->ksa_handler));
++      PRE_MEM_READ( "sigaction(act->sa_mask)", (Addr)&sa->sa_mask, sizeof(sa->sa_mask));
++      PRE_MEM_READ( "sigaction(act->sa_flags)", (Addr)&sa->sa_flags, sizeof(sa->sa_flags));
++      if (ML_(safe_to_deref)(sa,sizeof(sa))
++          && (sa->sa_flags & VKI_SA_RESTORER))
++         PRE_MEM_READ( "sigaction(act->sa_restorer)", (Addr)&sa->sa_restorer, sizeof(sa->sa_restorer));
++   }
++
++   if (ARG3 != 0) {
++      PRE_MEM_WRITE( "sigaction(oldact)", ARG3, sizeof(struct vki_old_sigaction));
++      oldp = &old;
++   }
++
++   //jrs 20050207: what?!  how can this make any sense?
++   //if (VG_(is_kerror)(SYSRES))
++   //   return;
++
++   if (ARG2 != 0) {
++      struct vki_old_sigaction *oldnew = (struct vki_old_sigaction *)ARG2;
++      new.ksa_handler = oldnew->ksa_handler;
++      new.sa_flags    = oldnew->sa_flags;
++      new.sa_restorer = oldnew->sa_restorer;
++      convert_sigset_to_rt(&oldnew->sa_mask, &new.sa_mask);
++      newp = &new;
++   }
++
++   SET_STATUS_from_SysRes( VG_(do_sys_sigaction)(ARG1, newp, oldp) );
++
++   if (ARG3 != 0 && SUCCESS && RES == 0) {
++      struct vki_old_sigaction *oldold = (struct vki_old_sigaction *)ARG3;
++      oldold->ksa_handler = oldp->ksa_handler;
++      oldold->sa_flags    = oldp->sa_flags;
++      oldold->sa_restorer = oldp->sa_restorer;
++      oldold->sa_mask = oldp->sa_mask.sig[0];
++   }
++}
++
++POST(sys_sigaction)
++{
++   vg_assert(SUCCESS);
++   if (RES == 0 && ARG3 != 0)
++      POST_MEM_WRITE( ARG3, sizeof(struct vki_old_sigaction));
++}
++
++PRE(sys_sigsuspend)
++{
++   /* The C library interface to sigsuspend just takes a pointer to
++      a signal mask but this system call has three arguments - the first
++      two don't appear to be used by the kernel and are always passed as
++      zero by glibc and the third is the first word of the signal mask
++      so only 32 signals are supported.
++
++      In fact glibc normally uses rt_sigsuspend if it is available as
++      that takes a pointer to the signal mask so supports more signals.
++    */
++   *flags |= SfMayBlock;
++   PRINT("sys_sigsuspend ( %ld, %ld, %ld )", ARG1,ARG2,ARG3 );
++   PRE_REG_READ3(int, "sigsuspend",
++                 int, history0, int, history1,
++                 vki_old_sigset_t, mask);
++}
+ #endif
+ 
+ PRE(sys_signalfd)
+diff --git a/coregrind/m_syswrap/syswrap-ppc32-linux.c b/coregrind/m_syswrap/syswrap-ppc32-linux.c
+index 984c7bc..2a0e846 100644
+--- a/coregrind/m_syswrap/syswrap-ppc32-linux.c
++++ b/coregrind/m_syswrap/syswrap-ppc32-linux.c
+@@ -418,8 +418,6 @@ DECL_TEMPLATE(ppc32_linux, sys_ipc);
+ DECL_TEMPLATE(ppc32_linux, sys_clone);
+ DECL_TEMPLATE(ppc32_linux, sys_sigreturn);
+ DECL_TEMPLATE(ppc32_linux, sys_rt_sigreturn);
+-DECL_TEMPLATE(ppc32_linux, sys_sigaction);
+-DECL_TEMPLATE(ppc32_linux, sys_sigsuspend);
+ DECL_TEMPLATE(ppc32_linux, sys_spu_create);
+ DECL_TEMPLATE(ppc32_linux, sys_spu_run);
+ 
+@@ -1391,88 +1389,6 @@ PRE(sys_rt_sigreturn)
+ //..    }
+ //.. }
+ 
+-
+-/* Convert from non-RT to RT sigset_t's */
+-static 
+-void convert_sigset_to_rt(const vki_old_sigset_t *oldset, vki_sigset_t *set)
+-{
+-   VG_(sigemptyset)(set);
+-   set->sig[0] = *oldset;
+-}
+-PRE(sys_sigaction)
+-{
+-   vki_sigaction_toK_t   new, *newp;
+-   vki_sigaction_fromK_t old, *oldp;
+-
+-   PRINT("sys_sigaction ( %ld, %#lx, %#lx )", ARG1,ARG2,ARG3);
+-   PRE_REG_READ3(int, "sigaction",
+-                 int, signum, const struct old_sigaction *, act,
+-                 struct old_sigaction *, oldact);
+-
+-   newp = oldp = NULL;
+-
+-   if (ARG2 != 0) {
+-      struct vki_old_sigaction *sa = (struct vki_old_sigaction *)ARG2;
+-      PRE_MEM_READ( "sigaction(act->sa_handler)", (Addr)&sa->ksa_handler, sizeof(sa->ksa_handler));
+-      PRE_MEM_READ( "sigaction(act->sa_mask)", (Addr)&sa->sa_mask, sizeof(sa->sa_mask));
+-      PRE_MEM_READ( "sigaction(act->sa_flags)", (Addr)&sa->sa_flags, sizeof(sa->sa_flags));
+-      if (ML_(safe_to_deref)(sa,sizeof(sa)) 
+-          && (sa->sa_flags & VKI_SA_RESTORER))
+-         PRE_MEM_READ( "sigaction(act->sa_restorer)", (Addr)&sa->sa_restorer, sizeof(sa->sa_restorer));
+-   }
+-
+-   if (ARG3 != 0) {
+-      PRE_MEM_WRITE( "sigaction(oldact)", ARG3, sizeof(struct vki_old_sigaction));
+-      oldp = &old;
+-   }
+-
+-   //jrs 20050207: what?!  how can this make any sense?
+-   //if (VG_(is_kerror)(SYSRES))
+-   //   return;
+-
+-   if (ARG2 != 0) {
+-      struct vki_old_sigaction *oldnew = (struct vki_old_sigaction *)ARG2;
+-
+-      new.ksa_handler = oldnew->ksa_handler;
+-      new.sa_flags = oldnew->sa_flags;
+-      new.sa_restorer = oldnew->sa_restorer;
+-      convert_sigset_to_rt(&oldnew->sa_mask, &new.sa_mask);
+-      newp = &new;
+-   }
+-
+-   SET_STATUS_from_SysRes( VG_(do_sys_sigaction)(ARG1, newp, oldp) );
+-
+-   if (ARG3 != 0 && SUCCESS && RES == 0) {
+-      struct vki_old_sigaction *oldold = (struct vki_old_sigaction *)ARG3;
+-
+-      oldold->ksa_handler = oldp->ksa_handler;
+-      oldold->sa_flags = oldp->sa_flags;
+-      oldold->sa_restorer = oldp->sa_restorer;
+-      oldold->sa_mask = oldp->sa_mask.sig[0];
+-   }
+-}
+-
+-POST(sys_sigaction)
+-{
+-   vg_assert(SUCCESS);
+-   if (RES == 0 && ARG3 != 0)
+-      POST_MEM_WRITE( ARG3, sizeof(struct vki_old_sigaction));
+-}
+-
+-PRE(sys_sigsuspend)
+-{
+-   /* The C library interface to sigsuspend just takes a pointer to
+-      a signal mask but this system call only takes the first word of
+-      the signal mask as an argument so only 32 signals are supported.
+-     
+-      In fact glibc normally uses rt_sigsuspend if it is available as
+-      that takes a pointer to the signal mask so supports more signals.
+-    */
+-   *flags |= SfMayBlock;
+-   PRINT("sys_sigsuspend ( %ld )", ARG1 );
+-   PRE_REG_READ1(int, "sigsuspend", vki_old_sigset_t, mask);
+-}
+-
+ PRE(sys_spu_create)
+ {
+    PRE_MEM_RASCIIZ("stat64(filename)", ARG1);
+@@ -1595,13 +1511,13 @@ static SyscallTableEntry syscall_table[] = {
+ 
+    GENX_(__NR_getpgrp,           sys_getpgrp),           // 65
+    GENX_(__NR_setsid,            sys_setsid),            // 66
+-   PLAXY(__NR_sigaction,         sys_sigaction),         // 67
++   LINXY(__NR_sigaction,         sys_sigaction),         // 67
+ //..    //   (__NR_sgetmask,          sys_sgetmask),          // 68 */* (ANSI C)
+ //..    //   (__NR_ssetmask,          sys_ssetmask),          // 69 */* (ANSI C)
+ //.. 
+    GENX_(__NR_setreuid,          sys_setreuid),          // 70
+    GENX_(__NR_setregid,          sys_setregid),          // 71
+-   PLAX_(__NR_sigsuspend,        sys_sigsuspend),        // 72
++   LINX_(__NR_sigsuspend,        sys_sigsuspend),        // 72
+    LINXY(__NR_sigpending,        sys_sigpending),        // 73
+ //..    //   (__NR_sethostname,       sys_sethostname),       // 74 */*
+ //.. 
+diff --git a/coregrind/m_syswrap/syswrap-x86-linux.c b/coregrind/m_syswrap/syswrap-x86-linux.c
+index c0a8b2b..8050957 100644
+--- a/coregrind/m_syswrap/syswrap-x86-linux.c
++++ b/coregrind/m_syswrap/syswrap-x86-linux.c
+@@ -803,8 +803,6 @@ DECL_TEMPLATE(x86_linux, sys_modify_ldt);
+ DECL_TEMPLATE(x86_linux, sys_set_thread_area);
+ DECL_TEMPLATE(x86_linux, sys_get_thread_area);
+ DECL_TEMPLATE(x86_linux, sys_ptrace);
+-DECL_TEMPLATE(x86_linux, sys_sigaction);
+-DECL_TEMPLATE(x86_linux, sys_sigsuspend);
+ DECL_TEMPLATE(x86_linux, old_select);
+ DECL_TEMPLATE(x86_linux, sys_vm86old);
+ DECL_TEMPLATE(x86_linux, sys_vm86);
+@@ -1707,89 +1705,6 @@ POST(sys_socketcall)
+ #  undef ARG2_5
+ }
+ 
+-/* Convert from non-RT to RT sigset_t's */
+-static 
+-void convert_sigset_to_rt(const vki_old_sigset_t *oldset, vki_sigset_t *set)
+-{
+-   VG_(sigemptyset)(set);
+-   set->sig[0] = *oldset;
+-}
+-PRE(sys_sigaction)
+-{
+-   vki_sigaction_toK_t   new, *newp;
+-   vki_sigaction_fromK_t old, *oldp;
+-
+-   PRINT("sys_sigaction ( %ld, %#lx, %#lx )", ARG1,ARG2,ARG3);
+-   PRE_REG_READ3(int, "sigaction",
+-                 int, signum, const struct old_sigaction *, act,
+-                 struct old_sigaction *, oldact);
+-
+-   newp = oldp = NULL;
+-
+-   if (ARG2 != 0) {
+-      struct vki_old_sigaction *sa = (struct vki_old_sigaction *)ARG2;
+-      PRE_MEM_READ( "sigaction(act->sa_handler)", (Addr)&sa->ksa_handler, sizeof(sa->ksa_handler));
+-      PRE_MEM_READ( "sigaction(act->sa_mask)", (Addr)&sa->sa_mask, sizeof(sa->sa_mask));
+-      PRE_MEM_READ( "sigaction(act->sa_flags)", (Addr)&sa->sa_flags, sizeof(sa->sa_flags));
+-      if (ML_(safe_to_deref)(sa,sizeof(sa)) 
+-          && (sa->sa_flags & VKI_SA_RESTORER))
+-         PRE_MEM_READ( "sigaction(act->sa_restorer)", (Addr)&sa->sa_restorer, sizeof(sa->sa_restorer));
+-   }
+-
+-   if (ARG3 != 0) {
+-      PRE_MEM_WRITE( "sigaction(oldact)", ARG3, sizeof(struct vki_old_sigaction));
+-      oldp = &old;
+-   }
+-
+-   //jrs 20050207: what?!  how can this make any sense?
+-   //if (VG_(is_kerror)(SYSRES))
+-   //   return;
+-
+-   if (ARG2 != 0) {
+-      struct vki_old_sigaction *oldnew = (struct vki_old_sigaction *)ARG2;
+-      new.ksa_handler = oldnew->ksa_handler;
+-      new.sa_flags    = oldnew->sa_flags;
+-      new.sa_restorer = oldnew->sa_restorer;
+-      convert_sigset_to_rt(&oldnew->sa_mask, &new.sa_mask);
+-      newp = &new;
+-   }
+-
+-   SET_STATUS_from_SysRes( VG_(do_sys_sigaction)(ARG1, newp, oldp) );
+-
+-   if (ARG3 != 0 && SUCCESS && RES == 0) {
+-      struct vki_old_sigaction *oldold = (struct vki_old_sigaction *)ARG3;
+-      oldold->ksa_handler = oldp->ksa_handler;
+-      oldold->sa_flags    = oldp->sa_flags;
+-      oldold->sa_restorer = oldp->sa_restorer;
+-      oldold->sa_mask = oldp->sa_mask.sig[0];
+-   }
+-}
+-
+-POST(sys_sigaction)
+-{
+-   vg_assert(SUCCESS);
+-   if (RES == 0 && ARG3 != 0)
+-      POST_MEM_WRITE( ARG3, sizeof(struct vki_old_sigaction));
+-}
+-
+-PRE(sys_sigsuspend)
+-{
+-   /* The C library interface to sigsuspend just takes a pointer to
+-      a signal mask but this system call has three arguments - the first
+-      two don't appear to be used by the kernel and are always passed as
+-      zero by glibc and the third is the first word of the signal mask
+-      so only 32 signals are supported.
+-     
+-      In fact glibc normally uses rt_sigsuspend if it is available as
+-      that takes a pointer to the signal mask so supports more signals.
+-    */
+-   *flags |= SfMayBlock;
+-   PRINT("sys_sigsuspend ( %ld, %ld, %ld )", ARG1,ARG2,ARG3 );
+-   PRE_REG_READ3(int, "sigsuspend",
+-                 int, history0, int, history1,
+-                 vki_old_sigset_t, mask);
+-}
+-
+ PRE(sys_vm86old)
+ {
+    PRINT("sys_vm86old ( %#lx )", ARG1);
+@@ -1953,13 +1868,13 @@ static SyscallTableEntry syscall_table[] = {
+ 
+    GENX_(__NR_getpgrp,           sys_getpgrp),        // 65
+    GENX_(__NR_setsid,            sys_setsid),         // 66
+-   PLAXY(__NR_sigaction,         sys_sigaction),      // 67
++   LINXY(__NR_sigaction,         sys_sigaction),      // 67
+ //zz    //   (__NR_sgetmask,          sys_sgetmask),       // 68 */* (ANSI C)
+ //zz    //   (__NR_ssetmask,          sys_ssetmask),       // 69 */* (ANSI C)
+ //zz 
+    LINX_(__NR_setreuid,          sys_setreuid16),     // 70
+    LINX_(__NR_setregid,          sys_setregid16),     // 71
+-   PLAX_(__NR_sigsuspend,        sys_sigsuspend),     // 72
++   LINX_(__NR_sigsuspend,        sys_sigsuspend),     // 72
+    LINXY(__NR_sigpending,        sys_sigpending),     // 73
+ //zz    //   (__NR_sethostname,       sys_sethostname),    // 74 */*
+ //zz 
+-- 
+1.7.0.4
+

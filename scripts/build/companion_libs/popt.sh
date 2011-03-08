@@ -33,14 +33,14 @@ do_popt() {
         popt_opts+=( --disable-shared --enable-static )
     fi
 
-    CC="${CT_HOST}-gcc"                                     \
-    CFLAGS="-fPIC"                                          \
-    CT_DoExecLog CFG                                        \
-    "${CT_SRC_DIR}/popt-${CT_POPT_VERSION}/configure"   \
-        --build=${CT_BUILD}                                 \
-        --host=${CT_HOST}                                   \
-        --target=${CT_TARGET}                               \
-        --prefix="${CT_COMPLIBS_DIR}"                       \
+    CC="${CT_HOST}-gcc"                                         \
+    CFLAGS="-fPIC"                                              \
+    CT_DoExecLog CFG                                            \
+    "${CT_SRC_DIR}/popt-${CT_POPT_VERSION}/configure"           \
+        --build=${CT_BUILD}                                     \
+        --host=${CT_HOST}                                       \
+        --target=${CT_TARGET}                                   \
+        --prefix="${CT_COMPLIBS_DIR}"                           \
         "${popt_opts[@]}"
 
     CT_DoLog EXTRA "Building popt"
@@ -63,19 +63,21 @@ do_popt_target() {
     CT_Pushd "${CT_BUILD_DIR}/build-popt-for-target"
 
     CT_DoLog EXTRA "Configuring popt"
-    CC="${CT_TARGET}-gcc"                                   \
-    CFLAGS="-fPIC"                                          \
-    CT_DoExecLog CFG                                        \
-    "${CT_SRC_DIR}/popt-${CT_POPT_VERSION}/configure"   \
-        --build=${CT_BUILD}                                 \
-        --host=${CT_TARGET}                                 \
-        --target=${CT_TARGET}                               \
-        --sysconfdir=/etc                                   \
-        --localstatedir=/var                                \
-        --mandir=/usr/share/man                             \
-        --infodir=/usr/share/info                           \
-        --prefix=/usr                                       \
-        --disable-shared                                    \
+    cp ../../config.cache .
+    CC="${CT_TARGET}-gcc"                                       \
+    CFLAGS="-g -Os -fPIC"                                       \
+    CT_DoExecLog CFG                                            \
+    "${CT_SRC_DIR}/popt-${CT_POPT_VERSION}/configure"           \
+        --build=${CT_BUILD}                                     \
+        --host=${CT_TARGET}                                     \
+        --target=${CT_TARGET}                                   \
+        --cache-file=config.cache                               \
+        --sysconfdir=/etc                                       \
+        --localstatedir=/var                                    \
+        --mandir=/usr/share/man                                 \
+        --infodir=/usr/share/info                               \
+        --prefix=/usr                                           \
+        --disable-shared                                        \
         --enable-static
 
     CT_DoLog EXTRA "Building popt"

@@ -22,6 +22,7 @@ CC_CONFIG_FILES       = $(patsubst $(CT_LIB_DIR)/%,%,$(wildcard $(CT_LIB_DIR)/co
 CC_CONFIG_FILES_2     = $(patsubst $(CT_LIB_DIR)/%,%,$(wildcard $(CT_LIB_DIR)/config/cc/*.in.2))
 LIBC_CONFIG_FILES     = $(patsubst $(CT_LIB_DIR)/%,%,$(wildcard $(CT_LIB_DIR)/config/libc/*.in))
 LIBC_CONFIG_FILES_2   = $(patsubst $(CT_LIB_DIR)/%,%,$(wildcard $(CT_LIB_DIR)/config/libc/*.in.2))
+CROSS_ME_HARDER_CONFIG_FILES = $(patsubst $(CT_LIB_DIR)/%,%,$(wildcard $(CT_LIB_DIR)/config/cross_me_harder/*.in))
 DEBUG_CONFIG_FILES    = $(patsubst $(CT_LIB_DIR)/%,%,$(wildcard $(CT_LIB_DIR)/config/debug/*.in))
 
 # Build the list of generated config files
@@ -29,6 +30,7 @@ GEN_CONFIG_FILES = config.gen/arch.in     \
                    config.gen/kernel.in   \
                    config.gen/cc.in       \
                    config.gen/libc.in     \
+                   config.gen/cross_me_harder.in \
                    config.gen/debug.in
 # ... and how to access them:
 # Generated files depends on config.mk (this file) because it has the
@@ -58,6 +60,7 @@ ARCHS   = $(patsubst config/arch/%.in,%,$(ARCH_CONFIG_FILES))
 KERNELS = $(patsubst config/kernel/%.in,%,$(KERNEL_CONFIG_FILES))
 CCS     = $(patsubst config/cc/%.in,%,$(CC_CONFIG_FILES))
 LIBCS   = $(patsubst config/libc/%.in,%,$(LIBC_CONFIG_FILES))
+CROSS_ME_HARDERS = $(patsubst config/cross_me_harder/%.in,%,$(CROSS_ME_HARDER_CONFIG_FILES))
 DEBUGS  = $(patsubst config/debug/%.in,%,$(DEBUG_CONFIG_FILES))
 
 #-----------------------------------------------------------
@@ -185,6 +188,9 @@ config.gen/cc.in: $(CC_CONFIG_FILES) $(CC_CONFIG_FILES_2)
 
 config.gen/libc.in: $(LIBC_CONFIG_FILES) $(LIBC_CONFIG_FILES_2)
 	$(call build_gen_choice_in,$@,C library,LIBC,config/libc,Y,$(LIBCS))
+
+config.gen/cross_me_harder.in: $(CROSS_ME_HARDER_CONFIG_FILES)
+	$(call build_gen_menu_in,$@,Cross_me_harder,CROSS_ME_HARDER,config/cross_me_harder,$(CROSS_ME_HARDERS))
 
 config.gen/debug.in: $(DEBUG_CONFIG_FILES)
 	$(call build_gen_menu_in,$@,Debug,DEBUG,config/debug,$(DEBUGS))

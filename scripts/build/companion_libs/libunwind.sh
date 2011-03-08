@@ -33,14 +33,14 @@ do_libunwind() {
         libunwind_opts+=( --disable-shared --enable-static )
     fi
 
-    CC="${CT_HOST}-gcc"                                     \
-    CFLAGS="-fPIC"                                          \
-    CT_DoExecLog CFG                                        \
-    "${CT_SRC_DIR}/libunwind-${CT_LIBUNWIND_VERSION}/configure"   \
-        --build=${CT_BUILD}                                 \
-        --host=${CT_HOST}                                   \
-        --target=${CT_TARGET}                               \
-        --prefix="${CT_COMPLIBS_DIR}"                       \
+    CC="${CT_HOST}-gcc"                                         \
+    CFLAGS="-fPIC"                                              \
+    CT_DoExecLog CFG                                            \
+    "${CT_SRC_DIR}/libunwind-${CT_LIBUNWIND_VERSION}/configure" \
+        --build=${CT_BUILD}                                     \
+        --host=${CT_HOST}                                       \
+        --target=${CT_TARGET}                                   \
+        --prefix="${CT_COMPLIBS_DIR}"                           \
         "${libunwind_opts[@]}"
 
     CT_DoLog EXTRA "Building libunwind"
@@ -63,20 +63,22 @@ do_libunwind_target() {
     CT_Pushd "${CT_BUILD_DIR}/build-libunwind-for-target"
 
     CT_DoLog EXTRA "Configuring libunwind"
-    CC="${CT_TARGET}-gcc"                                   \
-    CFLAGS="-fPIC"                                          \
-    CT_DoExecLog CFG                                        \
-    "${CT_SRC_DIR}/libunwind-${CT_LIBUNWIND_VERSION}/configure"   \
-        --build=${CT_BUILD}                                 \
-        --host=${CT_TARGET}                                 \
-        --target=${CT_TARGET}                               \
-        --enable-cxx-exceptions                             \
-        --sysconfdir=/etc                                   \
-        --localstatedir=/var                                \
-        --mandir=/usr/share/man                             \
-        --infodir=/usr/share/info                           \
-        --prefix=/usr                                       \
-        --enable-shared                                     \
+    cp ../../config.cache .
+    CC="${CT_TARGET}-gcc"                                       \
+    CFLAGS="-g -Os -fPIC"                                       \
+    CT_DoExecLog CFG                                            \
+    "${CT_SRC_DIR}/libunwind-${CT_LIBUNWIND_VERSION}/configure" \
+        --build=${CT_BUILD}                                     \
+        --host=${CT_TARGET}                                     \
+        --target=${CT_TARGET}                                   \
+        --cache-file=config.cache                               \
+        --enable-cxx-exceptions                                 \
+        --sysconfdir=/etc                                       \
+        --localstatedir=/var                                    \
+        --mandir=/usr/share/man                                 \
+        --infodir=/usr/share/info                               \
+        --prefix=/usr                                           \
+        --enable-shared                                         \
         --enable-static
 
     CT_DoLog EXTRA "Building libunwind"

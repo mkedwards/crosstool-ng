@@ -16,15 +16,17 @@ do_debug_valgrind_build() {
     CT_Pushd "${CT_BUILD_DIR}/build-valgrind"
 
     CT_DoLog EXTRA "Configuring valgrind"
-    CT_DoExecLog CFG                                        \
-    ./configure                                             \
-        --build=${CT_BUILD}                                 \
-        --host=${CT_TARGET}                                 \
-        --enable-tls                                        \
-        --sysconfdir=/etc                                   \
-        --localstatedir=/var                                \
-        --mandir=/usr/share/man                             \
-        --infodir=/usr/share/info                           \
+    cp ../../config.cache .
+    CT_DoExecLog CFG                                            \
+    ./configure                                                 \
+        --build=${CT_BUILD}                                     \
+        --host=${CT_TARGET}                                     \
+        --cache-file=config.cache                               \
+        --enable-tls                                            \
+        --sysconfdir=/etc                                       \
+        --localstatedir=/var                                    \
+        --mandir=/usr/share/man                                 \
+        --infodir=/usr/share/info                               \
         --prefix=/usr
 
     CT_DoLog EXTRA "Building valgrind"

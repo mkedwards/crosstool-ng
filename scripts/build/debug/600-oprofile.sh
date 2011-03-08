@@ -22,18 +22,20 @@ do_debug_oprofile_build() {
     fi
 
     CT_DoLog EXTRA "Configuring oprofile"
-    CT_DoExecLog CFG                                        \
+    cp ../../config.cache .
+    CT_DoExecLog CFG                                            \
     "${CT_SRC_DIR}/oprofile-${CT_OPROFILE_VERSION}/configure"   \
-        --build=${CT_BUILD}                                 \
-        --host=${CT_TARGET}                                 \
-        --with-kernel-support                               \
-        --with-linux="$kernel_path"                         \
-        --without-x                                         \
-        --disable-rpath                                     \
-        --sysconfdir=/etc                                   \
-        --localstatedir=/var                                \
-        --mandir=/usr/share/man                             \
-        --infodir=/usr/share/info                           \
+        --build=${CT_BUILD}                                     \
+        --host=${CT_TARGET}                                     \
+        --cache-file=config.cache                               \
+        --with-kernel-support                                   \
+        --with-linux="$kernel_path"                             \
+        --without-x                                             \
+        --disable-rpath                                         \
+        --sysconfdir=/etc                                       \
+        --localstatedir=/var                                    \
+        --mandir=/usr/share/man                                 \
+        --infodir=/usr/share/info                               \
         --prefix=/usr
 
     CT_DoLog EXTRA "Building oprofile"

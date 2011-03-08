@@ -1,6 +1,7 @@
 # GDB menu
 
 config DEBUG_gdb
+    bool
     help
       Enable gdb for the target
 

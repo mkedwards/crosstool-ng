@@ -1,24 +1,24 @@
-# valgrind
+# flex
 # depends on ! BACKEND
 
-config DEBUG_valgrind
+config CONFIG_ME_HARDER_flex
     bool
 
 choice
     bool
-    prompt "valgrind version"
+    prompt "flex version"
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
-config VALGRIND_V_3_6_1
+config FLEX_V_2_5_35
     bool
-    prompt "3.6.1 (EXPERIMENTAL)"
+    prompt "2.5.35 (EXPERIMENTAL)"
     depends on EXPERIMENTAL
 
 endchoice
 
-config VALGRIND_VERSION
+config FLEX_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
-    default "3.6.1" if VALGRIND_V_3_6_1
+    default "2.5.35" if FLEX_V_2_5_35

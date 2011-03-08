@@ -1,0 +1,473 @@
+From 2227e28898ebc7f56efaff8d91ab3d7a7ad29e53 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Mon, 7 Mar 2011 22:38:52 +0000
+Subject: [PATCH 2/3] Additional ARMv7 and Thumb2 opcodes
+
+(see https://bugs.kde.org/show_bug.cgi?id=266035)
+---
+ VEX/priv/guest_arm_toIR.c |  225 +++++++++++++++++++++++++++++++++++++++------
+ VEX/priv/host_arm_defs.c  |   64 ++++++++-----
+ VEX/priv/host_arm_isel.c  |   38 +++++++-
+ 3 files changed, 268 insertions(+), 59 deletions(-)
+
+diff --git a/VEX/priv/guest_arm_toIR.c b/VEX/priv/guest_arm_toIR.c
+index e1c84de..728662c 100644
+--- a/VEX/priv/guest_arm_toIR.c
++++ b/VEX/priv/guest_arm_toIR.c
+@@ -11942,11 +11942,25 @@ static Bool decode_NV_instruction ( /*MOD*/DisResult* dres,
+          stmt( IRStmt_MBE(Imbe_Fence) );
+          DIP("ISB\n");
+          return True;
+-      case 0xF57FF04F: /* DSB */
++      case 0xF57FF04F: /* DSB sy */
++      case 0xF57FF04E: /* DSB st */
++      case 0xF57FF04B: /* DSB ish */
++      case 0xF57FF04A: /* DSB ishst */
++      case 0xF57FF047: /* DSB nsh */
++      case 0xF57FF046: /* DSB nshst */
++      case 0xF57FF043: /* DSB osh */
++      case 0xF57FF042: /* DSB oshst */
+          stmt( IRStmt_MBE(Imbe_Fence) );
+          DIP("DSB\n");
+          return True;
+-      case 0xF57FF05F: /* DMB */
++      case 0xF57FF05F: /* DMB sy */
++      case 0xF57FF05E: /* DMB st */
++      case 0xF57FF05B: /* DMB ish */
++      case 0xF57FF05A: /* DMB ishst */
++      case 0xF57FF057: /* DMB nsh */
++      case 0xF57FF056: /* DMB nshst */
++      case 0xF57FF053: /* DMB osh */
++      case 0xF57FF052: /* DMB oshst */
+          stmt( IRStmt_MBE(Imbe_Fence) );
+          DIP("DMB\n");
+          return True;
+@@ -13917,30 +13931,92 @@ DisResult disInstr_ARM_WRK (
+       means we don't know which they are, so the back end has to
+       re-emit them all when it comes acrosss an IR Fence.
+    */
+-   switch (insn) {
+-      case 0xEE070F9A: /* v6 */
+-         /* mcr 15, 0, r0, c7, c10, 4 (v6) equiv to DSB (v7).  Data
+-            Synch Barrier -- ensures completion of memory accesses. */
+-         stmt( IRStmt_MBE(Imbe_Fence) );
+-         DIP("mcr 15, 0, r0, c7, c10, 4 (data synch barrier)\n");
+-         goto decode_success;
+-      case 0xEE070FBA: /* v6 */
+-         /* mcr 15, 0, r0, c7, c10, 5 (v6) equiv to DMB (v7).  Data
+-            Memory Barrier -- ensures ordering of memory accesses. */
+-         stmt( IRStmt_MBE(Imbe_Fence) );
+-         DIP("mcr 15, 0, r0, c7, c10, 5 (data memory barrier)\n");
++   if (0xEE070F9A == (insn & 0xFFFF0FFF)) { /* v6 */
++      /* mcr 15, 0, r0, c7, c10, 4 (v6) equiv to DSB (v7).  Data
++         Synch Barrier -- ensures completion of memory accesses. */
++      stmt( IRStmt_MBE(Imbe_Fence) );
++      DIP("mcr 15, 0, rX, c7, c10, 4 (data synch barrier)\n");
++      goto decode_success;
++   }
++   if (0xEE070FBA == (insn & 0xFFFF0FFF)) { /* v6 */
++      /* mcr 15, 0, r0, c7, c10, 5 (v6) equiv to DMB (v7).  Data
++         Memory Barrier -- ensures ordering of memory accesses. */
++      stmt( IRStmt_MBE(Imbe_Fence) );
++      DIP("mcr 15, 0, rX, c7, c10, 5 (data memory barrier)\n");
++      goto decode_success;
++   }
++   if (0xEE070F95 == (insn & 0xFFFF0FFF)) { /* v6 */
++      /* mcr 15, 0, r0, c7, c5, 4 (v6) equiv to ISB (v7).
++         Instruction Synchronisation Barrier (or Flush Prefetch
++         Buffer) -- a pipe flush, I think.  I suspect we could
++         ignore those, but to be on the safe side emit a fence
++         anyway. */
++      stmt( IRStmt_MBE(Imbe_Fence) );
++      DIP("mcr 15, 0, rX, c7, c5, 4 (insn synch barrier)\n");
++      goto decode_success;
++   }
++
++   // LDREXD
++   if (0x01B00F9F == (insn & 0x0FF00FFF)) {
++      UInt rT = INSN(15,12);
++      UInt rN = INSN(19,16);
++      if ((rT & 1) == 1 || rT == BITS4(1,1,1,0) || rN == 15) {
++         /* undecodable; fall through */
++      } else {
++         IRTemp res;
++         /* make unconditional */
++         if (condT != IRTemp_INVALID) {
++            mk_skip_over_A32_if_cond_is_false( condT );
++            condT = IRTemp_INVALID;
++         }
++         /* Ok, now we're unconditional.  Do the load. */
++         res = newTemp(Ity_I64);
++         stmt( IRStmt_LLSC(Iend_LE, res, getIRegA(rN),
++                           NULL/*this is a load*/) );
++         putIRegA(rT+0, unop(Iop_64HIto32, mkexpr(res)), IRTemp_INVALID, Ijk_Boring);
++         putIRegA(rT+1, unop(Iop_64to32, mkexpr(res)), IRTemp_INVALID, Ijk_Boring);
++
++         DIP("ldrexd%s r%u, r%u, [r%u]\n", nCC(INSN_COND), rT+0, rT+1, rN);
+          goto decode_success;
+-      case 0xEE070F95: /* v6 */
+-         /* mcr 15, 0, r0, c7, c5, 4 (v6) equiv to ISB (v7).
+-            Instruction Synchronisation Barrier (or Flush Prefetch
+-            Buffer) -- a pipe flush, I think.  I suspect we could
+-            ignore those, but to be on the safe side emit a fence
+-            anyway. */
+-         stmt( IRStmt_MBE(Imbe_Fence) );
+-         DIP("mcr 15, 0, r0, c7, c5, 4 (insn synch barrier)\n");
++      }
++      /* fall through */
++   }
++
++   // STREXD
++   if (0x01A00F90 == (insn & 0xFF00FF0)) {
++      UInt rT = INSN(3,0);
++      UInt rD = INSN(15,12);
++      UInt rN = INSN(19,16);
++      if (rD == 15 || (rT & 1) == 1 || rT == BITS4(1,1,1,0) || rN == 15
++          || rD == rN || rD == rT || rD == rT+1) {
++         /* undecodable; fall through */
++      } else {
++         IRTemp data;
++         IRTemp resSC1, resSC32;
++
++         if (condT != IRTemp_INVALID) {
++            mk_skip_over_A32_if_cond_is_false( condT );
++            condT = IRTemp_INVALID;
++         }
++
++         /* Ok, now we're unconditional. Do the store. */
++         data = newTemp(Ity_I64);
++         assign( data, binop(Iop_32HLto64, getIRegA(rT+0), getIRegA(rT+1)) );
++         resSC1 = newTemp(Ity_I1);
++         stmt( IRStmt_LLSC(Iend_LE, resSC1, getIRegA(rN), mkexpr(data)) );
++
++         /* Set rD to 1 on failure, 0 on success.  Currently we have
++            resSC1 == 0 on failure, 1 on success. */
++         resSC32 = newTemp(Ity_I32);
++         assign(resSC32,
++                unop(Iop_1Uto32, unop(Iop_Not1, mkexpr(resSC1))));
++
++         putIRegA(rD, mkexpr(resSC32),
++                      IRTemp_INVALID, Ijk_Boring);
++         DIP("strexd%s r%u, r%u, r%u, [r%u]\n", nCC(INSN_COND), rD, rT+0, rT+1, rN);
+          goto decode_success;
+-      default:
+-         break;
++      }
++      /* fall through */
+    }
+ 
+    /* ----------------------------------------------------------- */
+@@ -15946,6 +16022,33 @@ DisResult disInstr_THUMB_WRK (
+       }
+    }
+ 
++   /* ---------------- (T4) ADDW Rd, Rn, #imm12 -------------- */
++   if (INSN0(15,11) == BITS5(1,1,1,1,0)
++       && INSN0(9,4) == BITS6(1,0,0,0,0,0)
++       && INSN1(15,15) == 0) {
++      UInt rN = INSN0(3,0);
++      UInt rD = INSN1(11,8);
++      Bool valid = !isBadRegT(rN) && !isBadRegT(rD);
++      /* but allow "addw reg, sp, #imm12" */
++      if (!valid && rN == 13)
++         valid = True;
++      if (valid) {
++         IRTemp argL = newTemp(Ity_I32);
++         IRTemp argR = newTemp(Ity_I32);
++         IRTemp res  = newTemp(Ity_I32);
++         UInt imm1   = INSN0(10,10);
++         UInt imm3   = INSN1(14,12);
++         UInt imm8   = INSN1(7,0);
++         UInt imm12  = (imm1 << 11) | (imm3 << 8) | imm8;
++         assign(argL, getIRegT(rN));
++         assign(argR, mkU32(imm12));
++         assign(res,  binop(Iop_Add32, mkexpr(argL), mkexpr(argR)));
++         putIRegT(rD, mkexpr(res), condT);
++         DIP("addw r%u, r%u, #%u\n", rD, rN, imm12);
++         goto decode_success;
++      }
++   }
++
+    /* ---------------- (T2) CMP.W Rn, #constT ---------------- */
+    /* ---------------- (T2) CMN.W Rn, #constT ---------------- */
+    if (INSN0(15,11) == BITS5(1,1,1,1,0)
+@@ -16036,6 +16139,56 @@ DisResult disInstr_THUMB_WRK (
+       }
+    }
+ 
++   /* -------------- (T4) SUBW Rd, Rn, #imm12 ------------------- */
++   if (INSN0(15,11) == BITS5(1,1,1,1,0)
++       && INSN0(9,4) == BITS6(1,0,1,0,1,0)
++       && INSN1(15,15) == 0) {
++      UInt rN = INSN0(3,0);
++      UInt rD = INSN1(11,8);
++      Bool valid = !isBadRegT(rN) && !isBadRegT(rD);
++      if (!valid && rN == 13 && rD == 13)
++         valid = True;
++      if (valid) {
++         IRTemp argL  = newTemp(Ity_I32);
++         IRTemp argR  = newTemp(Ity_I32);
++         IRTemp res   = newTemp(Ity_I32);
++         UInt imm12   = (INSN0(10,10) << 11) | (INSN1(14,12) << 8) | INSN1(7,0);
++         assign(argL, getIRegT(rN));
++         assign(argR, mkU32(imm12));
++         assign(res,  binop(Iop_Sub32, mkexpr(argL), mkexpr(argR)));
++         putIRegT(rD, mkexpr(res), condT);
++         DIP("subw r%u, r%u, #%u\n", rD, rN, imm12);
++         goto decode_success;
++      }
++   }
++
++   /* -------------- (T2) SUB{S}.W Rd, SP, #constT ------------------- */
++   if (INSN0(15,11) == BITS5(1,1,1,1,0)
++       && INSN0(9,5) == BITS5(0,1,1,0,1)
++       && INSN0(3,0) == BITS4(1,1,0,1)
++       && INSN1(15,15) == 0) {
++      UInt rN = 13; // SP
++      UInt rD = INSN1(11,8);
++      UInt bS    = INSN0(4,4);
++      Bool valid = !isBadRegT(rD);
++      if (valid) {
++         IRTemp argL  = newTemp(Ity_I32);
++         IRTemp argR  = newTemp(Ity_I32);
++         IRTemp res   = newTemp(Ity_I32);
++         UInt imm12   = (INSN0(10,10) << 11) | (INSN1(14,12) << 8) | INSN1(7,0);
++         assign(argL, getIRegT(rN));
++         assign(argR, mkU32(imm12));
++         assign(res,  binop(Iop_Sub32, mkexpr(argL), mkexpr(argR)));
++         putIRegT(rD, mkexpr(res), condT);
++         if (bS == 1) {
++               setFlags_D1_D2( ARMG_CC_OP_SUB, argL, argR, condT );
++         }
++         DIP("sub%s.w r%u, sp, #%u\n",
++             bS == 1 ? "s" : "", rD, imm12);
++         goto decode_success;
++      }
++   }
++
+    /* -------------- (T1) ADC{S}.W Rd, Rn, #constT -------------- */
+    /* -------------- (T1) SBC{S}.W Rd, Rn, #constT -------------- */
+    if (INSN0(15,11) == BITS5(1,1,1,1,0)
+@@ -17723,21 +17876,35 @@ DisResult disInstr_THUMB_WRK (
+    }
+ 
+    /* -------------- v7 barrier insns -------------- */
+-   if (INSN0(15,0) == 0xF3BF && (INSN1(15,0) & 0xFF0F) == 0x8F0F) {
++   if (INSN0(15,0) == 0xF3BF && (INSN1(15,0) & 0xFF00) == 0x8F00) {
+       /* XXX this isn't really right, is it?  The generated IR does
+          them unconditionally.  I guess it doesn't matter since it
+          doesn't do any harm to do them even when the guarding
+          condition is false -- it's just a performance loss. */
+-      switch (INSN1(7,4)) {
+-         case 0x4: /* DSB */
++      switch (INSN1(7,0)) {
++         case 0x4F: /* DSB sy */
++         case 0x4E: /* DSB st */
++         case 0x4B: /* DSB ish */
++         case 0x4A: /* DSB ishst */
++         case 0x47: /* DSB nsh */
++         case 0x46: /* DSB nshst */
++         case 0x43: /* DSB osh */
++         case 0x42: /* DSB oshst */
+             stmt( IRStmt_MBE(Imbe_Fence) );
+             DIP("DSB\n");
+             goto decode_success;
+-         case 0x5: /* DMB */
++         case 0x5F: /* DMB sy */
++         case 0x5E: /* DMB st */
++         case 0x5B: /* DMB ish */
++         case 0x5A: /* DMB ishst */
++         case 0x57: /* DMB nsh */
++         case 0x56: /* DMB nshst */
++         case 0x53: /* DMB osh */
++         case 0x52: /* DMB oshst */
+             stmt( IRStmt_MBE(Imbe_Fence) );
+             DIP("DMB\n");
+             goto decode_success;
+-         case 0x6: /* ISB */
++         case 0x6F: /* ISB */
+             stmt( IRStmt_MBE(Imbe_Fence) );
+             DIP("ISB\n");
+             goto decode_success;
+diff --git a/VEX/priv/host_arm_defs.c b/VEX/priv/host_arm_defs.c
+index 122a9f9..1f61b6b 100644
+--- a/VEX/priv/host_arm_defs.c
++++ b/VEX/priv/host_arm_defs.c
+@@ -1206,14 +1206,14 @@ ARMInstr* ARMInstr_LdrEX ( Int szB ) {
+    ARMInstr* i = LibVEX_Alloc(sizeof(ARMInstr));
+    i->tag             = ARMin_LdrEX;
+    i->ARMin.LdrEX.szB = szB;
+-   vassert(szB == 4 || szB == 1);
++   vassert(szB == 8 || szB == 4 || szB == 1);
+    return i;
+ }
+ ARMInstr* ARMInstr_StrEX ( Int szB ) {
+    ARMInstr* i = LibVEX_Alloc(sizeof(ARMInstr));
+    i->tag             = ARMin_StrEX;
+    i->ARMin.StrEX.szB = szB;
+-   vassert(szB == 4 || szB == 1);
++   vassert(szB == 8 || szB == 4 || szB == 1);
+    return i;
+ }
+ ARMInstr* ARMInstr_VLdStD ( Bool isLoad, HReg dD, ARMAModeV* am ) {
+@@ -1604,14 +1604,22 @@ void ppARMInstr ( ARMInstr* i ) {
+          }
+          return;
+       case ARMin_LdrEX:
+-         vex_printf("ldrex%s ", i->ARMin.LdrEX.szB == 1 ? "b"
+-                                : i->ARMin.LdrEX.szB == 2 ? "h" : "");
+-         vex_printf("r0, [r1]");
++         if (i->ARMin.LdrEX.szB == 8) {
++            vex_printf("ldrexd r2, r3, [r0]");
++         } else {
++            vex_printf("ldrex%s ", i->ARMin.LdrEX.szB == 1 ? "b"
++                                 : i->ARMin.LdrEX.szB == 2 ? "h" : "");
++            vex_printf("r2, [r0]");
++         }
+          return;
+       case ARMin_StrEX:
+-         vex_printf("strex%s ", i->ARMin.StrEX.szB == 1 ? "b"
+-                                : i->ARMin.StrEX.szB == 2 ? "h" : "");
+-         vex_printf("r0, r1, [r2]");
++         if (i->ARMin.StrEX.szB == 8) {
++            vex_printf("strexd r1, r2, r3, [r0]");
++         } else {
++            vex_printf("strex%s ", i->ARMin.StrEX.szB == 1 ? "b"
++                                 : i->ARMin.StrEX.szB == 2 ? "h" : "");
++            vex_printf("r1, r2, [r0]");
++         }
+          return;
+       case ARMin_VLdStD:
+          if (i->ARMin.VLdStD.isLoad) {
+@@ -1989,13 +1997,17 @@ void getRegUsage_ARMInstr ( HRegUsage* u, ARMInstr* i, Bool mode64 )
+             addHRegUse(u, HRmWrite, hregARM_R1());
+          return;
+       case ARMin_LdrEX:
+-         addHRegUse(u, HRmWrite, hregARM_R0());
+-         addHRegUse(u, HRmRead, hregARM_R1());
++         addHRegUse(u, HRmRead, hregARM_R0());
++         addHRegUse(u, HRmWrite, hregARM_R2());
++         if (i->ARMin.LdrEX.szB == 8)
++            addHRegUse(u, HRmWrite, hregARM_R3());
+          return;
+       case ARMin_StrEX:
+-         addHRegUse(u, HRmWrite, hregARM_R0());
+-         addHRegUse(u, HRmRead, hregARM_R1());
++         addHRegUse(u, HRmRead, hregARM_R0());
++         addHRegUse(u, HRmWrite, hregARM_R1());
+          addHRegUse(u, HRmRead, hregARM_R2());
++         if (i->ARMin.StrEX.szB == 8)
++            addHRegUse(u, HRmRead, hregARM_R3());
+          return;
+       case ARMin_VLdStD:
+          addRegUsage_ARMAModeV(u, i->ARMin.VLdStD.amode);
+@@ -2957,27 +2969,31 @@ Int emit_ARMInstr ( UChar* buf, Int nbuf, ARMInstr* i,
+          goto bad;
+       }
+       case ARMin_LdrEX: {
+-         /* E1910F9F   ldrex    r0, [r1]
+-            E1F10F9F   ldrexh   r0, [r1]
+-            E1D10F9F   ldrexb   r0, [r1]
++         /* E1B01F9F   ldrexd   r2, r3, [r0]
++            E1901F9F   ldrex    r2, [r0]
++            E1F01F9F   ldrexh   r2, [r0]
++            E1D01F9F   ldrexb   r2, [r0]
+          */
+          switch (i->ARMin.LdrEX.szB) {
+-            case 4: *p++ = 0xE1910F9F; goto done;
+-            //case 2: *p++ = 0xE1F10F9F; goto done;
+-            case 1: *p++ = 0xE1D10F9F; goto done;
++            case 8: *p++ = 0xE1B02F9F; goto done;
++            case 4: *p++ = 0xE1902F9F; goto done;
++            //case 2: *p++ = 0xE1F02F9F; goto done;
++            case 1: *p++ = 0xE1D02F9F; goto done;
+             default: break;
+          }
+          goto bad;
+       }
+       case ARMin_StrEX: {
+-         /* E1820F91   strex   r0, r1, [r2]
+-            E1E20F91   strexh  r0, r1, [r2]
+-            E1C20F91   strexb  r0, r1, [r2]
++         /* E1A01F92   strexd  r1, r2, r3, [r0]
++            E1801F92   strex   r1, r2, [r0]
++            E1E01F92   strexh  r1, r2, [r0]
++            E1C01F92   strexb  r1, r2, [r0]
+          */
+          switch (i->ARMin.StrEX.szB) {
+-            case 4: *p++ = 0xE1820F91; goto done;
+-            //case 2: *p++ = 0xE1E20F91; goto done;
+-            case 1: *p++ = 0xE1C20F91; goto done;
++            case 8: *p++ = 0xE1A01F92; goto done;
++            case 4: *p++ = 0xE1801F92; goto done;
++            //case 2: *p++ = 0xE1E01F92; goto done;
++            case 1: *p++ = 0xE1C01F92; goto done;
+             default: break;
+          }
+          goto bad;
+diff --git a/VEX/priv/host_arm_isel.c b/VEX/priv/host_arm_isel.c
+index 4bba9a3..c8488a2 100644
+--- a/VEX/priv/host_arm_isel.c
++++ b/VEX/priv/host_arm_isel.c
+@@ -5829,9 +5829,18 @@ static void iselStmt ( ISelEnv* env, IRStmt* stmt )
+                case Ity_I32: szB = 4; break;
+                default:      vassert(0);
+             }
+-            addInstr(env, mk_iMOVds_RR(hregARM_R1(), raddr));
++            addInstr(env, mk_iMOVds_RR(hregARM_R0(), raddr));
+             addInstr(env, ARMInstr_LdrEX(szB));
+-            addInstr(env, mk_iMOVds_RR(r_dst, hregARM_R0()));
++            addInstr(env, mk_iMOVds_RR(r_dst, hregARM_R2()));
++            return;
++         } else if (ty == Ity_I64) {
++            HReg raddr = iselIntExpr_R(env, stmt->Ist.LLSC.addr);
++            HReg dstHi, dstLo;
++            addInstr(env, mk_iMOVds_RR(hregARM_R0(), raddr));
++            addInstr(env, ARMInstr_LdrEX(8 /* 64-bit */));
++            lookupIRTemp64(&dstHi, &dstLo, env, res);
++            addInstr(env, mk_iMOVds_RR(dstHi, hregARM_R2()) );
++            addInstr(env, mk_iMOVds_RR(dstLo, hregARM_R3()) );
+             return;
+          }
+          /* else fall thru; is unhandled */
+@@ -5852,16 +5861,33 @@ static void iselStmt ( ISelEnv* env, IRStmt* stmt )
+                case Ity_I32: szB = 4; break;
+                default:      vassert(0);
+             }
+-            addInstr(env, mk_iMOVds_RR(hregARM_R1(), rD));
+-            addInstr(env, mk_iMOVds_RR(hregARM_R2(), rA));
++            addInstr(env, mk_iMOVds_RR(hregARM_R0(), rA));
++            addInstr(env, mk_iMOVds_RR(hregARM_R2(), rD));
+             addInstr(env, ARMInstr_StrEX(szB));
+-            /* now r0 is 1 if failed, 0 if success.  Change to IR
++            /* now r1 is 1 if failed, 0 if success.  Change to IR
+                conventions (0 is fail, 1 is success).  Also transfer
+                result to r_res. */
+-            addInstr(env, ARMInstr_Alu(ARMalu_XOR, r_res, hregARM_R0(), one));
++            addInstr(env, ARMInstr_Alu(ARMalu_XOR, r_res, hregARM_R1(), one));
+             /* And be conservative -- mask off all but the lowest bit */
+             addInstr(env, ARMInstr_Alu(ARMalu_AND, r_res, r_res, one));
+             return;
++         } else if (tyd == Ity_I64) {
++             HReg r_res   = lookupIRTemp(env, res);
++             HReg rA      = iselIntExpr_R(env, stmt->Ist.LLSC.addr);
++             ARMRI84* one = ARMRI84_I84(1,0);
++             HReg rDHi, rDLo;
++             iselInt64Expr(&rDHi, &rDLo, env, stmt->Ist.LLSC.storedata);
++             addInstr(env, mk_iMOVds_RR(hregARM_R0(), rA));
++             addInstr(env, mk_iMOVds_RR(hregARM_R2(), rDHi));
++             addInstr(env, mk_iMOVds_RR(hregARM_R3(), rDLo));
++             addInstr(env, ARMInstr_StrEX(8 /* 64-bit */));
++             /* now r1 is 1 if failed, 0 if success.  Change to IR
++                conventions (0 is fail, 1 is success).  Also transfer
++                result to r_res. */
++             addInstr(env, ARMInstr_Alu(ARMalu_XOR, r_res, hregARM_R1(), one));
++             /* And be conservative -- mask off all but the lowest bit */
++             addInstr(env, ARMInstr_Alu(ARMalu_AND, r_res, r_res, one));
++             return;
+          }
+          /* else fall thru; is unhandled */
+       }
+-- 
+1.7.0.4
+

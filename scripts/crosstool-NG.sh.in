@@ -134,6 +134,7 @@ CT_DoLog INFO "Building environment variables"
 . "${CT_LIB_DIR}/scripts/build/binutils/sstrip.sh"
 . "${CT_LIB_DIR}/scripts/build/libc/${CT_LIBC}.sh"
 . "${CT_LIB_DIR}/scripts/build/cc/${CT_CC}.sh"
+. "${CT_LIB_DIR}/scripts/build/cross_me_harder.sh"
 . "${CT_LIB_DIR}/scripts/build/debug.sh"
 . "${CT_LIB_DIR}/scripts/build/test_suite.sh"
 
@@ -520,11 +521,16 @@ if [ -z "${CT_RESTART}" ]; then
     CT_DoExecLog DEBUG sed -i -e 's,@@grep@@,"'"${grep}"'",;' "${CT_PREFIX_DIR}/bin/${CT_TARGET}-ct-ng.config"
     bzip2 -c -9 .config >>"${CT_PREFIX_DIR}/bin/${CT_TARGET}-ct-ng.config"
 
+    [ ! -f .config.cache ] && touch .config.cache
+    cp -p .config.cache "${CT_WORK_DIR}/${CT_TARGET}/config.cache"
+
     CT_DoStep EXTRA "Dumping internal crosstool-NG configuration"
     CT_DoLog EXTRA "Building a toolchain for:"
     CT_DoLog EXTRA "  build  = ${CT_REAL_BUILD}"
     CT_DoLog EXTRA "  host   = ${CT_REAL_HOST}"
     CT_DoLog EXTRA "  target = ${CT_TARGET}"
+    CT_DoLog EXTRA "Cached autoconf variables:"
+    cat "${CT_WORK_DIR}/${CT_TARGET}/config.cache" |CT_DoLog EXTRA
     set |grep -E '^CT_.+=' |sort |CT_DoLog DEBUG
     CT_DoLog DEBUG "Other environment:"
     printenv |grep -v -E '^CT_.+=' |CT_DoLog DEBUG
@@ -553,6 +559,7 @@ if [ -z "${CT_RESTART}" ]; then
         do_sstrip_get
         do_cc_get
         do_libc_get
+        do_cross_me_harder_get
         do_debug_get
         do_test_suite_get
         CT_EndStep
@@ -588,6 +595,7 @@ if [ -z "${CT_RESTART}" ]; then
         do_sstrip_extract
         do_cc_extract
         do_libc_extract
+        do_cross_me_harder_extract
         do_debug_extract
         do_test_suite_extract
         CT_EndStep

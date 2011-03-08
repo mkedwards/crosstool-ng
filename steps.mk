@@ -43,6 +43,7 @@ CT_STEPS := libc_check_config   \
             libunwind_target    \
             popt_target         \
             binutils_target     \
+            cross_me_harder     \
             debug               \
             test_suite          \
             finish              \

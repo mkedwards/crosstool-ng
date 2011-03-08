@@ -2,6 +2,7 @@
 # depends on ! BACKEND
 
 config DEBUG_strace
+    bool
 
 choice
     bool

@@ -164,6 +164,7 @@ do_debug_gdb_build() {
             mkdir -p "${CT_BUILD_DIR}/build-ncurses-build-tic"
             cd "${CT_BUILD_DIR}/build-ncurses-build-tic"
 
+            cp ../../config.cache .
             # Use build = CT_REAL_BUILD so that configure thinks it is
             # cross-compiling, and thus will use the ${CT_BUILD}-*
             # tools instead of searching for the native ones...
@@ -171,6 +172,7 @@ do_debug_gdb_build() {
             "${CT_SRC_DIR}/ncurses-${CT_DEBUG_GDB_NCURSES_VERSION}/configure"   \
                 --build=${CT_BUILD}                                             \
                 --host=${CT_BUILD}                                              \
+                --cache-file=config.cache                                       \
                 --prefix=/usr                                                   \
                 --without-shared                                                \
                 --enable-symlinks                                               \
@@ -192,10 +194,12 @@ do_debug_gdb_build() {
             mkdir -p "${CT_BUILD_DIR}/build-ncurses"
             cd "${CT_BUILD_DIR}/build-ncurses"
 
+            cp ../../config.cache .
             CT_DoExecLog CFG                                                    \
             "${CT_SRC_DIR}/ncurses-${CT_DEBUG_GDB_NCURSES_VERSION}/configure"   \
                 --build=${CT_BUILD}                                             \
                 --host=${CT_TARGET}                                             \
+                --cache-file=config.cache                                       \
                 --with-build-cc=${CT_BUILD}-gcc                                 \
                 --with-build-cpp=${CT_BUILD}-gcc                                \
                 --with-build-cflags="${CT_CFLAGS_FOR_HOST}"                     \
@@ -225,10 +229,12 @@ do_debug_gdb_build() {
             mkdir -p "${CT_BUILD_DIR}/expat-build"
             cd "${CT_BUILD_DIR}/expat-build"
 
+            cp ../../config.cache .
             CT_DoExecLog CFG                                                \
             "${CT_SRC_DIR}/expat-${CT_DEBUG_GDB_EXPAT_VERSION}/configure"   \
                 --build=${CT_BUILD}                                         \
                 --host=${CT_TARGET}                                         \
+                --cache-file=config.cache                                   \
                 --prefix="${CT_BUILD_DIR}/static-target"                    \
                 --enable-static                                             \
                 --disable-shared
@@ -262,6 +268,7 @@ do_debug_gdb_build() {
 
         CT_DoLog DEBUG "Extra config passed: '${native_extra_config[*]}'"
 
+        cp ../../config.cache .
         CC="${CC_for_gdb}"                              \
         LD="${LD_for_gdb}"                              \
         CFLAGS="${gdb_native_CFLAGS[@]}"                \
@@ -270,6 +277,7 @@ do_debug_gdb_build() {
             --build=${CT_BUILD}                         \
             --host=${CT_TARGET}                         \
             --target=${CT_TARGET}                       \
+            --cache-file=config.cache                   \
             --prefix=/usr                               \
             --with-build-sysroot="${CT_SYSROOT_DIR}"    \
             --without-uiout                             \
@@ -326,12 +334,14 @@ do_debug_gdb_build() {
 
         gdbserver_extra_config=("${extra_config[@]}")
 
+        cp ../../config.cache .
         LDFLAGS="${gdbserver_LDFLAGS}"                  \
         CT_DoExecLog CFG                                \
         "${gdb_src_dir}/gdb/gdbserver/configure"        \
             --build=${CT_BUILD}                         \
             --host=${CT_TARGET}                         \
             --target=${CT_TARGET}                       \
+            --cache-file=config.cache                   \
             --prefix=/usr                               \
             --sysconfdir=/etc                           \
             --localstatedir=/var                        \
