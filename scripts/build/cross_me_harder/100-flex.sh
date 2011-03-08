@@ -32,12 +32,26 @@ do_cross_me_harder_flex_build() {
     CT_Popd
     CT_EndStep
 
+    CT_DoStep EXTRA "Clobbering libraries from cross flex with host flex"
+    mkdir -p "${CT_BUILD_DIR}/build-flex-clobber"
+    CT_Pushd "${CT_BUILD_DIR}/build-flex-clobber"
+    
+    CT_DoExecLog CFG \
+    "${CT_SRC_DIR}/flex-${CT_FLEX_VERSION}/configure"   \
+            --prefix="${CT_PREFIX_DIR}"                 \
+            --disable-nls                               \
+            --disable-rpath
+    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make install
+    CT_Popd
+    CT_EndStep
+
     CT_DoStep EXTRA "Installing host flex"
     mkdir -p "${CT_BUILD_DIR}/build-flex"
     CT_Pushd "${CT_BUILD_DIR}/build-flex"
     
     CT_DoExecLog CFG \
-    "${CT_SRC_DIR}/flex-${CT_FLEX_VERSION}/configure" \
+    "${CT_SRC_DIR}/flex-${CT_FLEX_VERSION}/configure"   \
         --prefix="${CT_BUILDTOOLS_PREFIX_DIR}"
     CT_DoExecLog ALL make
     CT_DoExecLog ALL make install

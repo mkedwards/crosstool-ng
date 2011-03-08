@@ -137,8 +137,8 @@ do_finish() {
         CT_Popd
     fi
 
-    CT_DoLog EXTRA "Removing access to the build system tools"
-    CT_DoExecLog DEBUG rm -rf "${CT_PREFIX_DIR}/buildtools"
+    #CT_DoLog EXTRA "Removing access to the build system tools"
+    #CT_DoExecLog DEBUG rm -rf "${CT_BUILDTOOLS_PREFIX_DIR}"
 
     # Remove the generated documentation files
     if [ "${CT_REMOVE_DOCS}" = "y" ]; then
