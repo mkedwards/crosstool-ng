@@ -149,7 +149,7 @@ do_finish() {
     fi
 
     # Remove headers installed by native companion libraries
-    CT_DoForceRmdir "${CT_PREFIX_DIR}/include"
+    #CT_DoForceRmdir "${CT_PREFIX_DIR}/include"
 
     # Remove the lib* symlinks, now:
     # The symlinks are needed only during the build process.
