@@ -1,0 +1,24 @@
+From 56337a8ffa7fd25c17bf1a5d453ecc6ec1485783 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Wed, 9 Mar 2011 07:25:40 +0000
+Subject: [PATCH 2/7] local-atomic
+
+---
+ .../sysdeps/unix/sysv/linux/arm/nptl/bits/atomic.h |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
+
+diff --git a/ports/sysdeps/unix/sysv/linux/arm/nptl/bits/atomic.h b/ports/sysdeps/unix/sysv/linux/arm/nptl/bits/atomic.h
+index 979db9f..612c113 100644
+--- a/ports/sysdeps/unix/sysv/linux/arm/nptl/bits/atomic.h
++++ b/ports/sysdeps/unix/sysv/linux/arm/nptl/bits/atomic.h
+@@ -17,7 +17,6 @@
+    02111-1307 USA.  */
+ 
+ #include <stdint.h>
+-#include <sysdep.h>
+ 
+ 
+ typedef int8_t atomic8_t;
+-- 
+1.7.0.4
+

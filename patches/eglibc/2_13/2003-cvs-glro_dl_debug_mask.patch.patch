@@ -1,0 +1,25 @@
+From 39b6b83807d6aab7d23f950400b9f68c40b2319c Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Wed, 9 Mar 2011 08:05:02 +0000
+Subject: [PATCH 2003/2070] cvs-glro_dl_debug_mask.patch
+
+---
+ elf/dl-lookup.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/elf/dl-lookup.c b/elf/dl-lookup.c
+index 16d7fbc..11680a9 100644
+--- a/elf/dl-lookup.c
++++ b/elf/dl-lookup.c
+@@ -423,7 +423,7 @@ do_lookup_x (const char *undef_name, uint_fast32_t new_hash,
+ 		     hash table.  */
+ 		  if (__builtin_expect (tab->size, 0))
+ 		    {
+-		      assert (GLRO(dl_debug_mask) & DL_DEBUG_PRELINK);
++		      assert (GLRO_dl_debug_mask & DL_DEBUG_PRELINK);
+ 		      __rtld_lock_unlock_recursive (tab->lock);
+ 		      goto success;
+ 		    }
+-- 
+1.7.0.4
+

@@ -1,0 +1,24 @@
+From 82fbb0951d5e46f349d265343ffbc25f8148bc54 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Wed, 9 Mar 2011 07:25:41 +0000
+Subject: [PATCH 5/7] local-lowlevellock
+
+---
+ .../unix/sysv/linux/arm/nptl/lowlevellock.h        |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
+
+diff --git a/ports/sysdeps/unix/sysv/linux/arm/nptl/lowlevellock.h b/ports/sysdeps/unix/sysv/linux/arm/nptl/lowlevellock.h
+index e745e66..33af1a3 100644
+--- a/ports/sysdeps/unix/sysv/linux/arm/nptl/lowlevellock.h
++++ b/ports/sysdeps/unix/sysv/linux/arm/nptl/lowlevellock.h
+@@ -23,7 +23,6 @@
+ #include <sys/param.h>
+ #include <bits/pthreadtypes.h>
+ #include <atomic.h>
+-#include <sysdep.h>
+ #include <kernel-features.h>
+ 
+ #define FUTEX_WAIT		0
+-- 
+1.7.0.4
+

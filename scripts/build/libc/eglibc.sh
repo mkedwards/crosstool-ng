@@ -12,8 +12,8 @@ do_eglibc_get() {
     CT_HasOrAbort svn
 
     case "${CT_LIBC_VERSION}" in
-        trunk)  svn_url="svn://svn.eglibc.org/trunk";;
-        *)      svn_url="svn://svn.eglibc.org/branches/eglibc-${CT_LIBC_VERSION}";;
+        trunk)  svn_url="http://www.eglibc.org/svn/trunk";;
+        *)      svn_url="http://www.eglibc.org/svn/branches/eglibc-${CT_LIBC_VERSION}";;
     esac
 
     case "${CT_EGLIBC_CHECKOUT}" in
