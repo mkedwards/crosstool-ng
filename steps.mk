@@ -27,6 +27,8 @@ CT_STEPS := libc_check_config   \
             elfutils            \
             libunwind           \
             popt                \
+            expat               \
+            ncurses             \
             binutils            \
             elf2flt             \
             sstrip              \
@@ -42,6 +44,8 @@ CT_STEPS := libc_check_config   \
             elfutils_target     \
             libunwind_target    \
             popt_target         \
+            expat_target        \
+            ncurses_target      \
             binutils_target     \
             cross_me_harder     \
             debug               \

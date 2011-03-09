@@ -7,6 +7,8 @@ config GDB_CROSS
     bool
     prompt "Cross-gdb"
     default y
+    select EXPAT_NEEDED
+    select NCURSES_NEEDED
     select GDB_GDBSERVER if ! BARE_METAL
     help
       Build and install a cross-gdb for the target, to run on host.

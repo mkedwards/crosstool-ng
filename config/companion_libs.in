@@ -68,6 +68,18 @@ config POPT_NEEDED
     select POPT
     select COMPLIBS_NEEDED
 
+config EXPAT_NEEDED
+    bool
+    default n
+    select EXPAT
+    select COMPLIBS_NEEDED
+
+config NCURSES_NEEDED
+    bool
+    default n
+    select NCURSES
+    select COMPLIBS_NEEDED
+
 config COMPLIBS
     bool
     default n
@@ -138,6 +150,20 @@ config POPT
 config POPT_TARGET
     bool
 
+config EXPAT
+    bool
+    select COMPLIBS
+
+config EXPAT_TARGET
+    bool
+
+config NCURSES
+    bool
+    select COMPLIBS
+
+config NCURSES_TARGET
+    bool
+
 if GMP
 source "config/companion_libs/gmp.in"
 endif
@@ -177,6 +203,16 @@ if POPT || POPT_TARGET
 comment "popt version needed to build for target"
     depends on !POPT
 source "config/companion_libs/popt.in"
+endif
+if EXPAT || EXPAT_TARGET
+comment "expat version needed to build for target"
+    depends on !EXPAT
+source "config/companion_libs/expat.in"
+endif
+if NCURSES || NCURSES_TARGET
+comment "ncurses version needed to build for target"
+    depends on !NCURSES
+source "config/companion_libs/ncurses.in"
 endif
 
 config FOO

@@ -1,0 +1,19 @@
+# expat config file
+
+choice
+    bool
+    prompt "expat version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config EXPAT_V_2_0_1
+    bool
+    prompt "2.0.1"
+
+endchoice
+
+config EXPAT_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "2.0.1" if EXPAT_V_2_0_1

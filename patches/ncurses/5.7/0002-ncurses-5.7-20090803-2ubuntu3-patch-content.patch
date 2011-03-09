@@ -1,0 +1,266 @@
+From 70315671bff3109efd07a063d78d328c572901ec Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@michaedw-vbox-amd64.(none)>
+Date: Tue, 9 Mar 2010 17:20:01 -0800
+Subject: [PATCH 2/2] ncurses 5.7+20090803-2ubuntu3 patch content
+
+---
+ form/Makefile.in             |    2 +-
+ include/ncurses_dll.h        |    9 ++++++++-
+ menu/Makefile.in             |    2 +-
+ misc/Makefile.in             |    2 +-
+ misc/terminfo.src            |    3 ++-
+ ncurses/Makefile.in          |    4 ++--
+ ncurses/tinfo/comp_hash.c    |    1 +
+ ncurses/tinfo/make_keys.c    |    1 +
+ ncurses/tinfo/read_termcap.c |   40 ++++++++++++++++++++++++++++++++++++++++
+ ncurses/tinfo/write_entry.c  |    9 +++++++--
+ panel/Makefile.in            |    2 +-
+ progs/tset.c                 |    2 +-
+ 12 files changed, 66 insertions(+), 11 deletions(-)
+
+diff --git a/form/Makefile.in b/form/Makefile.in
+index 2e493f7..97b6287 100644
+--- a/form/Makefile.in
++++ b/form/Makefile.in
+@@ -82,7 +82,7 @@ CFLAGS		= @CFLAGS@
+ 
+ CPPFLAGS	= -I@top_srcdir@/ncurses -DHAVE_CONFIG_H @CPPFLAGS@
+ 
+-CCFLAGS		= $(CPPFLAGS) $(CFLAGS)
++CCFLAGS		= $(CPPFLAGS) $(CFLAGS) -D_REENTRANT
+ 
+ CFLAGS_LIBTOOL	= $(CCFLAGS)
+ CFLAGS_NORMAL	= $(CCFLAGS)
+diff --git a/include/ncurses_dll.h b/include/ncurses_dll.h
+index 047d5c7..a385d2b 100644
+--- a/include/ncurses_dll.h
++++ b/include/ncurses_dll.h
+@@ -25,11 +25,18 @@
+  * sale, use or other dealings in this Software without prior written       *
+  * authorization.                                                           *
+  ****************************************************************************/
+-/* $Id: ncurses_dll.h,v 1.8 2009/04/04 22:26:27 tom Exp $ */
++/* $Id: ncurses_dll.h.in,v 1.8 2009/04/04 22:26:27 tom Exp $ */
+ 
+ #ifndef NCURSES_DLL_H_incl
+ #define NCURSES_DLL_H_incl 1
+ 
++/*
++ * For reentrant code, we map the various global variables into SCREEN by
++ * using functions to access them.
++ */
++#define NCURSES_PUBLIC_VAR(name) _nc_##name
++#define NCURSES_WRAPPED_VAR(type,name) extern type NCURSES_PUBLIC_VAR(name)(void)
++
+ /* no longer needed on cygwin or mingw, thanks to auto-import       */
+ /* but this structure may be useful at some point for an MSVC build */
+ /* so, for now unconditionally define the important flags           */
+diff --git a/menu/Makefile.in b/menu/Makefile.in
+index ad5eecc..415ed19 100644
+--- a/menu/Makefile.in
++++ b/menu/Makefile.in
+@@ -82,7 +82,7 @@ CFLAGS		= @CFLAGS@
+ 
+ CPPFLAGS	= -I@top_srcdir@/ncurses -DHAVE_CONFIG_H @CPPFLAGS@
+ 
+-CCFLAGS		= $(CPPFLAGS) $(CFLAGS)
++CCFLAGS		= $(CPPFLAGS) $(CFLAGS) -D_REENTRANT
+ 
+ CFLAGS_LIBTOOL	= $(CCFLAGS)
+ CFLAGS_NORMAL	= $(CCFLAGS)
+diff --git a/misc/Makefile.in b/misc/Makefile.in
+index 6b71b62..1ed20b4 100644
+--- a/misc/Makefile.in
++++ b/misc/Makefile.in
+@@ -129,7 +129,7 @@ $(DESTDIR)$(bindir) \
+ $(DESTDIR)$(libdir) \
+ $(DESTDIR)$(datadir) \
+ $(DESTDIR)$(tabsetdir) \
+-$(DESTDIR)$(PKG_CONFIG_LIBDIR) :
++$(foreach d,$(subst :, ,$(PKG_CONFIG_LIBDIR)),$(DESTDIR)$(d)) :
+ 	$(SHELL) $(top_srcdir)/mkdirs.sh $@
+ 
+ uninstall : uninstall.data uninstall.libs
+diff --git a/misc/terminfo.src b/misc/terminfo.src
+index cf71f91..991a6e7 100644
+--- a/misc/terminfo.src
++++ b/misc/terminfo.src
+@@ -3647,6 +3647,7 @@ gnome+pcfkeys|gnome variation on xterm+pcfkeys,
+ 	use=xterm+pcfkeys,
+ 
+ gnome|GNOME Terminal,
++	bs=\177,
+ 	use=gnome-2008,
+ 
+ # palette is hardcoded...
+@@ -4031,7 +4032,7 @@ Eterm|Eterm-color|Eterm with xterm-style color support (X Window System),
+ 	ich1=\E[@, il=\E[%p1%dL, il1=\E[L, ind=^J,
+ 	is1=\E[?47l\E>\E[?1l,
+ 	is2=\E[r\E[m\E[2J\E[H\E[?7h\E[?1;3;4;6l\E[4l, kNXT@,
+-	kPRV@, ka1=\E[7~, ka3=\E[5~, kb2=\EOu, kbeg=\EOu, kbs=^H,
++	kPRV@, ka1=\E[7~, ka3=\E[5~, kb2=\EOu, kbeg=\EOu, kbs=\177,
+ 	kc1=\E[8~, kc3=\E[6~, kent=\EOM, khlp=\E[28~, kmous=\E[M,
+ 	mc4=\E[4i, mc5=\E[5i, rc=\E8, rev=\E[7m, ri=\EM, rmacs=^O,
+ 	rmam=\E[?7l, rmcup=\E[2J\E[?47l\E8, rmir=\E[4l, rmkx=,
+diff --git a/ncurses/Makefile.in b/ncurses/Makefile.in
+index 0f94e43..84c3e36 100644
+--- a/ncurses/Makefile.in
++++ b/ncurses/Makefile.in
+@@ -91,7 +91,7 @@ CFLAGS		= @CFLAGS@
+ INCDIR		= $(srcdir)/../include
+ CPPFLAGS	= -DHAVE_CONFIG_H -I../ncurses -I$(srcdir) @CPPFLAGS@
+ 
+-CCFLAGS		= $(CPPFLAGS) $(CFLAGS)
++CCFLAGS		= $(CPPFLAGS) $(CFLAGS) -D_REENTRANT
+ 
+ BUILD_CPPFLAGS	= -I../include @BUILD_CPPFLAGS@
+ BUILD_CC	= @BUILD_CC@
+@@ -206,7 +206,7 @@ make_hash$(BUILD_EXEEXT) : \
+ 		../include/hashsize.h
+ 	$(BUILD_CC) -o $@ $(BUILD_CCFLAGS) -DMAIN_PROGRAM $(tinfo)/comp_hash.c $(BUILD_LDFLAGS) $(BUILD_LIBS)
+ 
+-./expanded.c : curses.priv.h $(serial)/MKexpanded.sh
++./expanded.c : $(serial)/MKexpanded.sh
+ 	sh -e $(serial)/MKexpanded.sh "$(CPP)" $(CPPFLAGS) > $@
+ 
+ ./comp_captab.c: \
+diff --git a/ncurses/tinfo/comp_hash.c b/ncurses/tinfo/comp_hash.c
+index e120e3a..dc28818 100644
+--- a/ncurses/tinfo/comp_hash.c
++++ b/ncurses/tinfo/comp_hash.c
+@@ -39,6 +39,7 @@
+  */
+ 
+ #define USE_TERMLIB 1
++#include <wchar.h>
+ #include <curses.priv.h>
+ 
+ #include <tic.h>
+diff --git a/ncurses/tinfo/make_keys.c b/ncurses/tinfo/make_keys.c
+index 8eb4a9a..8c555ba 100644
+--- a/ncurses/tinfo/make_keys.c
++++ b/ncurses/tinfo/make_keys.c
+@@ -37,6 +37,7 @@
+  */
+ 
+ #define USE_TERMLIB 1
++#include <wchar.h>
+ #include <curses.priv.h>
+ 
+ MODULE_ID("$Id: make_keys.c,v 1.15 2008/11/16 00:19:59 juergen Exp $")
+diff --git a/ncurses/tinfo/read_termcap.c b/ncurses/tinfo/read_termcap.c
+index d94d1a4..8d28fe7 100644
+--- a/ncurses/tinfo/read_termcap.c
++++ b/ncurses/tinfo/read_termcap.c
+@@ -319,6 +319,7 @@ _nc_getent(
+ 	     */
+ 	    if (fd >= 0) {
+ 		(void) lseek(fd, (off_t) 0, SEEK_SET);
++#ifndef __linux__
+ 	    } else if ((_nc_access(db_array[current], R_OK) < 0)
+ 		       || (fd = open(db_array[current], O_RDONLY, 0)) < 0) {
+ 		/* No error on unfound file. */
+@@ -329,6 +330,33 @@ _nc_getent(
+ 	    } else {
+ 		myfd = TRUE;
+ 	    }
++#else
++	    } else {
++		bool fd1, fd2;
++
++		setfsuid(getuid());
++		setfsgid(getgid());
++
++		fd1 = _nc_access(db_array[current], R_OK) < 0;
++		if (!fd1) {
++		    fd = open(db_array[current], O_RDONLY, 0));
++		    fd1 = fd < 0;
++		}
++
++		setfsuid(geteuid());
++		setfsgid(getegid());
++
++		if (! fd1) {
++		    /* No error on unfound file. */
++		    if (errno == ENOENT)
++			continue;
++		    free(record);
++		    return (TC_SYS_ERR);
++		} else {
++		    myfd = TRUE;
++		}
++	    }
++#endif
+ 	    lineno = 0;
+ 
+ 	    /*
+@@ -1097,8 +1125,20 @@ _nc_read_termcap_entry(const char *const tn, TERMTYPE *const tp)
+ 	for (i = 0; i < filecount; i++) {
+ 
+ 	    T(("Looking for %s in %s", tn, termpaths[i]));
++#ifndef __linux__
+ 	    if (_nc_access(termpaths[i], R_OK) == 0
+ 		&& (fp = fopen(termpaths[i], "r")) != (FILE *) 0) {
++#else
++	    fp = (FILE *) 0;
++	    if (_nc_access(termpaths[i], R_OK) == 0) {
++		setfsuid(getuid());
++		setfsgid(getgid());
++		fp = fopen(termpaths[i], "r");
++		setfsuid(geteuid());
++		setfsgid(getegid());
++	    }
++	    if (fp != (FILE *) 0) {
++#endif
+ 		_nc_set_source(termpaths[i]);
+ 
+ 		/*
+diff --git a/ncurses/tinfo/write_entry.c b/ncurses/tinfo/write_entry.c
+index a89da90..20c9b8b 100644
+--- a/ncurses/tinfo/write_entry.c
++++ b/ncurses/tinfo/write_entry.c
+@@ -418,8 +418,13 @@ _nc_write_entry(TERMTYPE *const tp)
+ 	{
+ 	    int code;
+ #if USE_SYMLINKS
+-	    strcpy(symlinkname, "../");
+-	    strncat(symlinkname, filename, sizeof(symlinkname) - 4);
++	    if (first_name[0] == linkname[0])
++	      strncpy (symlinkname, first_name, sizeof (symlinkname) - 1);
++	    else
++	      {
++		strcpy(symlinkname, "../");
++		strncat(symlinkname, filename, sizeof(symlinkname) - 4);
++	      }
+ 	    symlinkname[sizeof(symlinkname) - 1] = '\0';
+ #endif /* USE_SYMLINKS */
+ #if HAVE_REMOVE
+diff --git a/panel/Makefile.in b/panel/Makefile.in
+index 321d6b9..1734876 100644
+--- a/panel/Makefile.in
++++ b/panel/Makefile.in
+@@ -83,7 +83,7 @@ CFLAGS		= @CFLAGS@
+ 
+ CPPFLAGS	= -I@top_srcdir@/ncurses -DHAVE_CONFIG_H @CPPFLAGS@
+ 
+-CCFLAGS		= $(CPPFLAGS) $(CFLAGS)
++CCFLAGS		= $(CPPFLAGS) $(CFLAGS) -D_REENTRANT
+ 
+ CFLAGS_LIBTOOL	= $(CCFLAGS)
+ CFLAGS_NORMAL	= $(CCFLAGS)
+diff --git a/progs/tset.c b/progs/tset.c
+index 0164829..43223d4 100644
+--- a/progs/tset.c
++++ b/progs/tset.c
+@@ -981,7 +981,7 @@ set_init(void)
+ 	PC = pad_char[0];
+ #endif /* OBSOLETE */
+ 
+-#ifdef TAB3
++#if defined(TAB3) && defined(ONLCR) && defined(OCRNL) && defined(ONLRET)
+     if (oldmode.c_oflag & (TAB3 | ONLCR | OCRNL | ONLRET)) {
+ 	oldmode.c_oflag &= (TAB3 | ONLCR | OCRNL | ONLRET);
+ 	SET_TTY(STDERR_FILENO, &oldmode);
+-- 
+1.7.0
+

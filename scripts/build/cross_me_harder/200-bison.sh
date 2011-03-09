@@ -7,6 +7,7 @@ do_cross_me_harder_bison_get() {
 
 do_cross_me_harder_bison_extract() {
     CT_Extract "bison-${CT_BISON_VERSION}"
+    CT_DoExecLog ALL chmod -R u+w "${CT_SRC_DIR}/bison-${CT_BISON_VERSION}"
     CT_Patch "bison" "${CT_BISON_VERSION}"
     CT_Pushd "${CT_SRC_DIR}/bison-${CT_BISON_VERSION}"
     CT_DoExecLog ALL autoreconf -fiv
