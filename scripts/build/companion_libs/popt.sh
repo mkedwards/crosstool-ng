@@ -40,7 +40,7 @@ do_popt() {
         --build=${CT_BUILD}                                     \
         --host=${CT_HOST}                                       \
         --target=${CT_TARGET}                                   \
-        --prefix="${CT_COMPLIBS_DIR}"                           \
+        --prefix="${CT_PREFIX_DIR}"                             \
         "${popt_opts[@]}"
 
     CT_DoLog EXTRA "Building popt"

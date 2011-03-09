@@ -36,14 +36,14 @@ do_expat() {
         expat_opts+=( --disable-shared --enable-static )
     fi
 
-    CC="${CT_HOST}-gcc"                                     \
-    CFLAGS="-fPIC"                                          \
-    CT_DoExecLog CFG                                        \
-    "${CT_SRC_DIR}/expat-${CT_EXPAT_VERSION}/configure"     \
-        --build=${CT_BUILD}                                 \
-        --host=${CT_HOST}                                   \
-        --target=${CT_TARGET}                               \
-        --prefix="${CT_COMPLIBS_DIR}"                       \
+    CC="${CT_HOST}-gcc"                                         \
+    CFLAGS="-fPIC"                                              \
+    CT_DoExecLog CFG                                            \
+    "${CT_SRC_DIR}/expat-${CT_EXPAT_VERSION}/configure"         \
+        --build=${CT_BUILD}                                     \
+        --host=${CT_HOST}                                       \
+        --target=${CT_TARGET}                                   \
+        --prefix="${CT_PREFIX_DIR}"                             \
         "${expat_opts[@]}"
 
     CT_DoLog EXTRA "Building expat"

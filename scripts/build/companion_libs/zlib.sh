@@ -40,7 +40,7 @@ do_zlib() {
     CFLAGS="-fPIC"                                          \
     CT_DoExecLog CFG                                        \
     ./configure                                             \
-        --prefix="${CT_COMPLIBS_DIR}"                       \
+        --prefix="${CT_BUILDTOOLS_PREFIX_DIR}"              \
         "${zlib_opts[@]}"
 
     CT_DoLog EXTRA "Building zlib"
