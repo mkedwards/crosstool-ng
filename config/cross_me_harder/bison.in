@@ -1,7 +1,7 @@
 # bison
 # depends on ! BACKEND
 
-config CONFIG_ME_HARDER_bison
+config CONFIG_CROSS_ME_HARDER_bison
     bool
 
 choice

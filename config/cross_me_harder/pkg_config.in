@@ -1,24 +1,24 @@
-# flex
+# pkg-config
 # depends on ! BACKEND
 
-config CONFIG_CROSS_ME_HARDER_flex
+config CONFIG_CROSS_ME_HARDER_pkg_config
     bool
 
 choice
     bool
-    prompt "flex version"
+    prompt "pkg-config version"
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
-config FLEX_V_2_5_35
+config PKG_CONFIG_V_0_25
     bool
-    prompt "2.5.35 (EXPERIMENTAL)"
+    prompt "0.25 (EXPERIMENTAL)"
     depends on EXPERIMENTAL
 
 endchoice
 
-config FLEX_VERSION
+config PKG_CONFIG_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
-    default "2.5.35" if FLEX_V_2_5_35
+    default "0.25" if PKG_CONFIG_V_0_25

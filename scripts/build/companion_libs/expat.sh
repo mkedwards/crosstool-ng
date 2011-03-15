@@ -17,6 +17,10 @@ do_expat_get() {
 do_expat_extract() {
     CT_Extract "expat-${CT_EXPAT_VERSION}"
     CT_Patch "expat" "${CT_EXPAT_VERSION}"
+    CT_Pushd "${CT_SRC_DIR}/expat-${CT_EXPAT_VERSION}"
+    mkdir m4
+    CT_DoExecLog ALL autoreconf -fiv
+    CT_Popd
 }
 
 if [ "${CT_EXPAT}" = "y" ]; then

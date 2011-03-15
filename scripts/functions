@@ -103,7 +103,7 @@ CT_DoLog() {
               esac
               # There will always be a log file (stdout, fd #1), be it /dev/null
               printf "[%-5s]%*s%s%s\n" "${cur_L}" "${indent}" " " "${line}"
-              if [ ${cur_l} -le ${max_level} ]; then
+              if [ 0"${cur_l}" -le 0"${max_level}" ]; then
                   # Only print to console (fd #6) if log level is high enough.
                   printf "\r[%-5s]%*s%s%s\n" "${cur_L}" "${indent}" " " "${line}" >&6
               fi

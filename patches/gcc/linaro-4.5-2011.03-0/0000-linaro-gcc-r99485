@@ -1,0 +1,28 @@
+revno: 99485
+committer: Andrew Stubbs <ams@codesourcery.com>
+branch nick: release
+timestamp: Thu 2011-03-03 13:38:27 +0000
+message:
+  Bump version number, post release.
+diff:
+=== modified file 'ChangeLog.linaro'
+--- a/ChangeLog.linaro	2011-03-03 10:58:14 +0000
++++ b/ChangeLog.linaro	2011-03-03 13:38:27 +0000
+@@ -1,5 +1,10 @@
+ 2011-03-03  Andrew Stubbs  <ams@codesourcery.com>
+ 
++	gcc/
++	* LINARO-VERSION: Bump version.
++
++2011-03-03  Andrew Stubbs  <ams@codesourcery.com>
++
+ 	GCC Linaro 4.5-2011.03-0 released.
+ 
+ 	gcc/
+
+=== modified file 'gcc/LINARO-VERSION'
+--- a/gcc/LINARO-VERSION	2011-03-03 10:58:14 +0000
++++ b/gcc/LINARO-VERSION	2011-03-03 13:38:27 +0000
+@@ -1,1 +1,1 @@
+-4.5-2011.03-0
++4.5-2011.03-dev1

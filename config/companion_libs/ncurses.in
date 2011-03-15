@@ -10,6 +10,10 @@ config NCURSES_V_5_7
     bool
     prompt "5.7"
 
+config NCURSES_V_5_8
+    bool
+    prompt "5.8"
+
 endchoice
 
 config NCURSES_VERSION
@@ -17,3 +21,4 @@ config NCURSES_VERSION
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
     default "5.7" if NCURSES_V_5_7
+    default "5.8" if NCURSES_V_5_8

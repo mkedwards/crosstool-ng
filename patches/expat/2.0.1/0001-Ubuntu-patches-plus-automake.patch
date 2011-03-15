@@ -1,0 +1,366 @@
+diff --git a/MANIFEST b/MANIFEST
+index aa83d5b..30fe7db 100755
+--- a/MANIFEST
++++ b/MANIFEST
+@@ -1,14 +1,21 @@
+-amiga/stdlib.c
+-amiga/launch.c
+-amiga/expat_vectors.c
+-amiga/expat_lib.c
+-amiga/expat.xml
+-amiga/README.txt
++COPYING
++Changes
++MANIFEST
++Makefile.am
++Makefile.in
++README
++aclocal.m4
+ amiga/Makefile
+-amiga/include/proto/expat.h
+-amiga/include/libraries/expat.h
+-amiga/include/interfaces/expat.h
++amiga/README.txt
++amiga/expat.xml
++amiga/expat_lib.c
++amiga/expat_vectors.c
+ amiga/include/inline4/expat.h
++amiga/include/interfaces/expat.h
++amiga/include/libraries/expat.h
++amiga/include/proto/expat.h
++amiga/launch.c
++amiga/stdlib.c
+ bcb5/README.txt
+ bcb5/all_projects.bpg
+ bcb5/elements.bpf
+@@ -36,35 +43,31 @@ bcb5/setup.bat
+ bcb5/xmlwf.bpf
+ bcb5/xmlwf.bpr
+ bcb5/xmlwf.mak
+-doc/expat.png
+-doc/reference.html
+-doc/style.css
+-doc/valid-xhtml10.png
+-doc/xmlwf.1
+-doc/xmlwf.sgml
+-COPYING
+-Changes
+-MANIFEST
+-Makefile.in
+-README
+ configure
+ configure.in
+-expat_config.h.in
+-expat.dsw
+ conftools/PrintPath
+ conftools/ac_c_bigendian_cross.m4
++conftools/compile
+ conftools/config.guess
+ conftools/config.sub
++conftools/depcomp
+ conftools/expat.m4
+ conftools/get-version.sh
+ conftools/install-sh
+-conftools/libtool.m4
+ conftools/ltmain.sh
+-conftools/mkinstalldirs
++conftools/missing
++doc/expat.png
++doc/reference.html
++doc/style.css
++doc/valid-xhtml10.png
++doc/xmlwf.1
++doc/xmlwf.sgml
+ examples/elements.c
+ examples/elements.dsp
+ examples/outline.c
+ examples/outline.dsp
++expat.dsw
++expat_config.h.in
+ lib/Makefile.MPW
+ lib/amigaconfig.h
+ lib/ascii.h
+@@ -92,11 +95,17 @@ lib/xmltok.h
+ lib/xmltok_impl.c
+ lib/xmltok_impl.h
+ lib/xmltok_ns.c
++m4/libtool.m4
++m4/ltoptions.m4
++m4/ltsugar.m4
++m4/ltversion.m4
++m4/lt~obsolete.m4
++testMakefile
++tests/README.txt
+ tests/benchmark/README.txt
+ tests/benchmark/benchmark.c
+ tests/benchmark/benchmark.dsp
+ tests/benchmark/benchmark.dsw
+-tests/README.txt
+ tests/chardata.c
+ tests/chardata.h
+ tests/minicheck.c
+diff --git a/Makefile.am b/Makefile.am
+new file mode 100644
+index 0000000..beff151
+--- /dev/null
++++ b/Makefile.am
+@@ -0,0 +1,27 @@
++ACLOCAL_AMFLAGS = -I m4
++
++lib_LTLIBRARIES = libexpat.la
++libexpat_la_SOURCES = lib/xmlparse.c lib/xmltok.c lib/xmlrole.c
++libexpat_la_LDFLAGS = -version-info @LIBCURRENT@:@LIBREVISION@:@LIBAGE@
++
++include_HEADERS = lib/expat.h lib/expat_external.h
++nodist_include_HEADERS = expat_config.h
++dist_man1_MANS = doc/xmlwf.1
++
++bin_PROGRAMS = xmlwf/xmlwf
++noinst_PROGRAMS = examples/elements examples/outline tests/runtests tests/runtestspp
++
++AM_CPPFLAGS = -I$(srcdir)/lib
++LDADD = libexpat.la
++
++xmlwf_xmlwf_SOURCES = xmlwf/xmlwf.c xmlwf/xmlfile.c xmlwf/codepage.c xmlwf/@FILEMAP@.c
++
++tests_runtests_SOURCES = tests/runtests.c tests/chardata.c tests/minicheck.c
++tests_runtestspp_SOURCES = tests/runtestspp.cpp tests/chardata.c tests/minicheck.c
++
++# for VPATH builds (invoked by configure)
++mkdir-init:
++	@for d in lib xmlwf examples tests ; do \
++		(mkdir $$d 2> /dev/null || test 1) ; \
++	done
++
+diff --git a/configure.in b/configure.in
+index 24bcb40..2538fd7 100755
+--- a/configure.in
++++ b/configure.in
+@@ -29,8 +29,10 @@ define([expat_version], ifdef([__gnu__],
+ AC_INIT(expat, expat_version, expat-bugs@libexpat.org)
+ undefine([expat_version])
+ 
+-AC_CONFIG_SRCDIR(Makefile.in)
+ AC_CONFIG_AUX_DIR(conftools)
++AC_CONFIG_MACRO_DIR([m4])
++AM_INIT_AUTOMAKE([foreign subdir-objects])
++AM_MAINTAINER_MODE
+ 
+ 
+ dnl
+@@ -50,7 +52,6 @@ LIBAGE=5
+ 
+ AC_CONFIG_HEADER(expat_config.h)
+ 
+-sinclude(conftools/libtool.m4)
+ sinclude(conftools/ac_c_bigendian_cross.m4)
+ 
+ AC_LIBTOOL_WIN32_DLL
+@@ -62,6 +63,8 @@ AC_SUBST(LIBAGE)
+ 
+ dnl Checks for programs.
+ AC_PROG_CC
++AM_PROG_CC_C_O
++AC_PROG_CXX
+ AC_PROG_INSTALL
+ 
+ if test "$GCC" = yes ; then
+diff --git a/conftools/expat.m4 b/conftools/expat.m4
+index e5d4871..57e579b 100755
+--- a/conftools/expat.m4
++++ b/conftools/expat.m4
+@@ -7,7 +7,7 @@ dnl If --with-expat has not been specified, set with_expat to 'no'.
+ dnl In addition, an Automake conditional EXPAT_INSTALLED is set accordingly.
+ dnl This is necessary to adapt a whole lot of packages that have expat
+ dnl bundled as a static library.
+-AC_DEFUN(AM_WITH_EXPAT,
++AC_DEFUN([AM_WITH_EXPAT],
+ [ AC_ARG_WITH(expat,
+ 	      [  --with-expat=PREFIX     Use system Expat library],
+ 	      , with_expat=no)
+diff --git a/doc/xmlwf.sgml b/doc/xmlwf.sgml
+index 139c95e..4b07913 100755
+--- a/doc/xmlwf.sgml
++++ b/doc/xmlwf.sgml
+@@ -286,8 +286,7 @@ supports both.
+   This gives a fairly accurate idea of the raw speed of Expat itself
+   without client overhead.
+   <option>-t</option> turns off most of the output options
+-  (<option>-d</option>, <option>-m</option>, <option>-c</option>,
+-  ...).
++  (<option>-d</option>, <option>-m</option>, <option>-c</option>, ...).
+ 	   </para>
+         </listitem>
+       </varlistentry>
+@@ -389,11 +388,6 @@ supports both.
+   <refsect1>
+     <title>BUGS</title>
+ 	<para>
+-	According to the W3C standard, an XML file without a
+-	declaration at the beginning is not considered well-formed.
+-	However, <command>&dhpackage;</command> allows this to pass.
+-	</para>
+-	<para>
+ 	<command>&dhpackage;</command> returns a 0 - noerr result,
+ 	even if the file is not well-formed.  There is no good way for
+ 	a program to use <command>&dhpackage;</command> to quickly
+diff --git a/lib/xmlparse.c b/lib/xmlparse.c
+index 94e31de..df9d9a7 100755
+--- a/lib/xmlparse.c
++++ b/lib/xmlparse.c
+@@ -16,7 +16,7 @@
+ #include "amigaconfig.h"
+ #elif defined(__WATCOMC__)
+ #include "watcomconfig.h"
+-#elif defined(HAVE_EXPAT_CONFIG_H)
++#elif defined(HAVE_CONFIG_H)
+ #include <expat_config.h>
+ #endif /* ndef COMPILED_FROM_DSP */
+ 
+@@ -1499,6 +1499,8 @@ XML_Parse(XML_Parser parser, const char *s, int len, int isFinal)
+           ps_parsing = XML_FINISHED;
+           return result;
+         }
++      default:
++        break;
+       }
+     }
+ 
+@@ -3703,6 +3705,9 @@ doProlog(XML_Parser parser,
+         return XML_ERROR_UNCLOSED_TOKEN;
+       case XML_TOK_PARTIAL_CHAR:
+         return XML_ERROR_PARTIAL_CHAR;
++      case -XML_TOK_PROLOG_S:
++        tok = -tok;
++        break;
+       case XML_TOK_NONE:
+ #ifdef XML_DTD
+         /* for internal PE NOT referenced between declarations */
+diff --git a/lib/xmlrole.c b/lib/xmlrole.c
+index 9c5e25b..7774218 100755
+--- a/lib/xmlrole.c
++++ b/lib/xmlrole.c
+@@ -13,7 +13,7 @@
+ #elif defined(__WATCOMC__)
+ #include "watcomconfig.h"
+ #else
+-#ifdef HAVE_EXPAT_CONFIG_H
++#ifdef HAVE_CONFIG_H
+ #include <expat_config.h>
+ #endif
+ #endif /* ndef COMPILED_FROM_DSP */
+diff --git a/lib/xmltok.c b/lib/xmltok.c
+index 068afde..a0b6a38 100755
+--- a/lib/xmltok.c
++++ b/lib/xmltok.c
+@@ -13,7 +13,7 @@
+ #elif defined(__WATCOMC__)
+ #include "watcomconfig.h"
+ #else
+-#ifdef HAVE_EXPAT_CONFIG_H
++#ifdef HAVE_CONFIG_H
+ #include <expat_config.h>
+ #endif
+ #endif /* ndef COMPILED_FROM_DSP */
+diff --git a/lib/xmltok_impl.c b/lib/xmltok_impl.c
+index 1268819..16dfb85 100755
+--- a/lib/xmltok_impl.c
++++ b/lib/xmltok_impl.c
+@@ -1744,7 +1744,7 @@ PREFIX(updatePosition)(const ENCODING *enc,
+                        const char *end,
+                        POSITION *pos)
+ {
+-  while (ptr != end) {
++  while (ptr < end) {
+     switch (BYTE_TYPE(enc, ptr)) {
+ #define LEAD_CASE(n) \
+     case BT_LEAD ## n: \
+diff --git a/testMakefile b/testMakefile
+new file mode 100644
+index 0000000..c27f3a8
+--- /dev/null
++++ b/testMakefile
+@@ -0,0 +1,15 @@
++
++check: tests/runtests tests/runtestspp
++	tests/runtests
++	tests/runtestspp
++
++tests/xmlts.zip:
++	wget --output-document=tests/xmlts.zip \
++		http://www.w3.org/XML/Test/xmlts20020606.zip
++
++tests/XML-Test-Suite: tests/xmlts.zip
++	cd tests && unzip -q xmlts.zip
++
++run-xmltest: xmlwf/xmlwf tests/XML-Test-Suite
++	tests/xmltest.sh
++
+diff --git a/tests/chardata.c b/tests/chardata.c
+index 5fb0299..dfd6926 100755
+--- a/tests/chardata.c
++++ b/tests/chardata.c
+@@ -4,7 +4,7 @@
+    chardata.c
+ */
+ 
+-#ifdef HAVE_EXPAT_CONFIG_H
++#ifdef HAVE_CONFIG_H
+ #include <expat_config.h>
+ #endif
+ #ifdef HAVE_CHECK_H
+diff --git a/tests/runtests.c b/tests/runtests.c
+index 3521c08..e5f4413 100755
+--- a/tests/runtests.c
++++ b/tests/runtests.c
+@@ -4,7 +4,7 @@
+    runtest.c : run the Expat test suite
+ */
+ 
+-#ifdef HAVE_EXPAT_CONFIG_H
++#ifdef HAVE_CONFIG_H
+ #include <expat_config.h>
+ #endif
+ 
+diff --git a/vms/descrip.mms b/vms/descrip.mms
+index d9ee3d9..2291d71 100755
+--- a/vms/descrip.mms
++++ b/vms/descrip.mms
+@@ -22,7 +22,7 @@ HEADERS = $(LIBDIR)ascii.h $(LIBDIR)iasciitab.h $(LIBDIR)utf8tab.h $(LIBDIR)xmlt
+  
+ CONFIG_HEADER = expat_config.h
+ INCLUDES = /INCLUDE=([],[.lib])
+-DEFS = /DEFINE=(PACKAGE="""$(PACKAGE)""",VERSION="""$(PACKAGE)_$(VERSION)""",HAVE_EXPAT_CONFIG_H)
++DEFS = /DEFINE=(PACKAGE="""$(PACKAGE)""",VERSION="""$(PACKAGE)_$(VERSION)""",HAVE_CONFIG_H)
+ LIBREVISION = 0
+ LIBCURRENT  = 1
+ LIBAGE      = 0
+diff --git a/xmlwf/xmlfile.c b/xmlwf/xmlfile.c
+index 99eeeaa..d707cdf 100755
+--- a/xmlwf/xmlfile.c
++++ b/xmlwf/xmlfile.c
+@@ -16,7 +16,7 @@
+ #include "amigaconfig.h"
+ #elif defined(__WATCOMC__)
+ #include "watcomconfig.h"
+-#elif defined(HAVE_EXPAT_CONFIG_H)
++#elif defined(HAVE_CONFIG_H)
+ #include <expat_config.h>
+ #endif /* ndef COMPILED_FROM_DSP */
+ 
+diff --git a/xmlwf/xmlwf.c b/xmlwf/xmlwf.c
+index 41a433d..4fc77da 100755
+--- a/xmlwf/xmlwf.c
++++ b/xmlwf/xmlwf.c
+@@ -849,8 +849,10 @@ tmain(int argc, XML_Char **argv)
+       if (outputType == 'm')
+         metaEndDocument(parser);
+       fclose(fp);
+-      if (!result)
++      if (!result) {
+         tremove(outName);
++        exit(2);
++      }
+       free(outName);
+     }
+     XML_ParserFree(parser);
