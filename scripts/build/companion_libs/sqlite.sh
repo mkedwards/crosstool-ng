@@ -1,80 +1,77 @@
-# Build script for expat
+# Build script for sqlite
 
-do_expat_get() { :; }
-do_expat_extract() { :; }
-do_expat() { :; }
-do_expat_target() { :; }
+do_sqlite_get() { :; }
+do_sqlite_extract() { :; }
+do_sqlite() { :; }
+do_sqlite_target() { :; }
 
-if [ "${CT_EXPAT}" = "y" -o "${CT_EXPAT_TARGET}" = "y" ]; then
+if [ "${CT_SQLITE}" = "y" -o "${CT_SQLITE_TARGET}" = "y" ]; then
 
-do_expat_get() {
-    CT_GetFile "expat-${CT_EXPAT_VERSION}" .tar.gz    \
-               http://mesh.dl.sourceforge.net/sourceforge/expat/expat/${CT_EXPAT_VERSION}
-    # Downloading from sourceforge may leave garbage, cleanup
-    CT_DoExecLog ALL rm -f "${CT_TARBALLS_DIR}/showfiles.php"*
+do_sqlite_get() {
+    CT_GetFile "sqlite-autoconf-${CT_SQLITE_VERSION}" .tar.gz    \
+               http://www.sqlite.org
 }
 
-do_expat_extract() {
-    CT_Extract "expat-${CT_EXPAT_VERSION}"
-    CT_Patch "expat" "${CT_EXPAT_VERSION}"
-    CT_Pushd "${CT_SRC_DIR}/expat-${CT_EXPAT_VERSION}"
-    mkdir m4
-    CT_DoExecLog ALL autoreconf -fiv
+do_sqlite_extract() {
+    CT_Extract "sqlite-autoconf-${CT_SQLITE_VERSION}"
+    CT_Pushd "${CT_SRC_DIR}"
+    CT_DoExecLog ALL mv "sqlite-autoconf-${CT_SQLITE_VERSION}" "sqlite-${CT_SQLITE_VERSION}"
     CT_Popd
+    CT_Patch "sqlite" "${CT_SQLITE_VERSION}"
 }
 
-if [ "${CT_EXPAT}" = "y" ]; then
+if [ "${CT_SQLITE}" = "y" ]; then
 
-do_expat() {
-    local -a expat_opts
+do_sqlite() {
+    local -a sqlite_opts
 
-    CT_DoStep INFO "Installing expat"
-    mkdir -p "${CT_BUILD_DIR}/build-expat"
-    CT_Pushd "${CT_BUILD_DIR}/build-expat"
+    CT_DoStep INFO "Installing sqlite"
+    mkdir -p "${CT_BUILD_DIR}/build-sqlite"
+    CT_Pushd "${CT_BUILD_DIR}/build-sqlite"
 
-    CT_DoLog EXTRA "Configuring expat"
+    CT_DoLog EXTRA "Configuring sqlite"
 
     if [ "${CT_COMPLIBS_SHARED}" = "y" ]; then
-        expat_opts+=( --enable-shared --disable-static )
+        sqlite_opts+=( --enable-shared --disable-static )
     else
-        expat_opts+=( --disable-shared --enable-static )
+        sqlite_opts+=( --disable-shared --enable-static )
     fi
 
     CC="${CT_HOST}-gcc"                                         \
     CFLAGS="-fPIC"                                              \
     CT_DoExecLog CFG                                            \
-    "${CT_SRC_DIR}/expat-${CT_EXPAT_VERSION}/configure"         \
+    "${CT_SRC_DIR}/sqlite-${CT_SQLITE_VERSION}/configure"       \
         --build=${CT_BUILD}                                     \
         --host=${CT_HOST}                                       \
         --target=${CT_TARGET}                                   \
         --prefix="${CT_PREFIX_DIR}"                             \
-        "${expat_opts[@]}"
+        "${sqlite_opts[@]}"
 
-    CT_DoLog EXTRA "Building expat"
+    CT_DoLog EXTRA "Building sqlite"
     CT_DoExecLog ALL make
 
-    CT_DoLog EXTRA "Installing expat"
+    CT_DoLog EXTRA "Installing sqlite"
     CT_DoExecLog ALL make install
 
     CT_Popd
     CT_EndStep
 }
 
-fi # CT_EXPAT
+fi # CT_SQLITE
 
-if [ "${CT_EXPAT_TARGET}" = "y" ]; then
+if [ "${CT_SQLITE_TARGET}" = "y" ]; then
 
-do_expat_target() {
-    CT_DoStep INFO "Installing expat for the target"
-    mkdir -p "${CT_BUILD_DIR}/build-expat-for-target"
-    CT_Pushd "${CT_BUILD_DIR}/build-expat-for-target"
+do_sqlite_target() {
+    CT_DoStep INFO "Installing sqlite for the target"
+    mkdir -p "${CT_BUILD_DIR}/build-sqlite-for-target"
+    CT_Pushd "${CT_BUILD_DIR}/build-sqlite-for-target"
 
-    CT_DoLog EXTRA "Configuring expat"
+    CT_DoLog EXTRA "Configuring sqlite"
     cp ../../config.cache .
     CC="${CT_TARGET}-gcc"                                       \
     CFLAGS="-g -Os -fPIC"                                       \
     CT_DoExecLog CFG                                            \
-    "${CT_SRC_DIR}/expat-${CT_EXPAT_VERSION}/configure"         \
+    "${CT_SRC_DIR}/sqlite-${CT_SQLITE_VERSION}/configure"       \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \
         --target=${CT_TARGET}                                   \
@@ -87,16 +84,16 @@ do_expat_target() {
         --enable-shared                                         \
         --enable-static
 
-    CT_DoLog EXTRA "Building expat"
+    CT_DoLog EXTRA "Building sqlite"
     CT_DoExecLog ALL make
 
-    CT_DoLog EXTRA "Installing expat"
+    CT_DoLog EXTRA "Installing sqlite"
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
 
     CT_Popd
     CT_EndStep
 }
 
-fi # CT_EXPAT_TARGET
+fi # CT_SQLITE_TARGET
 
-fi # CT_EXPAT || CT_EXPAT_TARGET
+fi # CT_SQLITE || CT_SQLITE_TARGET

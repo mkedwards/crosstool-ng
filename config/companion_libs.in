@@ -80,6 +80,18 @@ config NCURSES_NEEDED
     select NCURSES
     select COMPLIBS_NEEDED
 
+config PCRE_NEEDED
+    bool
+    default n
+    select PCRE
+    select COMPLIBS_NEEDED
+
+config SQLITE_NEEDED
+    bool
+    default n
+    select SQLITE
+    select COMPLIBS_NEEDED
+
 config COMPLIBS
     bool
     default n
@@ -164,6 +176,20 @@ config NCURSES
 config NCURSES_TARGET
     bool
 
+config PCRE
+    bool
+    select COMPLIBS
+
+config PCRE_TARGET
+    bool
+
+config SQLITE
+    bool
+    select COMPLIBS
+
+config SQLITE_TARGET
+    bool
+
 if GMP
 source "config/companion_libs/gmp.in"
 endif
@@ -213,6 +239,16 @@ if NCURSES || NCURSES_TARGET
 comment "ncurses version needed to build for target"
     depends on !NCURSES
 source "config/companion_libs/ncurses.in"
+endif
+if PCRE || PCRE_TARGET
+comment "pcre version needed to build for target"
+    depends on !PCRE
+source "config/companion_libs/pcre.in"
+endif
+if SQLITE || SQLITE_TARGET
+comment "sqlite version needed to build for target"
+    depends on !SQLITE
+source "config/companion_libs/sqlite.in"
 endif
 
 config FOO

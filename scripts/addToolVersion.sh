@@ -18,7 +18,7 @@ doHelp() {
 		  'tool' may be one of:
 		    gcc, binutils, glibc, eglibc, uClibc, newlib, linux, gdb, dmalloc,
 		    duma, oprofile, strace, ltrace, valgrind,
-		    libunwind, elfutils, libelf, zlib, popt, expat, ncurses,
+		    libunwind, elfutils, libelf, zlib, popt, expat, ncurses, pcre, sqlite,
                     gmp, mpfr, ppl, cloog, mpc
 		
 		  Valid options for all tools:
@@ -177,6 +177,8 @@ while [ $# -gt 0 ]; do
         --popt)     EXP=; OBS=; cat=POPT;           tool=popt;      tool_prefix=companion_libs;;
         --expat)    EXP=; OBS=; cat=EXPAT;          tool=expat;     tool_prefix=companion_libs;;
         --ncurses)  EXP=; OBS=; cat=NCURSES;        tool=ncurses;   tool_prefix=companion_libs;;
+        --pcre)     EXP=; OBS=; cat=PCRE;           tool=pcre;      tool_prefix=companion_libs;;
+        --sqlite)   EXP=; OBS=; cat=SQLITE;         tool=sqlite;    tool_prefix=companion_libs;;
 
         # Tools options:
         -x|--experimental|+s)   EXP=1;;

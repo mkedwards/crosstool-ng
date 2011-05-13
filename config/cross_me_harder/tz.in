@@ -1,9 +1,6 @@
 # tz
 # depends on ! BACKEND
 
-config CONFIG_CROSS_ME_HARDER_tz
-    bool
-
 choice
     bool
     prompt "tz version"

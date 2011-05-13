@@ -64,6 +64,8 @@ dump_single_sample() {
                  -o -n "${CT_POPT}"             \
                  -o -n "${CT_EXPAT}"            \
                  -o -n "${CT_NCURSES}"          \
+                 -o -n "${CT_PCRE}"             \
+                 -o -n "${CT_SQLITE}"           \
                  -o -n "${CT_GMP_TARGET}"       \
                  -o -n "${CT_MPFR_TARGET}"      \
                  -o -n "${CT_PPL_TARGET}"       \
@@ -76,6 +78,8 @@ dump_single_sample() {
                  -o -n "${CT_POPT_TARGET}"      \
                  -o -n "${CT_EXPAT_TARGET}"     \
                  -o -n "${CT_NCURSES_TARGET}"   \
+                 -o -n "${CT_PCRE_TARGET}"      \
+                 -o -n "${CT_SQLITE_TARGET}"    \
                ]; then
                 printf "    %-*s :" ${t_width} "Companion libs"
                 complibs=1
@@ -92,6 +96,8 @@ dump_single_sample() {
             [ -z "${CT_POPT}"   -a -z "${CT_POPT_TARGET}"   ] || printf " popt-%s"      "${CT_POPT_VERSION}"
             [ -z "${CT_EXPAT}"  -a -z "${CT_EXPAT_TARGET}"  ] || printf " expat-%s"     "${CT_EXPAT_VERSION}"
             [ -z "${CT_NCURSES}" -a -z "${CT_NCURSES_TARGET}" ] || printf " ncurses-%s" "${CT_NCURSES_VERSION}"
+            [ -z "${CT_PCRE}"   -a -z "${CT_PCRE_TARGET}"   ] || printf " pcre-%s"      "${CT_PCRE_VERSION}"
+            [ -z "${CT_SQLITE}" -a -z "${CT_SQLITE_TARGET}" ] || printf " sqlite-%s"    "${CT_SQLITE_VERSION}"
             [ -z "${complibs}"  ] || printf "\n"
             printf  "    %-*s : %s\n" ${t_width} "binutils" "binutils-${CT_BINUTILS_VERSION}"
             printf  "    %-*s : %s" ${t_width} "C compiler" "${CT_CC}-${CT_CC_VERSION} (C"

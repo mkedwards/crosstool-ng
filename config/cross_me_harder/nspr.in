@@ -1,0 +1,25 @@
+# nspr
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "nspr version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config NSPR_V_4_8_7
+    bool
+    prompt "4.8.7 (EXPERIMENTAL)"
+    select PCRE_NEEDED
+    select SQLITE_NEEDED
+    select PCRE_TARGET
+    select SQLITE_TARGET
+    depends on EXPERIMENTAL
+
+endchoice
+
+config NSPR_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "4.8.7" if NSPR_V_4_8_7

@@ -21,7 +21,7 @@ do_debug_valgrind_build() {
     ./configure                                                 \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \
-        --cache-file=config.cache                               \
+        --cache-file="$(pwd)/config.cache"                      \
         --enable-tls                                            \
         --sysconfdir=/etc                                       \
         --localstatedir=/var                                    \

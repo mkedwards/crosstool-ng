@@ -91,7 +91,7 @@ do_ncurses_target() {
     "${CT_SRC_DIR}/ncurses-${CT_NCURSES_VERSION}/configure"     \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \
-        --cache-file=config.cache                               \
+        --cache-file="$(pwd)/config.cache"                      \
         --sysconfdir=/etc                                       \
         --localstatedir=/var                                    \
         --mandir=/usr/share/man                                 \

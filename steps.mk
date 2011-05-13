@@ -29,6 +29,8 @@ CT_STEPS := libc_check_config   \
             popt                \
             expat               \
             ncurses             \
+            pcre                \
+            sqlite              \
             binutils            \
             elf2flt             \
             sstrip              \
@@ -46,6 +48,8 @@ CT_STEPS := libc_check_config   \
             popt_target         \
             expat_target        \
             ncurses_target      \
+            pcre_target         \
+            sqlite_target       \
             binutils_target     \
             cross_me_harder     \
             debug               \

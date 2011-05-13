@@ -71,7 +71,7 @@ do_popt_target() {
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \
         --target=${CT_TARGET}                                   \
-        --cache-file=config.cache                               \
+        --cache-file="$(pwd)/config.cache"                      \
         --sysconfdir=/etc                                       \
         --localstatedir=/var                                    \
         --mandir=/usr/share/man                                 \

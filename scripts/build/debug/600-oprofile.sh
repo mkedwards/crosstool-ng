@@ -27,7 +27,7 @@ do_debug_oprofile_build() {
     "${CT_SRC_DIR}/oprofile-${CT_OPROFILE_VERSION}/configure"   \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \
-        --cache-file=config.cache                               \
+        --cache-file="$(pwd)/config.cache"                      \
         --with-kernel-support                                   \
         --with-linux="$kernel_path"                             \
         --without-x                                             \

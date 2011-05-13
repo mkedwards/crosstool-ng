@@ -43,7 +43,7 @@ do_debug_dmalloc_build() {
         --prefix=/usr                                           \
         --build="${CT_BUILD}"                                   \
         --host="${CT_TARGET}"                                   \
-        --cache-file=config.cache                               \
+        --cache-file="$(pwd)/config.cache"                      \
         "${extra_config[@]}"
 
     CT_DoLog EXTRA "Building dmalloc"

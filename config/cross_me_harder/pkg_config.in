@@ -1,9 +1,6 @@
 # pkg-config
 # depends on ! BACKEND
 
-config CONFIG_CROSS_ME_HARDER_pkg_config
-    bool
-
 choice
     bool
     prompt "pkg-config version"

@@ -71,7 +71,7 @@ do_libunwind_target() {
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \
         --target=${CT_TARGET}                                   \
-        --cache-file=config.cache                               \
+        --cache-file="$(pwd)/config.cache"                      \
         --enable-cxx-exceptions                                 \
         --sysconfdir=/etc                                       \
         --localstatedir=/var                                    \

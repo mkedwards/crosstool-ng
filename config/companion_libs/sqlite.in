@@ -1,0 +1,19 @@
+# sqlite config file
+
+choice
+    bool
+    prompt "sqlite version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config SQLITE_V_3_7_6_2
+    bool
+    prompt "3.7.6.2"
+
+endchoice
+
+config SQLITE_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "3070602" if SQLITE_V_3_7_6_2

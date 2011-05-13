@@ -44,7 +44,7 @@ do_elf2flt() {
         --build=${CT_BUILD}                                     \
         --host=${CT_HOST}                                       \
         --target=${CT_TARGET}                                   \
-        --cache-file=config.cache                               \
+        --cache-file="$(pwd)/config.cache"                      \
         --prefix=${CT_PREFIX_DIR}                               \
         --with-bfd-include-dir=${binutils_bld}/bfd              \
         --with-binutils-include-dir=${binutils_src}/include     \

@@ -77,7 +77,7 @@ do_libelf_target() {
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \
         --target=${CT_TARGET}                                   \
-        --cache-file=config.cache                               \
+        --cache-file="$(pwd)/config.cache"                      \
         --prefix=/usr                                           \
         --enable-compat                                         \
         --enable-elf64                                          \

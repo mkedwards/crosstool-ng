@@ -1,80 +1,78 @@
-# Build script for expat
+# Build script for pcre
 
-do_expat_get() { :; }
-do_expat_extract() { :; }
-do_expat() { :; }
-do_expat_target() { :; }
+do_pcre_get() { :; }
+do_pcre_extract() { :; }
+do_pcre() { :; }
+do_pcre_target() { :; }
 
-if [ "${CT_EXPAT}" = "y" -o "${CT_EXPAT_TARGET}" = "y" ]; then
+if [ "${CT_PCRE}" = "y" -o "${CT_PCRE_TARGET}" = "y" ]; then
 
-do_expat_get() {
-    CT_GetFile "expat-${CT_EXPAT_VERSION}" .tar.gz    \
-               http://mesh.dl.sourceforge.net/sourceforge/expat/expat/${CT_EXPAT_VERSION}
+do_pcre_get() {
+    CT_GetFile "pcre-${CT_PCRE_VERSION}" .tar.gz    \
+               http://mesh.dl.sourceforge.net/sourceforge/pcre/pcre/${CT_PCRE_VERSION}
     # Downloading from sourceforge may leave garbage, cleanup
     CT_DoExecLog ALL rm -f "${CT_TARBALLS_DIR}/showfiles.php"*
 }
 
-do_expat_extract() {
-    CT_Extract "expat-${CT_EXPAT_VERSION}"
-    CT_Patch "expat" "${CT_EXPAT_VERSION}"
-    CT_Pushd "${CT_SRC_DIR}/expat-${CT_EXPAT_VERSION}"
-    mkdir m4
-    CT_DoExecLog ALL autoreconf -fiv
-    CT_Popd
+do_pcre_extract() {
+    CT_Extract "pcre-${CT_PCRE_VERSION}"
+    CT_Patch "pcre" "${CT_PCRE_VERSION}"
 }
 
-if [ "${CT_EXPAT}" = "y" ]; then
+if [ "${CT_PCRE}" = "y" ]; then
 
-do_expat() {
-    local -a expat_opts
+do_pcre() {
+    local -a pcre_opts
 
-    CT_DoStep INFO "Installing expat"
-    mkdir -p "${CT_BUILD_DIR}/build-expat"
-    CT_Pushd "${CT_BUILD_DIR}/build-expat"
+    CT_DoStep INFO "Installing pcre"
+    mkdir -p "${CT_BUILD_DIR}/build-pcre"
+    CT_Pushd "${CT_BUILD_DIR}/build-pcre"
 
-    CT_DoLog EXTRA "Configuring expat"
+    CT_DoLog EXTRA "Configuring pcre"
 
     if [ "${CT_COMPLIBS_SHARED}" = "y" ]; then
-        expat_opts+=( --enable-shared --disable-static )
+        pcre_opts+=( --enable-shared --disable-static )
     else
-        expat_opts+=( --disable-shared --enable-static )
+        pcre_opts+=( --disable-shared --enable-static )
     fi
 
     CC="${CT_HOST}-gcc"                                         \
     CFLAGS="-fPIC"                                              \
     CT_DoExecLog CFG                                            \
-    "${CT_SRC_DIR}/expat-${CT_EXPAT_VERSION}/configure"         \
+    "${CT_SRC_DIR}/pcre-${CT_PCRE_VERSION}/configure"           \
         --build=${CT_BUILD}                                     \
         --host=${CT_HOST}                                       \
         --target=${CT_TARGET}                                   \
         --prefix="${CT_PREFIX_DIR}"                             \
-        "${expat_opts[@]}"
+        --enable-unicode-properties                             \
+        --enable-pcregrep-libz                                  \
+        "${pcre_opts[@]}"
 
-    CT_DoLog EXTRA "Building expat"
+    CT_DoLog EXTRA "Building pcre"
     CT_DoExecLog ALL make
 
-    CT_DoLog EXTRA "Installing expat"
+    CT_DoLog EXTRA "Installing pcre"
     CT_DoExecLog ALL make install
 
     CT_Popd
     CT_EndStep
 }
 
-fi # CT_EXPAT
+fi # CT_PCRE
 
-if [ "${CT_EXPAT_TARGET}" = "y" ]; then
+if [ "${CT_PCRE_TARGET}" = "y" ]; then
 
-do_expat_target() {
-    CT_DoStep INFO "Installing expat for the target"
-    mkdir -p "${CT_BUILD_DIR}/build-expat-for-target"
-    CT_Pushd "${CT_BUILD_DIR}/build-expat-for-target"
+do_pcre_target() {
+    CT_DoStep INFO "Installing pcre for the target"
+    mkdir -p "${CT_BUILD_DIR}/build-pcre-for-target"
+    CT_Pushd "${CT_BUILD_DIR}/build-pcre-for-target"
 
-    CT_DoLog EXTRA "Configuring expat"
+    CT_DoLog EXTRA "Configuring pcre"
     cp ../../config.cache .
     CC="${CT_TARGET}-gcc"                                       \
     CFLAGS="-g -Os -fPIC"                                       \
     CT_DoExecLog CFG                                            \
-    "${CT_SRC_DIR}/expat-${CT_EXPAT_VERSION}/configure"         \
+    "${CT_SRC_DIR}/pcre-${CT_PCRE_VERSION}/configure"           \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \
         --target=${CT_TARGET}                                   \
@@ -84,19 +82,21 @@ do_expat_target() {
         --mandir=/usr/share/man                                 \
         --infodir=/usr/share/info                               \
         --prefix=/usr                                           \
+        --enable-unicode-properties                             \
+        --enable-pcregrep-libz                                  \
         --enable-shared                                         \
         --enable-static
 
-    CT_DoLog EXTRA "Building expat"
+    CT_DoLog EXTRA "Building pcre"
     CT_DoExecLog ALL make
 
-    CT_DoLog EXTRA "Installing expat"
+    CT_DoLog EXTRA "Installing pcre"
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
 
     CT_Popd
     CT_EndStep
 }
 
-fi # CT_EXPAT_TARGET
+fi # CT_PCRE_TARGET
 
-fi # CT_EXPAT || CT_EXPAT_TARGET
+fi # CT_PCRE || CT_PCRE_TARGET

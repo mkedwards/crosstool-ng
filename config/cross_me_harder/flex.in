@@ -1,9 +1,6 @@
 # flex
 # depends on ! BACKEND
 
-config CONFIG_CROSS_ME_HARDER_flex
-    bool
-
 choice
     bool
     prompt "flex version"

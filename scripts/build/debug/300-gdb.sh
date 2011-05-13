@@ -147,7 +147,7 @@ do_debug_gdb_build() {
             --build=${CT_BUILD}                         \
             --host=${CT_TARGET}                         \
             --target=${CT_TARGET}                       \
-            --cache-file=config.cache                   \
+            --cache-file="$(pwd)/config.cache"          \
             --prefix=/usr                               \
             --with-build-sysroot="${CT_SYSROOT_DIR}"    \
             --without-uiout                             \
@@ -200,7 +200,7 @@ do_debug_gdb_build() {
             --build=${CT_BUILD}                         \
             --host=${CT_TARGET}                         \
             --target=${CT_TARGET}                       \
-            --cache-file=config.cache                   \
+            --cache-file="$(pwd)/config.cache"          \
             --prefix=/usr                               \
             --sysconfdir=/etc                           \
             --localstatedir=/var                        \

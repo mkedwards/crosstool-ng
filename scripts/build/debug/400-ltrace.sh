@@ -46,7 +46,7 @@ do_debug_ltrace_build() {
         ./configure                                                 \
             --build=${CT_BUILD}                                     \
             --host=${CT_TARGET}                                     \
-            --cache-file=config.cache                               \
+            --cache-file="$(pwd)/config.cache"                      \
             --sysconfdir=/etc                                       \
             --localstatedir=/var                                    \
             --mandir=/usr/share/man                                 \

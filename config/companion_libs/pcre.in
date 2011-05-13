@@ -1,0 +1,19 @@
+# pcre config file
+
+choice
+    bool
+    prompt "pcre version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config PCRE_V_8_12
+    bool
+    prompt "8.12"
+
+endchoice
+
+config PCRE_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "8.12" if PCRE_V_8_12
