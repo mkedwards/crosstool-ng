@@ -26,19 +26,11 @@ do_expat_extract() {
 if [ "${CT_EXPAT}" = "y" ]; then
 
 do_expat() {
-    local -a expat_opts
-
     CT_DoStep INFO "Installing expat"
     mkdir -p "${CT_BUILD_DIR}/build-expat"
     CT_Pushd "${CT_BUILD_DIR}/build-expat"
 
     CT_DoLog EXTRA "Configuring expat"
-
-    if [ "${CT_COMPLIBS_SHARED}" = "y" ]; then
-        expat_opts+=( --enable-shared --disable-static )
-    else
-        expat_opts+=( --disable-shared --enable-static )
-    fi
 
     CC="${CT_HOST}-gcc"                                         \
     CFLAGS="-fPIC"                                              \
@@ -48,7 +40,8 @@ do_expat() {
         --host=${CT_HOST}                                       \
         --target=${CT_TARGET}                                   \
         --prefix="${CT_PREFIX_DIR}"                             \
-        "${expat_opts[@]}"
+        --disable-shared                                        \
+        --enable-static
 
     CT_DoLog EXTRA "Building expat"
     CT_DoExecLog ALL make

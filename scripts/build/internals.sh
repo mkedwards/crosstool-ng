@@ -22,7 +22,19 @@ do_finish() {
         esac
         CT_DoLog INFO "Stripping all toolchain executables"
         CT_Pushd "${CT_PREFIX_DIR}"
-        gcc_version=$( "./bin/${CT_TARGET}-gcc" -dumpversion )
+        # We can not use the version in CT_CC_VERSION because
+        # of the Linaro stuff. So, harvest the version string
+        # directly from the gcc sources...
+        # All gcc 4.x seem to have the version in gcc/BASE-VER
+        # while version prior to 4.x have the version in gcc/version.c
+        # Of course, here is not the better place to do that...
+        if [ -f "${CT_SRC_DIR}/gcc-${CT_CC_VERSION}/gcc/BASE-VER" ]; then
+            gcc_version=$( cat "${CT_SRC_DIR}/gcc-${CT_CC_VERSION}/gcc/BASE-VER" )
+        else
+            gcc_version=$( sed -r -e '/version_string/!d; s/^.+= "([^"]+)".*$/\1/;' \
+                               "${CT_SRC_DIR}/gcc-${CT_CC_VERSION}/gcc/version.c"   \
+                         )
+        fi
         for _t in "bin/${CT_TARGET}-"*                                      \
                   "${CT_TARGET}/bin/"*                                      \
                   "libexec/gcc/${CT_TARGET}/${gcc_version}/"*               \
@@ -30,7 +42,7 @@ do_finish() {
         ; do
             _type="$( file "${_t}" |cut -d ' ' -f 2- )"
             case "${_type}" in
-                *"script text executable")
+                *script*executable*)
                     ;;
                 *executable*)
                     CT_DoExecLog ALL ${CT_HOST}-strip ${strip_args} "${_t}"
@@ -87,58 +99,8 @@ do_finish() {
     done
     CT_Popd
 
-    # If using the companion libraries, we need a wrapper
-    # that will set LD_LIBRARY_PATH approriately
-    if [ "${CT_WRAPPER_NEEDED}" = "y" ]; then
-        CT_DoLog EXTRA "Installing toolchain wrappers"
-        CT_Pushd "${CT_PREFIX_DIR}/bin"
-
-        case "$CT_SYS_OS" in
-            Darwin|FreeBSD)
-                # wrapper does not work (when using readlink -m)
-                CT_DoLog WARN "Forcing usage of binary tool wrapper"
-                CT_TOOLS_WRAPPER="exec"
-                ;;
-        esac
-        # Install the wrapper
-        case "${CT_TOOLS_WRAPPER}" in
-            script)
-                CT_DoExecLog DEBUG install                              \
-                                   -m 0755                              \
-                                   "${CT_LIB_DIR}/scripts/wrapper.in"   \
-                                   ".${CT_TARGET}-wrapper"
-                ;;
-            exec)
-                CT_DoExecLog DEBUG "${CT_HOST}-gcc"                           \
-                                   -Wall -Wextra -Werror                      \
-                                   -Os                                        \
-                                   "${CT_LIB_DIR}/scripts/wrapper.c"          \
-                                   -o ".${CT_TARGET}-wrapper"
-                if [ "${CT_DEBUG_CT}" != "y" ]; then
-                    # If not debugging crosstool-NG, strip the wrapper
-                    CT_DoExecLog DEBUG "${CT_HOST}-strip" ".${CT_TARGET}-wrapper"
-                fi
-                ;;
-        esac
-
-        # Replace every tools with the wrapper
-        # Do it unconditionally, even for those tools that happen to be shell
-        # scripts, we don't know if they would in the end spawn a binary...
-        # Just skip symlinks
-        for _t in "${CT_TARGET}-"*; do
-            if [ ! -L "${_t}" ]; then
-                CT_DoExecLog ALL mv "${_t}" ".${_t}"
-                CT_DoExecLog ALL ln ".${CT_TARGET}-wrapper" "${_t}"
-            fi
-        done
-
-        # Get rid of the wrapper, we're using hardlinks
-        CT_DoExecLog DEBUG rm -f ".${CT_TARGET}-wrapper"
-        CT_Popd
-    fi
-
     #CT_DoLog EXTRA "Removing access to the build system tools"
-    #CT_DoExecLog DEBUG rm -rf "${CT_BUILDTOOLS_PREFIX_DIR}"
+    #CT_DoExecLog DEBUG rm -rf "${CT_PREFIX_DIR}/buildtools"
 
     # Remove the generated documentation files
     if [ "${CT_REMOVE_DOCS}" = "y" ]; then
@@ -147,9 +109,6 @@ do_finish() {
         CT_DoForceRmdir "${CT_SYSROOT_DIR}/"{,usr/}{,share/}{man,info}
         CT_DoForceRmdir "${CT_DEBUGROOT_DIR}/"{,usr/}{,share/}{man,info}
     fi
-
-    # Remove headers installed by native companion libraries
-    #CT_DoForceRmdir "${CT_PREFIX_DIR}/include"
 
     # Remove the lib* symlinks, now:
     # The symlinks are needed only during the build process.

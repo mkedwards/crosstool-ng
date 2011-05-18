@@ -19,19 +19,11 @@ do_libunwind_extract() {
 if [ "${CT_LIBUNWIND}" = "y" ]; then
 
 do_libunwind() {
-    local -a libunwind_opts
-
     CT_DoStep INFO "Installing libunwind"
     mkdir -p "${CT_BUILD_DIR}/build-libunwind"
     CT_Pushd "${CT_BUILD_DIR}/build-libunwind"
 
     CT_DoLog EXTRA "Configuring libunwind"
-
-    if [ "${CT_COMPLIBS_SHARED}" = "y" ]; then
-        libunwind_opts+=( --enable-shared --disable-static )
-    else
-        libunwind_opts+=( --disable-shared --enable-static )
-    fi
 
     CC="${CT_HOST}-gcc"                                         \
     CFLAGS="-fPIC"                                              \
@@ -41,7 +33,8 @@ do_libunwind() {
         --host=${CT_HOST}                                       \
         --target=${CT_TARGET}                                   \
         --prefix="${CT_PREFIX_DIR}"                             \
-        "${libunwind_opts[@]}"
+        --disable-shared                                        \
+        --enable-static
 
     CT_DoLog EXTRA "Building libunwind"
     CT_DoExecLog ALL make

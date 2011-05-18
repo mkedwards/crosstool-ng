@@ -19,19 +19,11 @@ do_popt_extract() {
 if [ "${CT_POPT}" = "y" ]; then
 
 do_popt() {
-    local -a popt_opts
-
     CT_DoStep INFO "Installing popt"
     mkdir -p "${CT_BUILD_DIR}/build-popt"
     CT_Pushd "${CT_BUILD_DIR}/build-popt"
 
     CT_DoLog EXTRA "Configuring popt"
-
-    if [ "${CT_COMPLIBS_SHARED}" = "y" ]; then
-        popt_opts+=( --enable-shared --disable-static )
-    else
-        popt_opts+=( --disable-shared --enable-static )
-    fi
 
     CC="${CT_HOST}-gcc"                                         \
     CFLAGS="-fPIC"                                              \
@@ -41,7 +33,8 @@ do_popt() {
         --host=${CT_HOST}                                       \
         --target=${CT_TARGET}                                   \
         --prefix="${CT_PREFIX_DIR}"                             \
-        "${popt_opts[@]}"
+        --disable-shared                                        \
+        --enable-static
 
     CT_DoLog EXTRA "Building popt"
     CT_DoExecLog ALL make

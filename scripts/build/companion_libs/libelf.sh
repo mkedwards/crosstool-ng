@@ -22,23 +22,15 @@ do_libelf_extract() {
 if [ "${CT_LIBELF}" = "y" ]; then
 
 do_libelf() {
-    local -a libelf_opts
-
     CT_DoStep INFO "Installing libelf"
     mkdir -p "${CT_BUILD_DIR}/build-libelf"
     CT_Pushd "${CT_BUILD_DIR}/build-libelf"
 
     CT_DoLog EXTRA "Configuring libelf"
 
-    if [ "${CT_COMPLIBS_SHARED}" = "y" ]; then
-        libelf_opts+=( --enable-shared --disable-static )
-    else
-        libelf_opts+=( --disable-shared --enable-static )
-    fi
-
-    CC="${CT_HOST}-gcc"                                     \
-    CFLAGS="-fPIC"                                          \
     CT_DoExecLog CFG                                        \
+    CC="${CT_HOST}-gcc"                                     \
+    CFLAGS="-g -Os -fPIC"                                   \
     "${CT_SRC_DIR}/libelf-${CT_LIBELF_VERSION}/configure"   \
         --build=${CT_BUILD}                                 \
         --host=${CT_HOST}                                   \
@@ -47,7 +39,8 @@ do_libelf() {
         --enable-compat                                     \
         --enable-elf64                                      \
         --enable-extended-format                            \
-        "${libelf_opts[@]}"
+        --disable-shared                                    \
+        --enable-static
 
     CT_DoLog EXTRA "Building libelf"
     CT_DoExecLog ALL make
@@ -70,19 +63,19 @@ do_libelf_target() {
 
     CT_DoLog EXTRA "Configuring libelf"
     cp ../../config.cache .
-    CC="${CT_TARGET}-gcc"                                       \
-    CFLAGS="-g -Os -fPIC"                                       \
-    CT_DoExecLog CFG                                            \
-    "${CT_SRC_DIR}/libelf-${CT_LIBELF_VERSION}/configure"       \
-        --build=${CT_BUILD}                                     \
-        --host=${CT_TARGET}                                     \
-        --target=${CT_TARGET}                                   \
-        --cache-file="$(pwd)/config.cache"                      \
-        --prefix=/usr                                           \
-        --enable-compat                                         \
-        --enable-elf64                                          \
-        --enable-shared                                         \
-        --enable-extended-format                                \
+    CT_DoExecLog CFG                                        \
+    CC="${CT_TARGET}-gcc"                                   \
+    CFLAGS="-fPIC"                                          \
+    "${CT_SRC_DIR}/libelf-${CT_LIBELF_VERSION}/configure"   \
+        --build=${CT_BUILD}                                 \
+        --host=${CT_TARGET}                                 \
+        --target=${CT_TARGET}                               \
+        --cache-file="$(pwd)/config.cache"                  \
+        --prefix=/usr                                       \
+        --enable-compat                                     \
+        --enable-elf64                                      \
+        --enable-shared                                     \
+        --enable-extended-format                            \
         --enable-static
 
     CT_DoLog EXTRA "Building libelf"

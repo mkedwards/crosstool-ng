@@ -19,20 +19,12 @@ do_zlib_extract() {
 if [ "${CT_ZLIB}" = "y" ]; then
 
 do_zlib() {
-    local -a zlib_opts
-
     CT_DoStep INFO "Installing zlib"
     rm -rf "${CT_BUILD_DIR}/build-zlib"
     cp -a "${CT_SRC_DIR}/zlib-${CT_ZLIB_VERSION}" "${CT_BUILD_DIR}/build-zlib"
     CT_Pushd "${CT_BUILD_DIR}/build-zlib"
 
     CT_DoLog EXTRA "Configuring zlib"
-
-    if [ "${CT_COMPLIBS_SHARED}" = "y" ]; then
-        zlib_opts+=( --enable-shared )
-    else
-        zlib_opts+=( --disable-shared )
-    fi
 
     CC="${CT_HOST}-gcc"                                     \
     AR="${CT_HOST}-ar"                                      \
@@ -41,7 +33,8 @@ do_zlib() {
     CT_DoExecLog CFG                                        \
     ./configure                                             \
         --prefix="${CT_BUILDTOOLS_PREFIX_DIR}"              \
-        "${zlib_opts[@]}"
+        --disable-shared                                    \
+        --enable-static
 
     CT_DoLog EXTRA "Building zlib"
     CT_DoExecLog ALL make

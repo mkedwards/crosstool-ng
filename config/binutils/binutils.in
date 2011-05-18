@@ -67,10 +67,24 @@ config BINUTILS_2_21_or_later
 config BINUTILS_HAS_GOLD
     bool
 
+config BINUTILS_GOLD_SUPPORTS_ARCH
+    bool
+
 config BINUTILS_HAS_PLUGINS
     bool
 
-if BINUTILS_HAS_GOLD
+# Only these architectures have support in gold
+config ARCH_arm
+    select BINUTILS_GOLD_SUPPORTS_ARCH
+
+config ARCH_x86
+    select BINUTILS_GOLD_SUPPORTS_ARCH
+
+# Force using the BFD linker if needed
+# This is the case for some C libraries (eg. glibc and
+# eglibc at least) and affected components can select this
+config BINUTILS_FORCE_LD_BFD
+    bool
 
 choice
     bool
@@ -86,6 +100,8 @@ config BINUTILS_LINKER_GOLD
     bool
     prompt "gold"
     depends on BINUTILS_HAS_GOLD
+    depends on BINUTILS_GOLD_SUPPORTS_ARCH
+    depends on ! BINUTILS_FORCE_LD_BFD
     depends on EXPERIMENTAL
     select BINUTILS_GOLD_INSTALLED
     help
@@ -98,6 +114,7 @@ config BINUTILS_LINKER_LD_GOLD
     bool
     prompt "ld, gold"
     depends on BINUTILS_HAS_GOLD
+    depends on BINUTILS_GOLD_SUPPORTS_ARCH
     depends on EXPERIMENTAL
     select BINUTILS_GOLD_INSTALLED
     select BINUTILS_LINKER_BOTH
@@ -111,9 +128,11 @@ config BINUTILS_LINKER_GOLD_LD
     bool
     prompt "gold, ld"
     depends on BINUTILS_HAS_GOLD
+    depends on BINUTILS_GOLD_SUPPORTS_ARCH
     depends on EXPERIMENTAL
     select BINUTILS_GOLD_INSTALLED
     select BINUTILS_LINKER_BOTH
+    select BINUTILS_LD_WRAPPER if BINUTILS_FORCE_LD_BFD
     help
       Both the historical ld and the new gold linkers will be
       installed, with gold being the default linker used.
@@ -121,6 +140,11 @@ config BINUTILS_LINKER_GOLD_LD
       See help for gold, above.
 
 endchoice # Enable linkers
+
+if BINUTILS_LINKER_GOLD
+comment "WARNING! gold is not capable of"
+comment "|         building glibc/eglibc!"
+endif # BINUTILS_LINKER_GOLD
 
 config BINUTILS_GOLD_INSTALLED
     bool
@@ -158,11 +182,8 @@ config BINUTILS_LD_WRAPPER
 
 config BINUTILS_LINKER_DEFAULT
     string
-    depends on BINUTILS_LD_WRAPPER
-    default "bfd"   if BINUTILS_LINKER_LD_GOLD
-    default "gold"  if BINUTILS_LINKER_GOLD_LD
-
-endif # BINUTILS_HAS_GOLD
+    default "bfd"   if BINUTILS_LINKER_LD || BINUTILS_LINKER_LD_GOLD
+    default "gold"  if BINUTILS_LINKER_GOLD || BINUTILS_LINKER_GOLD_LD
 
 config BINUTILS_PLUGINS
     bool

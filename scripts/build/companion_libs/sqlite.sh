@@ -23,19 +23,11 @@ do_sqlite_extract() {
 if [ "${CT_SQLITE}" = "y" ]; then
 
 do_sqlite() {
-    local -a sqlite_opts
-
     CT_DoStep INFO "Installing sqlite"
     mkdir -p "${CT_BUILD_DIR}/build-sqlite"
     CT_Pushd "${CT_BUILD_DIR}/build-sqlite"
 
     CT_DoLog EXTRA "Configuring sqlite"
-
-    if [ "${CT_COMPLIBS_SHARED}" = "y" ]; then
-        sqlite_opts+=( --enable-shared --disable-static )
-    else
-        sqlite_opts+=( --disable-shared --enable-static )
-    fi
 
     CC="${CT_HOST}-gcc"                                         \
     CFLAGS="-fPIC"                                              \
@@ -45,7 +37,8 @@ do_sqlite() {
         --host=${CT_HOST}                                       \
         --target=${CT_TARGET}                                   \
         --prefix="${CT_PREFIX_DIR}"                             \
-        "${sqlite_opts[@]}"
+        --disable-shared                                        \
+        --enable-static
 
     CT_DoLog EXTRA "Building sqlite"
     CT_DoExecLog ALL make

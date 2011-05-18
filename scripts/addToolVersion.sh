@@ -57,13 +57,14 @@ doHelp() {
 # $1            : version string to add
 addToolVersion() {
     local version="$1"
-    local file
+    local file="$2"
     local config_ver_option
     local exp_obs_prompt
     local deps v ver_M ver_m ver_p
     local SedExpr1 SedExpr2
 
-    file="config/${tool_prefix}/${tool}.in"
+    [ -f "${file}" ] || return 0
+
     v=$(echo "${version}" |"${sed}" -r -e 's/-/_/g; s/\./_/g;')
 
     config_ver_option="${cat}_V_${v}"
@@ -72,9 +73,11 @@ addToolVersion() {
     # to try adding a new version if the one he/she wants is not listed.
     # But it can be the case where the version is hidden behind either one
     # of EXPERIMENTAL or OBSOLETE, so warn if the version is already listed.
-    if (GREP_OPTIONS= grep -E "^config ${config_ver_option}$" "${file}" >/dev/null 2>&1); then
+    if grep -E "^config ${config_ver_option}$" "${file}" >/dev/null 2>&1; then
         echo "'${tool}': version '${version}' already present:"
-        GREP_OPTIONS= grep -A3 -B0 -E "^config ${config_ver_option}$" "${file}"
+        grep -A1 -B0 -n                                                     \
+             -E "^(config ${config_ver_option}| {4}prompt \"${version}\")$" \
+             "${file}" /dev/null
         return 0
     fi
 
@@ -101,15 +104,16 @@ addToolVersion() {
             # Extract 'M'ajor and 'm'inor from version string
             ver_M=$(echo "${version}...." |cut -d . -f 1)
             ver_m=$(echo "${version}...." |cut -d . -f 2)
-            if [    ${ver_M} -gt 4                          \
-                 -o \( ${ver_M} -eq 4 -a ${ver_m} -ge 5 \)  ]; then
-                SedExpr1="${SedExpr1}\n    select CC_GCC_4_5_or_later"
-            elif [    ${ver_M} -gt 4                          \
-                   -o \( ${ver_M} -eq 4 -a ${ver_m} -ge 4 \)  ]; then
-                SedExpr1="${SedExpr1}\n    select CC_GCC_4_4_or_later"
-            elif [    ${ver_M} -gt 4                          \
-                   -o \( ${ver_M} -eq 4 -a ${ver_m} -ge 3 \)  ]; then
-                SedExpr1="${SedExpr1}\n    select CC_GCC_4_3_or_later"
+            if [   \( ${ver_M} -eq 4 -a ${ver_m} -eq 6 \)  ]; then
+                SedExpr1="${SedExpr1}\n    select CC_GCC_4_6"
+            elif [ \( ${ver_M} -eq 4 -a ${ver_m} -eq 5 \)  ]; then
+                SedExpr1="${SedExpr1}\n    select CC_GCC_4_5"
+            elif [ \( ${ver_M} -eq 4 -a ${ver_m} -eq 4 \)  ]; then
+                SedExpr1="${SedExpr1}\n    select CC_GCC_4_4"
+            elif [ \( ${ver_M} -eq 4 -a ${ver_m} -eq 3 \)  ]; then
+                SedExpr1="${SedExpr1}\n    select CC_GCC_4_3"
+            elif [ \( ${ver_M} -eq 4 -a ${ver_m} -eq 2 \)  ]; then
+                SedExpr1="${SedExpr1}\n    select CC_GCC_4_2"
             fi
             ;;
         uClibc)
@@ -192,7 +196,11 @@ while [ $# -gt 0 ]; do
 
         # Version string:
         *)  [ -n "${tool}" ] || { doHelp; exit 1; }
-            addToolVersion "$1"
+            file_base="config/${tool_prefix}/${tool}.in"
+            # Components have their version selection either
+            # in the .in or the .in.2 file. Handle both.
+            addToolVersion "$1" "${file_base}"
+            addToolVersion "$1" "${file_base}.2"
             ;;
     esac
     shift

@@ -64,8 +64,6 @@ do_mpfr_extract() {
 }
 
 do_mpfr() {
-    local -a mpfr_opts
-
     mkdir -p "${CT_BUILD_DIR}/build-mpfr"
     cd "${CT_BUILD_DIR}/build-mpfr"
 
@@ -79,22 +77,18 @@ do_mpfr() {
         *)          mpfr_opts+=( --enable-thread-safe  );;
     esac
 
-    if [ "${CT_COMPLIBS_SHARED}" = "y" ]; then
-        mpfr_opts+=( --enable-shared --disable-static )
-    else
-        mpfr_opts+=( --disable-shared --enable-static )
-    fi
 
     CT_DoLog EXTRA "Configuring MPFR"
+    CT_DoExecLog CFG                                    \
     CC="${CT_HOST}-gcc"                                 \
     CFLAGS="${CT_CFLAGS_FOR_HOST}"                      \
-    CT_DoExecLog CFG                                    \
     "${CT_SRC_DIR}/mpfr-${CT_MPFR_VERSION}/configure"   \
         --build=${CT_BUILD}                             \
         --host=${CT_HOST}                               \
         --prefix="${CT_COMPLIBS_DIR}"                   \
         --with-gmp="${CT_COMPLIBS_DIR}"                 \
-        "${mpfr_opts[@]}"
+        --disable-shared                                \
+        --enable-static
 
     CT_DoLog EXTRA "Building MPFR"
     CT_DoExecLog ALL make ${JOBSFLAGS}

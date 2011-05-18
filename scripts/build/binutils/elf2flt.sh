@@ -32,14 +32,13 @@ do_elf2flt() {
 
     CT_DoStep INFO "Installing elf2flt"
 
-    elf2flt_opts=
     binutils_bld=${CT_BUILD_DIR}/build-binutils
     binutils_src=${CT_SRC_DIR}/binutils-${CT_BINUTILS_VERSION}
 
     CT_DoLog EXTRA "Configuring elf2flt"
     cp ../../config.cache .
-    CFLAGS="${CT_CFLAGS_FOR_HOST}"                              \
     CT_DoExecLog CFG                                            \
+    CFLAGS="${CT_CFLAGS_FOR_HOST}"                              \
     "${CT_SRC_DIR}/elf2flt-cvs-${CT_ELF2FLT_VERSION}/configure" \
         --build=${CT_BUILD}                                     \
         --host=${CT_HOST}                                       \
@@ -50,7 +49,6 @@ do_elf2flt() {
         --with-binutils-include-dir=${binutils_src}/include     \
         --with-libbfd=${binutils_bld}/bfd/libbfd.a              \
         --with-libiberty=${binutils_bld}/libiberty/libiberty.a  \
-        ${elf2flt_opts}                                         \
         ${CT_ELF2FLT_EXTRA_CONFIG}
 
     CT_DoLog EXTRA "Building elf2flt"

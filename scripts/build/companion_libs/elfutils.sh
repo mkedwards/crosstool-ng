@@ -19,19 +19,11 @@ do_elfutils_extract() {
 if [ "${CT_ELFUTILS}" = "y" ]; then
 
 do_elfutils() {
-    local -a elfutils_opts
-
     CT_DoStep INFO "Installing elfutils"
     mkdir -p "${CT_BUILD_DIR}/build-elfutils"
     CT_Pushd "${CT_BUILD_DIR}/build-elfutils"
 
     CT_DoLog EXTRA "Configuring elfutils"
-
-    if [ "${CT_COMPLIBS_SHARED}" = "y" ]; then
-        elfutils_opts+=( --enable-shared --disable-static )
-    else
-        elfutils_opts+=( --disable-shared --enable-static )
-    fi
 
     CC="${CT_HOST}-gcc"                                         \
     CFLAGS="-fPIC"                                              \
@@ -41,7 +33,8 @@ do_elfutils() {
         --host=${CT_HOST}                                       \
         --target=${CT_TARGET}                                   \
         --prefix="${CT_PREFIX_DIR}"                             \
-        "${elfutils_opts[@]}"
+        --disable-shared                                        \
+        --enable-static
 
     CT_DoLog EXTRA "Building elfutils"
     CT_DoExecLog ALL make

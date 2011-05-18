@@ -55,8 +55,7 @@ do_ncurses() {
         --with-normal                                           \
         --without-shared                                        \
         --without-ticlib                                        \
-        --without-ada                                           \
-        "${ncurses_opts[@]}"
+        --without-ada
 
     CT_DoLog EXTRA "Building ncurses"
     CT_DoExecLog ALL make

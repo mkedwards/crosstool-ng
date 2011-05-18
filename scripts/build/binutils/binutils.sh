@@ -58,8 +58,8 @@ do_binutils() {
 
     CT_DoLog DEBUG "Extra config passed: '${extra_config[*]}'"
 
-    CFLAGS="${CT_CFLAGS_FOR_HOST}"                              \
     CT_DoExecLog CFG                                            \
+    CFLAGS="${CT_CFLAGS_FOR_HOST}"                              \
     "${CT_SRC_DIR}/binutils-${CT_BINUTILS_VERSION}/configure"   \
         --build=${CT_BUILD}                                     \
         --host=${CT_HOST}                                       \
@@ -89,10 +89,18 @@ do_binutils() {
     if [ "${CT_BINUTILS_LD_WRAPPER}" = "y" ]; then
         CT_DoLog EXTRA "Installing ld wrapper"
         rm -f "${CT_PREFIX_DIR}/bin/${CT_TARGET}-ld"
+        rm -f "${CT_PREFIX_DIR}/${CT_TARGET}/bin/ld"
         sed -r -e "s/@@DEFAULT_LD@@/${CT_BINUTILS_LINKER_DEFAULT}/" \
             "${CT_LIB_DIR}/scripts/build/binutils/binutils-ld.in"   \
             >"${CT_PREFIX_DIR}/bin/${CT_TARGET}-ld"
         chmod +x "${CT_PREFIX_DIR}/bin/${CT_TARGET}-ld"
+        cp -a "${CT_PREFIX_DIR}/bin/${CT_TARGET}-ld"    \
+              "${CT_PREFIX_DIR}/${CT_TARGET}/bin/ld"
+
+        # If needed, force using ld.bfd during the toolchain build
+        if [ "${CT_BINUTILS_FORCE_LD_BFD}" = "y" ]; then
+            export CTNG_LD_IS=bfd
+        fi
     fi
 
     # Make those new tools available to the core C compilers to come.

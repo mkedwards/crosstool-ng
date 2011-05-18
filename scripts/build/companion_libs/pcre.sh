@@ -22,19 +22,11 @@ do_pcre_extract() {
 if [ "${CT_PCRE}" = "y" ]; then
 
 do_pcre() {
-    local -a pcre_opts
-
     CT_DoStep INFO "Installing pcre"
     mkdir -p "${CT_BUILD_DIR}/build-pcre"
     CT_Pushd "${CT_BUILD_DIR}/build-pcre"
 
     CT_DoLog EXTRA "Configuring pcre"
-
-    if [ "${CT_COMPLIBS_SHARED}" = "y" ]; then
-        pcre_opts+=( --enable-shared --disable-static )
-    else
-        pcre_opts+=( --disable-shared --enable-static )
-    fi
 
     CC="${CT_HOST}-gcc"                                         \
     CFLAGS="-fPIC"                                              \
@@ -46,7 +38,8 @@ do_pcre() {
         --prefix="${CT_PREFIX_DIR}"                             \
         --enable-unicode-properties                             \
         --enable-pcregrep-libz                                  \
-        "${pcre_opts[@]}"
+        --disable-shared                                        \
+        --enable-static
 
     CT_DoLog EXTRA "Building pcre"
     CT_DoExecLog ALL make

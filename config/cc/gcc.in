@@ -13,130 +13,171 @@ config CC_gcc
       gcc supports many languages, a powerful code parser, optimised binary
       output, and lots of other features.
 
+config CC_GCC_SHOW_LINARO
+    bool
+    prompt "Show Linaro versions (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+    help
+      Linaro is maintaining some advanced/more stable/experimental versions
+      of gcc, especially for the ARM architecture.
+      
+      Those versions have not been blessed by the gcc comunity (nor have they
+      been cursed either!), but they look to be pretty much stable, and even
+      more stable than the upstream versions. YMMV...
+      
+      If you do not know what this Linaro stuff is, then simply say 'n' here,
+      and rest in peace. OTOH, if you know what you are doing, you will be
+      able to use and enjoy :-) the Linaro versions by saying 'y' here.
+      
+      Linaro: http://www.linaro.org/
+
 choice
     bool
     prompt "gcc version"
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
+config CC_V_linaro_4_6_2011_04_0
+    bool
+    prompt "linaro-4.6-2011.04-0 (EXPERIMENTAL)"
+    depends on CC_GCC_SHOW_LINARO
+    select CC_GCC_4_6
+
+config CC_V_4_6_0
+    bool
+    prompt "4.6.0 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+    select CC_GCC_4_6
+
+config CC_V_linaro_4_5_2011_04_0
+    bool
+    prompt "linaro-4.5-2011.04-0 (EXPERIMENTAL)"
+    depends on CC_GCC_SHOW_LINARO
+    select CC_GCC_4_5
+
 config CC_V_linaro_4_5_2011_03_0
     bool
     prompt "linaro-4.5-2011.03-0 (EXPERIMENTAL)"
-    depends on EXPERIMENTAL
-    select CC_GCC_4_5_or_later
+    depends on CC_GCC_SHOW_LINARO
+    select CC_GCC_4_5
 
 config CC_V_linaro_4_5_2011_02_0
     bool
     prompt "linaro-4.5-2011.02-0 (EXPERIMENTAL)"
-    depends on EXPERIMENTAL
-    select CC_GCC_4_5_or_later
+    depends on CC_GCC_SHOW_LINARO
+    select CC_GCC_4_5
 
 config CC_V_4_5_2
     bool
     prompt "4.5.2 (EXPERIMENTAL)"
     depends on EXPERIMENTAL
-    select CC_GCC_4_5_or_later
+    select CC_GCC_4_5
 
 config CC_V_4_5_1
     bool
     prompt "4.5.1 (EXPERIMENTAL)"
     depends on EXPERIMENTAL
-    select CC_GCC_4_5_or_later
+    select CC_GCC_4_5
 
 config CC_V_4_5_0
     bool
     prompt "4.5.0 (EXPERIMENTAL)"
     depends on EXPERIMENTAL
-    select CC_GCC_4_5_or_later
+    select CC_GCC_4_5
 
 
 config CC_V_linaro_4_4_2011_02_0
     bool
     prompt "linaro-4.4-2011.02-0 (EXPERIMENTAL)"
-    depends on EXPERIMENTAL
-    select CC_GCC_4_4_or_later
+    depends on CC_GCC_SHOW_LINARO
+    select CC_GCC_4_4
+
+config CC_V_4_4_6
+    bool
+    prompt "4.4.6"
+    select CC_GCC_4_4
 
 config CC_V_4_4_5
     bool
     prompt "4.4.5"
-    select CC_GCC_4_4_or_later
+    select CC_GCC_4_4
 
 config CC_V_4_4_4
     bool
     prompt "4.4.4"
-    select CC_GCC_4_4_or_later
+    select CC_GCC_4_4
 
 config CC_V_4_4_3
     bool
     prompt "4.4.3"
-    select CC_GCC_4_4_or_later
+    select CC_GCC_4_4
 
 config CC_V_4_4_2
     bool
     prompt "4.4.2"
-    select CC_GCC_4_4_or_later
+    select CC_GCC_4_4
 
 config CC_V_4_4_1
     bool
     prompt "4.4.1"
-    select CC_GCC_4_4_or_later
+    select CC_GCC_4_4
 
 config CC_V_4_4_0
     bool
     prompt "4.4.0"
-    select CC_GCC_4_4_or_later
+    select CC_GCC_4_4
 
 config CC_V_4_3_5
     bool
     prompt "4.3.5"
-    select CC_GCC_4_3_or_later
+    select CC_GCC_4_3
 
 config CC_V_4_3_4
     bool
     prompt "4.3.4"
-    select CC_GCC_4_3_or_later
+    select CC_GCC_4_3
 
 config CC_V_4_3_3
     bool
     prompt "4.3.3"
-    select CC_GCC_4_3_or_later
+    select CC_GCC_4_3
 
 config CC_V_4_3_2
     bool
     prompt "4.3.2"
-    select CC_GCC_4_3_or_later
+    select CC_GCC_4_3
 
 config CC_V_4_3_1
     bool
     prompt "4.3.1"
-    select CC_GCC_4_3_or_later
+    select CC_GCC_4_3
 
 config CC_V_4_2_4
     bool
     prompt "4.2.4"
-    select CC_GCC_4_2_or_later
+    select CC_GCC_4_2
 
 config CC_V_4_2_3
     bool
     prompt "4.2.3 (OBSOLETE)"
-    select CC_GCC_4_2_or_later
+    select CC_GCC_4_2
     depends on OBSOLETE
 
 config CC_V_4_2_2
     bool
     prompt "4.2.2"
-    select CC_GCC_4_2_or_later
+    select CC_GCC_4_2
 
 config CC_V_4_2_1
     bool
     prompt "4.2.1 (OBSOLETE)"
-    select CC_GCC_4_2_or_later
+    select CC_GCC_4_2
     depends on OBSOLETE
 
 config CC_V_4_2_0
     bool
     prompt "4.2.0 (OBSOLETE)"
-    select CC_GCC_4_2_or_later
+    select CC_GCC_4_2
     depends on OBSOLETE
 
 config CC_V_4_1_2
@@ -156,28 +197,65 @@ config CC_V_3_4_6
 
 endchoice
 
+config CC_GCC_4_2
+    bool
+    default n
+    select CC_GCC_4_2_or_later
+
 config CC_GCC_4_2_or_later
     bool
     default n
+
+config CC_GCC_4_3
+    bool
+    default n
+    select CC_GCC_4_3_or_later
+    select CC_GCC_USE_GMP_MPFR
 
 config CC_GCC_4_3_or_later
     bool
     default n
     select CC_GCC_4_2_or_later
+
+config CC_GCC_4_4
+    bool
+    default n
+    select CC_GCC_4_4_or_later
     select CC_GCC_USE_GMP_MPFR
+    select CC_GCC_HAS_GRAPHITE
 
 config CC_GCC_4_4_or_later
     bool
     default n
     select CC_GCC_4_3_or_later
+
+config CC_GCC_4_5
+    bool
+    default n
+    select CC_GCC_4_5_or_later
+    select CC_GCC_USE_GMP_MPFR
+    select CC_GCC_USE_MPC
     select CC_GCC_HAS_GRAPHITE
+    select CC_GCC_HAS_LTO
 
 config CC_GCC_4_5_or_later
     bool
     default n
     select CC_GCC_4_4_or_later
+
+config CC_GCC_4_6
+    bool
+    default n
+    select CC_GCC_4_6_or_later
+    select CC_GCC_USE_GMP_MPFR
     select CC_GCC_USE_MPC
+    select CC_GCC_HAS_GRAPHITE
     select CC_GCC_HAS_LTO
+
+config CC_GCC_4_6_or_later
+    bool
+    default n
+    select CC_GCC_4_5_or_later
 
 config CC_GCC_HAS_GRAPHITE
     bool
@@ -236,6 +314,10 @@ config CC_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
+    default "4.4.6" if CC_V_4_4_6
+    default "linaro-4.6-2011.04-0" if CC_V_linaro_4_6_2011_04_0
+    default "4.6.0" if CC_V_4_6_0
+    default "linaro-4.5-2011.04-0" if CC_V_linaro_4_5_2011_04_0
     default "linaro-4.5-2011.03-0" if CC_V_linaro_4_5_2011_03_0
     default "linaro-4.5-2011.02-0" if CC_V_linaro_4_5_2011_02_0
     default "4.5.2" if CC_V_4_5_2
@@ -268,52 +350,3 @@ config CC_LANG_JAVA_USE_ECJ
     default y
     depends on CC_LANG_JAVA
     depends on CC_GCC_4_3_or_later
-
-config CC_PKGVERSION
-    string
-    prompt "gcc ID string"
-    depends on CC_GCC_4_3_or_later
-    default "crosstool-NG-${CT_VERSION}"
-    help
-      Specify a string that identifies your package. You may wish to include
-      a build number or build date. This version string will be included in
-      the output of gcc --version.
-
-      This is passed to the configure flag --with-pkgversion.
-
-config CC_BUGURL
-    string
-    prompt "gcc bug URL"
-    depends on CC_GCC_4_3_or_later
-    default ""
-    help
-      Specify the URL that users should visit if they wish to report a bug.
-
-config CC_ENABLE_CXX_FLAGS
-    string
-    prompt "Flags to pass to --enable-cxx-flags"
-    default ""
-    help
-      Enter here the value of the gcc's ./configure option --enable-cxx-flags.
-      Leave empty if you don't know better.
-      
-      Note: just pass in the option _value_, that is only the part that goes
-      after the '=' sign.
-
-config CC_CORE_EXTRA_CONFIG
-    string
-    prompt "Core gcc extra config"
-    default ""
-    help
-      Extra flags to pass onto ./configure when configuring the core gcc.
-      
-      The core gcc is a stripped down, C-only compiler needed to build
-      the C library. Kinda bootstrap gcc, if you wish.
-
-config CC_EXTRA_CONFIG
-    string
-    prompt "gcc extra config"
-    default ""
-    depends on ! BARE_METAL
-    help
-      Extra flags to pass onto ./configure when configuring gcc.
