@@ -84,9 +84,9 @@ do_ncurses_target() {
     [ "${CT_CC_LANG_ADA}" = "y" ] || ncurses_target_opts+=("--without-ada")
 
     cp ../../config.cache .
+    CT_DoExecLog CFG                                            \
     CC="${CT_TARGET}-gcc"                                       \
     CFLAGS="-g -Os -fPIC"                                       \
-    CT_DoExecLog CFG                                            \
     "${CT_SRC_DIR}/ncurses-${CT_NCURSES_VERSION}/configure"     \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \

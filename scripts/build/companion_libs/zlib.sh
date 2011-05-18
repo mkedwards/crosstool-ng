@@ -26,11 +26,11 @@ do_zlib() {
 
     CT_DoLog EXTRA "Configuring zlib"
 
+    CT_DoExecLog CFG                                        \
     CC="${CT_HOST}-gcc"                                     \
     AR="${CT_HOST}-ar"                                      \
     RANLIB="${CT_HOST}-ranlib"                              \
     CFLAGS="-fPIC"                                          \
-    CT_DoExecLog CFG                                        \
     ./configure                                             \
         --prefix="${CT_BUILDTOOLS_PREFIX_DIR}"              \
         --disable-shared                                    \
@@ -57,11 +57,11 @@ do_zlib_target() {
     CT_Pushd "${CT_BUILD_DIR}/build-zlib-for-target"
 
     CT_DoLog EXTRA "Configuring zlib"
+    CT_DoExecLog CFG                                        \
     CC="${CT_TARGET}-gcc"                                   \
     AR="${CT_TARGET}-ar"                                    \
     RANLIB="${CT_TARGET}-ranlib"                            \
     CFLAGS="-g -Os -fPIC"                                   \
-    CT_DoExecLog CFG                                        \
     ./configure                                             \
         --prefix=/usr                                       \
         --enable-shared

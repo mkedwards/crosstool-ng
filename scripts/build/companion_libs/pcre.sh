@@ -28,9 +28,9 @@ do_pcre() {
 
     CT_DoLog EXTRA "Configuring pcre"
 
+    CT_DoExecLog CFG                                            \
     CC="${CT_HOST}-gcc"                                         \
     CFLAGS="-fPIC"                                              \
-    CT_DoExecLog CFG                                            \
     "${CT_SRC_DIR}/pcre-${CT_PCRE_VERSION}/configure"           \
         --build=${CT_BUILD}                                     \
         --host=${CT_HOST}                                       \
@@ -62,9 +62,9 @@ do_pcre_target() {
 
     CT_DoLog EXTRA "Configuring pcre"
     cp ../../config.cache .
+    CT_DoExecLog CFG                                            \
     CC="${CT_TARGET}-gcc"                                       \
     CFLAGS="-g -Os -fPIC"                                       \
-    CT_DoExecLog CFG                                            \
     "${CT_SRC_DIR}/pcre-${CT_PCRE_VERSION}/configure"           \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \

@@ -25,9 +25,9 @@ do_libunwind() {
 
     CT_DoLog EXTRA "Configuring libunwind"
 
+    CT_DoExecLog CFG                                            \
     CC="${CT_HOST}-gcc"                                         \
     CFLAGS="-fPIC"                                              \
-    CT_DoExecLog CFG                                            \
     "${CT_SRC_DIR}/libunwind-${CT_LIBUNWIND_VERSION}/configure" \
         --build=${CT_BUILD}                                     \
         --host=${CT_HOST}                                       \
@@ -57,9 +57,9 @@ do_libunwind_target() {
 
     CT_DoLog EXTRA "Configuring libunwind"
     cp ../../config.cache .
+    CT_DoExecLog CFG                                            \
     CC="${CT_TARGET}-gcc"                                       \
     CFLAGS="-g -Os -fPIC"                                       \
-    CT_DoExecLog CFG                                            \
     "${CT_SRC_DIR}/libunwind-${CT_LIBUNWIND_VERSION}/configure" \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \
