@@ -12,6 +12,11 @@ config TZ_V_2011d
     prompt "2011d (EXPERIMENTAL)"
     depends on EXPERIMENTAL
 
+config TZ_V_2011g
+    bool
+    prompt "2011g (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
 endchoice
 
 config TZ_VERSION
@@ -19,3 +24,4 @@ config TZ_VERSION
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
     default "2011d" if TZ_V_2011d
+    default "2011g" if TZ_V_2011g
