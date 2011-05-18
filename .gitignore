@@ -1,0 +1,8 @@
+Makefile
+ct-ng
+docs/ct-ng.1
+docs/ct-ng.1.gz
+paths.mk
+scripts/crosstool-NG.sh
+scripts/saveSample.sh
+scripts/showTuple.sh
