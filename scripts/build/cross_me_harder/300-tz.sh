@@ -1,10 +1,10 @@
 # Build script for tz
 
 do_cross_me_harder_tz_get() {
-    CT_GetFile "tzcode${CT_TZ_VERSION}" \
-               ftp://elsie.nci.nih.gov/pub/
-    CT_GetFile "tzdata${CT_TZ_VERSION}" \
-               ftp://elsie.nci.nih.gov/pub/
+    CT_GetFile "tzcode${CT_TZ_VERSION}" .tar.gz \
+               ftp://elsie.nci.nih.gov/pub
+    CT_GetFile "tzdata${CT_TZ_VERSION}" .tar.gz \
+               ftp://elsie.nci.nih.gov/pub
 }
 
 do_cross_me_harder_tz_extract() {

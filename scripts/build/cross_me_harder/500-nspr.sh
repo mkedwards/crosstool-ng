@@ -1,7 +1,7 @@
 # Build script for nspr
 
 do_cross_me_harder_nspr_get() {
-    CT_GetFile "nspr-${CT_NSPR_VERSION}" tar.gz \
+    CT_GetFile "nspr-${CT_NSPR_VERSION}" .tar.gz \
                "https://ftp.mozilla.org/pub/mozilla.org/nspr/releases/v${CT_NSPR_VERSION}/src"
 }
 

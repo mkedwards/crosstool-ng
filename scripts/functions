@@ -434,6 +434,8 @@ CT_DoGetFile() {
     local _wget=$(CT_Which wget)
     _curl="${_curl:-false}"
     _wget="${_wget:-false}"
+    # CTBU disable use of curl; it doesn't seem to get along with Cisco's proxy
+    _curl=false
 
     # Remove potential left-over from a previous run
     rm -f "${tmp}"
