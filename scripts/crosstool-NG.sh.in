@@ -80,18 +80,28 @@ esac
 CT_TestOrAbort "The CONFIG_SHELL '${CT_CONFIG_SHELL}' (${CT_SHELL}) is not valid" -f "${CT_SHELL}" -a -x "${CT_SHELL}"
 
 # Create the bin-overide early
-# Contains symlinks to the tools found by ./configure
-# Note: CT_DoLog and CT_DoExecLog do not use any of those tool, so
-# they can be safely used
+# Contains symlinks to a selection of the tools found by ./configure
+# Note: CT_DoLog and CT_DoExecLog do not use any of those tools, so
+# they can be safely used.
+# Note also that we don't create wrapper scripts for grep, sed, or
+# binutils programs (objcopy, objdump, readelf), because that results in
+# buildtools (especially libtool) that have working-copy paths embedded.
 CT_TOOLS_OVERIDE_DIR="${CT_WORK_DIR}/tools"
 CT_DoLog DEBUG "Creating bin-overide for tools in '${CT_TOOLS_OVERIDE_DIR}'"
 CT_DoExecLog DEBUG mkdir -p "${CT_TOOLS_OVERIDE_DIR}/bin"
 cat "${CT_LIB_DIR}/paths.mk" |while read trash line; do
     tool="${line%%=*}"
     path="${line#*=}"
-    CT_DoLog DEBUG "Creating script-override for '${tool}' -> '${path}'"
-    printf "#${BANG}${CT_SHELL}\nexec '${path}' \"\${@}\"\n" >"${CT_TOOLS_OVERIDE_DIR}/bin/${tool}"
-    CT_DoExecLog ALL chmod 700 "${CT_TOOLS_OVERIDE_DIR}/bin/${tool}"
+    case $tool in
+        grep|sed|readelf|obj*)
+            CT_DoLog DEBUG "NOT creating script-override for '${tool}' -> '${path}'"
+            ;;
+        *)
+            CT_DoLog DEBUG "Creating script-override for '${tool}' -> '${path}'"
+            printf "#${BANG}${CT_SHELL}\nexec '${path}' \"\${@}\"\n" >"${CT_TOOLS_OVERIDE_DIR}/bin/${tool}"
+            CT_DoExecLog ALL chmod 700 "${CT_TOOLS_OVERIDE_DIR}/bin/${tool}"
+        ;;
+    esac
 done
 export PATH="${CT_TOOLS_OVERIDE_DIR}/bin:${PATH}"
 
