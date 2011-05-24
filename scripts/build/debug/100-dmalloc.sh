@@ -38,7 +38,7 @@ do_debug_dmalloc_build() {
     LD="${CT_TARGET}-ld"                                        \
     AR="${CT_TARGET}-ar"                                        \
     RANLIB="${CT_TARGET}-ranlib"                                \
-    CFLAGS="-g -Os -fPIC"                                       \
+    CFLAGS="-g -Os -fPIC -DPIC"                                 \
     "${CT_SRC_DIR}/dmalloc-${CT_DMALLOC_VERSION}/configure"     \
         --prefix=/usr                                           \
         --build="${CT_BUILD}"                                   \

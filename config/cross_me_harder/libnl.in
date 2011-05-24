@@ -1,0 +1,21 @@
+# libnl
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "libnl version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LIBNL_V_3_0
+    bool
+    prompt "3.0 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config LIBNL_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "3.0" if LIBNL_V_3_0

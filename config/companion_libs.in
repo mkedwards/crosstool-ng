@@ -92,6 +92,24 @@ config SQLITE_NEEDED
     select SQLITE
     select COMPLIBS_NEEDED
 
+config ATTR_NEEDED
+    bool
+    default n
+    select ATTR
+    select COMPLIBS_NEEDED
+
+config ACL_NEEDED
+    bool
+    default n
+    select ACL
+    select COMPLIBS_NEEDED
+
+config XMLRPCPP_NEEDED
+    bool
+    default n
+    select XMLRPCPP
+    select COMPLIBS_NEEDED
+
 config COMPLIBS
     bool
     default n
@@ -186,6 +204,29 @@ config SQLITE
 config SQLITE_TARGET
     bool
 
+config ATTR
+    bool
+    select COMPLIBS
+
+config ATTR_TARGET
+    bool
+
+config ACL
+    bool
+    select COMPLIBS
+    select ATTR
+
+config ACL_TARGET
+    bool
+    select ATTR_TARGET
+
+config XMLRPCPP
+    bool
+    select COMPLIBS
+
+config XMLRPCPP_TARGET
+    bool
+
 if GMP
 source "config/companion_libs/gmp.in"
 endif
@@ -245,6 +286,21 @@ if SQLITE || SQLITE_TARGET
 comment "sqlite version needed to build for target"
     depends on !SQLITE
 source "config/companion_libs/sqlite.in"
+endif
+if ATTR || ATTR_TARGET
+comment "attr version needed to build for target"
+    depends on !ATTR
+source "config/companion_libs/attr.in"
+endif
+if ACL || ACL_TARGET
+comment "acl version needed to build for target"
+    depends on !ACL
+source "config/companion_libs/acl.in"
+endif
+if XMLRPCPP || XMLRPCPP_TARGET
+comment "xmlrpcpp version needed to build for target"
+    depends on !XMLRPCPP
+source "config/companion_libs/xmlrpcpp.in"
 endif
 
 config FOO

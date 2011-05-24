@@ -1,0 +1,36 @@
+From 24805ee9bc37daf8533b816e422159cf0f711fd9 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Mon, 21 Mar 2011 23:47:38 +0000
+Subject: [PATCH 1/2] fix memory leak in g_dbus_method_invocation_finalize
+
+---
+ gio/gdbusmethodinvocation.c |    6 +++++-
+ 1 files changed, 5 insertions(+), 1 deletions(-)
+
+diff --git a/gio/gdbusmethodinvocation.c b/gio/gdbusmethodinvocation.c
+index 2e6b5e6..1a9eff3 100644
+--- a/gio/gdbusmethodinvocation.c
++++ b/gio/gdbusmethodinvocation.c
+@@ -99,6 +99,10 @@ g_dbus_method_invocation_finalize (GObject *object)
+   g_free (invocation->object_path);
+   g_free (invocation->interface_name);
+   g_free (invocation->method_name);
++  if (invocation->method_info != NULL)
++    {
++      g_dbus_method_info_unref ((GDBusMethodInfo *)invocation->method_info);
++    }
+   g_object_unref (invocation->connection);
+   g_object_unref (invocation->message);
+   g_variant_unref (invocation->parameters);
+@@ -323,7 +327,7 @@ _g_dbus_method_invocation_new (const gchar           *sender,
+   invocation->object_path = g_strdup (object_path);
+   invocation->interface_name = g_strdup (interface_name);
+   invocation->method_name = g_strdup (method_name);
+-  invocation->method_info = g_dbus_method_info_ref ((GDBusMethodInfo *)method_info);
++  invocation->method_info = method_info ? g_dbus_method_info_ref ((GDBusMethodInfo *)method_info) : NULL;
+   invocation->connection = g_object_ref (connection);
+   invocation->message = g_object_ref (message);
+   invocation->parameters = g_variant_ref (parameters);
+-- 
+1.7.0.4
+

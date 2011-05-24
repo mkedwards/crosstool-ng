@@ -31,14 +31,15 @@ do_sqlite() {
 
     CT_DoExecLog CFG                                            \
     CC="${CT_HOST}-gcc"                                         \
-    CFLAGS="-fPIC"                                              \
+    CFLAGS="-g -Os -fPIC -DPIC"                                 \
     "${CT_SRC_DIR}/sqlite-${CT_SQLITE_VERSION}/configure"       \
         --build=${CT_BUILD}                                     \
         --host=${CT_HOST}                                       \
         --target=${CT_TARGET}                                   \
         --prefix="${CT_PREFIX_DIR}"                             \
-        --disable-shared                                        \
+        --enable-shared                                         \
         --enable-static
+    # --enable-shared because nspr builds a shared library linked against sqlite
 
     CT_DoLog EXTRA "Building sqlite"
     CT_DoExecLog ALL make
@@ -63,7 +64,7 @@ do_sqlite_target() {
     cp ../../config.cache .
     CT_DoExecLog CFG                                            \
     CC="${CT_TARGET}-gcc"                                       \
-    CFLAGS="-g -Os -fPIC"                                       \
+    CFLAGS="-g -Os -fPIC -DPIC"                                 \
     "${CT_SRC_DIR}/sqlite-${CT_SQLITE_VERSION}/configure"       \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \

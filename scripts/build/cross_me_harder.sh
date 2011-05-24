@@ -33,6 +33,7 @@ do_cross_me_harder_extract() {
 do_cross_me_harder() {
     for f in ${CT_CROSS_ME_HARDER_FACILITY_LIST}; do
         do_cross_me_harder_${f}_build
+        rm -f "${CT_SYSROOT_DIR}/usr/lib/"*.la
     done
 }
 

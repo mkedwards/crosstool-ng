@@ -34,14 +34,15 @@ do_expat() {
 
     CT_DoExecLog CFG                                            \
     CC="${CT_HOST}-gcc"                                         \
-    CFLAGS="-fPIC"                                              \
+    CFLAGS="-g -Os -fPIC -DPIC"                                 \
     "${CT_SRC_DIR}/expat-${CT_EXPAT_VERSION}/configure"         \
         --build=${CT_BUILD}                                     \
         --host=${CT_HOST}                                       \
         --target=${CT_TARGET}                                   \
         --prefix="${CT_PREFIX_DIR}"                             \
-        --disable-shared                                        \
+        --enable-shared                                         \
         --enable-static
+    # --enable-shared because dbus builds a shared library linked against expat
 
     CT_DoLog EXTRA "Building expat"
     CT_DoExecLog ALL make
@@ -66,7 +67,7 @@ do_expat_target() {
     cp ../../config.cache .
     CT_DoExecLog CFG                                            \
     CC="${CT_TARGET}-gcc"                                       \
-    CFLAGS="-g -Os -fPIC"                                       \
+    CFLAGS="-g -Os -fPIC -DPIC"                                 \
     "${CT_SRC_DIR}/expat-${CT_EXPAT_VERSION}/configure"         \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \

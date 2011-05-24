@@ -1,0 +1,270 @@
+From ee565aa42d126a46d3b61760464d736091c021a5 Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@michaedw-vbox-amd64.(none)>
+Date: Tue, 16 Mar 2010 15:05:05 -0700
+Subject: [PATCH] Patches from Debian 3.1.5.dfsg-4.1
+
+---
+ awk.h             |    3 ++
+ builtin.c         |    3 +-
+ eval.c            |    1 +
+ field.c           |    1 +
+ io.c              |    1 -
+ node.c            |   56 +++++++++++++++++++++++++---------------------------
+ po/Makefile.in.in |    2 +-
+ po/de.po          |   12 +++++-----
+ 8 files changed, 41 insertions(+), 38 deletions(-)
+
+diff --git a/awk.h b/awk.h
+index 1f1e34a..62bd6e1 100644
+--- a/awk.h
++++ b/awk.h
+@@ -1166,6 +1166,9 @@ extern NODE *str2wstr P((NODE *n, size_t **ptr));
+ #define force_wstring(n)	str2wstr(n, NULL)
+ extern const wchar_t *wstrstr P((const wchar_t *haystack, size_t hs_len, const wchar_t *needle, size_t needle_len));
+ extern const wchar_t *wcasestrstr P((const wchar_t *haystack, size_t hs_len, const wchar_t *needle, size_t needle_len));
++extern void free_wstr P((NODE *n));
++#else
++#define free_wstr(NODE)	/* empty */
+ #endif
+ /* re.c */
+ extern Regexp *make_regexp P((const char *s, size_t len, int ignorecase, int dfa));
+diff --git a/builtin.c b/builtin.c
+index 78f1656..d0c6429 100644
+--- a/builtin.c
++++ b/builtin.c
+@@ -2462,6 +2462,8 @@ sub_common(NODE *tree, long how_many, int backdigs)
+ 	free(t->stptr);
+ 	t->stptr = buf;
+ 	t->stlen = textlen;
++	free_wstr(t);
++	t->flags &= ~(NUMCUR|NUMBER);
+ 
+ 	free_temp(s);
+ 	if (matches > 0 && lhs) {
+@@ -2471,7 +2473,6 @@ sub_common(NODE *tree, long how_many, int backdigs)
+ 		}
+ 		if (after_assign != NULL)
+ 			(*after_assign)();
+-		t->flags &= ~(NUMCUR|NUMBER);
+ 	}
+ 	if (mb_indices != NULL)
+ 		free(mb_indices);
+diff --git a/eval.c b/eval.c
+index 375dce4..0b7d3cf 100644
+--- a/eval.c
++++ b/eval.c
+@@ -1176,6 +1176,7 @@ r_tree_eval(register NODE *tree, int iscond)
+ 			memcpy(l->stptr + l->stlen, r->stptr, r->stlen);
+ 			l->stlen += r->stlen;
+ 			l->stptr[l->stlen] = '\0';
++			free_wstr(l);
+ 		} else {
+ 			char *nval;
+ 			size_t nlen = l->stlen + r->stlen + 2;
+diff --git a/field.c b/field.c
+index 99db3ac..7ddb5ca 100644
+--- a/field.c
++++ b/field.c
+@@ -166,6 +166,7 @@ rebuild_record()
+ 	cops = ops;
+ 	ops[0] = '\0';
+ 	for (i = 1;  i <= NF; i++) {
++		free_wstr(fields_arr[i]);
+ 		tmp = fields_arr[i];
+ 		/* copy field */
+ 		if (tmp->stlen == 1)
+diff --git a/io.c b/io.c
+index 964c928..c4d0f11 100644
+--- a/io.c
++++ b/io.c
+@@ -2495,7 +2495,6 @@ iop_alloc(int fd, const char *name, IOBUF *iop)
+ 	}
+ 
+ 	if (iop->fd == INVALID_HANDLE) {
+-		free(iop);
+ 		return NULL;
+ 	}
+ 	if (isatty(iop->fd))
+diff --git a/node.c b/node.c
+index b49a150..63464e6 100644
+--- a/node.c
++++ b/node.c
+@@ -216,15 +216,7 @@ format_val(const char *format, int index, register NODE *s)
+ no_malloc:
+ 	s->stref = 1;
+ 	s->flags |= STRCUR;
+-#if defined MBS_SUPPORT
+-	if ((s->flags & WSTRCUR) != 0) {
+-		assert(s->wstptr != NULL);
+-		free(s->wstptr);
+-		s->wstptr = NULL;
+-		s->wstlen = 0;
+-		s->flags &= ~WSTRCUR;
+-	}
+-#endif
++	free_wstr(s);
+ 	return s;
+ }
+ 
+@@ -288,7 +280,13 @@ r_dupnode(NODE *n)
+ 	r->flags &= ~(PERM|TEMP|FIELD);
+ 	r->flags |= MALLOC;
+ #if defined MBS_SUPPORT
++	/*
++	 * DON'T call free_wstr(r) here!
++	 * r->wstptr still points at n->wstptr's value, and we
++	 * don't want to free it!
++	 */
+ 	r->wstptr = NULL;
++	r->wstlen = 0;
+ #endif /* defined MBS_SUPPORT */
+ 	if (n->type == Node_val && (n->flags & STRCUR) != 0) {
+ 		r->stref = 1;
+@@ -344,11 +342,7 @@ mk_number(AWKNUM x, unsigned int flags)
+ 	r->stref = 1;
+ 	r->stptr = NULL;
+ 	r->stlen = 0;
+-#if defined MBS_SUPPORT
+-	r->wstptr = NULL;
+-	r->wstlen = 0;
+-	r->flags &= ~WSTRCUR;
+-#endif /* MBS_SUPPORT */
++	free_wstr(r);
+ #endif /* GAWKDEBUG */
+ 	return r;
+ }
+@@ -510,20 +504,13 @@ unref(register NODE *tmp)
+ 				return;
+ 			}
+ 			free(tmp->stptr);
+-#if defined MBS_SUPPORT
+-			if (tmp->wstptr != NULL) {
+-				assert((tmp->flags & WSTRCUR) != 0);
+-				free(tmp->wstptr);
+-			}
+-			tmp->flags &= ~WSTRCUR;
+-			tmp->wstptr = NULL;
+-			tmp->wstlen = 0;
+-#endif
++			free_wstr(tmp);
+ 		}
+ 		freenode(tmp);
+ 		return;
+ 	}
+ 	if ((tmp->flags & FIELD) != 0) {
++		free_wstr(tmp);
+ 		freenode(tmp);
+ 		return;
+ 	}
+@@ -702,16 +689,11 @@ str2wstr(NODE *n, size_t **ptr)
+ 	if ((n->flags & WSTRCUR) != 0) {
+ 		if (ptr == NULL)
+ 			return n;
++		free_wstr(n);
+ 		/* otherwise
+ 			fall through and recompute to fill in the array */
+ 	}
+ 
+-	if (n->wstptr != NULL) {
+-		free(n->wstptr);
+-		n->wstptr = NULL;
+-		n->wstlen = 0;
+-	}
+-
+ 	/*
+ 	 * After consideration and consultation, this
+ 	 * code trades space for time. We allocate
+@@ -775,6 +757,22 @@ done:
+ 	return n;
+ }
+ 
++/* free_wstr --- release the wide string part of a node */
++
++void
++free_wstr(NODE *n)
++{
++	assert(n->type == Node_val);
++
++	if ((n->flags & WSTRCUR) != 0) {
++		assert(n->wstptr != NULL);
++		free(n->wstptr);
++	}
++	n->wstptr = NULL;
++	n->wstlen = 0;
++	n->flags &= ~WSTRCUR;
++}
++
+ #if 0
+ static void
+ dump_wstr(FILE *fp, const wchar_t *str, size_t len)
+diff --git a/po/Makefile.in.in b/po/Makefile.in.in
+index 1f5cc28..dbeefbc 100644
+--- a/po/Makefile.in.in
++++ b/po/Makefile.in.in
+@@ -24,7 +24,7 @@ VPATH = @srcdir@
+ prefix = @prefix@
+ exec_prefix = @exec_prefix@
+ datadir = @datadir@
+-localedir = $(datadir)/locale
++localedir = $(prefix)/locale
+ gettextsrcdir = $(datadir)/gettext/po
+ 
+ INSTALL = @INSTALL@
+diff --git a/po/de.po b/po/de.po
+index 503bcfb..319bc9d 100644
+--- a/po/de.po
++++ b/po/de.po
+@@ -350,7 +350,7 @@ msgstr "Kann '%s' nicht zum Schreiben 
+ 
+ #: awkgram.y:2611 profile.c:93
+ msgid "sending profile to standard error"
+-msgstr "Schicke Profile auf Stadard-Fehlerausgabe."
++msgstr "Schicke Profile auf Standard-Fehlerausgabe."
+ 
+ #: awkgram.y:2643
+ #, c-format
+@@ -1473,12 +1473,12 @@ msgstr "Kein Programmtext."
+ #: main.c:665
+ #, c-format
+ msgid "Usage: %s [POSIX or GNU style options] -f progfile [--] file ...\n"
+-msgstr "Anwendung: %s [POSIX- oder GNU-Optionen] -f PROGRAM [--] Datei ...\n"
++msgstr "Anwendung: %s [POSIX- oder GNU-Optionen] -f PROGRAMM [--] Datei ...\n"
+ 
+ #: main.c:667
+ #, c-format
+ msgid "Usage: %s [POSIX or GNU style options] [--] %cprogram%c file ...\n"
+-msgstr "Anwendung: %s [POSIX- oder GNU-Optionen] -- %cPROGRAM%c Datei ...\n"
++msgstr "Anwendung: %s [POSIX- oder GNU-Optionen] -- %cPROGRAMM%c Datei ...\n"
+ 
+ #: main.c:672
+ msgid "POSIX options:\t\tGNU long options:\n"
+@@ -1486,7 +1486,7 @@ msgstr "POSIX-Optionen\t\tGNU-Optionen (lang):\n"
+ 
+ #: main.c:673
+ msgid "\t-f progfile\t\t--file=progfile\n"
+-msgstr "\t-f PROGRAM\t\t--file=PROGRAM\n"
++msgstr "\t-f PROGRAMM\t\t--file=PROGRAMM\n"
+ 
+ #: main.c:674
+ msgid "\t-F fs\t\t\t--field-separator=fs\n"
+@@ -1719,7 +1719,7 @@ msgstr "Backslash am String-Ende."
+ 
+ #: node.c:604
+ msgid "POSIX does not allow `\\x' escapes"
+-msgstr "POSIX erlabut keine '\\x'-Escapes."
++msgstr "POSIX erlaubt keine '\\x'-Escapes."
+ 
+ #: node.c:610
+ msgid "no hex digits in `\\x' escape sequence"
+@@ -1818,7 +1818,7 @@ msgstr "Ung
+ 
+ #: regcomp.c:172
+ msgid "Invalid character class name"
+-msgstr "Ungültier Name für Zeichenklasse."
++msgstr "Ungültiger Name für Zeichenklasse."
+ 
+ #: regcomp.c:175
+ msgid "Trailing backslash"
+-- 
+1.7.0
+

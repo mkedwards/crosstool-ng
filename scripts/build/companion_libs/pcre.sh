@@ -30,7 +30,7 @@ do_pcre() {
 
     CT_DoExecLog CFG                                            \
     CC="${CT_HOST}-gcc"                                         \
-    CFLAGS="-fPIC"                                              \
+    CFLAGS="-g -Os -fPIC -DPIC"                                 \
     "${CT_SRC_DIR}/pcre-${CT_PCRE_VERSION}/configure"           \
         --build=${CT_BUILD}                                     \
         --host=${CT_HOST}                                       \
@@ -38,8 +38,9 @@ do_pcre() {
         --prefix="${CT_PREFIX_DIR}"                             \
         --enable-unicode-properties                             \
         --enable-pcregrep-libz                                  \
-        --disable-shared                                        \
+        --enable-shared                                         \
         --enable-static
+    # --enable-shared because glib builds a shared library linked against pcre
 
     CT_DoLog EXTRA "Building pcre"
     CT_DoExecLog ALL make
@@ -64,7 +65,7 @@ do_pcre_target() {
     cp ../../config.cache .
     CT_DoExecLog CFG                                            \
     CC="${CT_TARGET}-gcc"                                       \
-    CFLAGS="-g -Os -fPIC"                                       \
+    CFLAGS="-g -Os -fPIC -DPIC"                                 \
     "${CT_SRC_DIR}/pcre-${CT_PCRE_VERSION}/configure"           \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \

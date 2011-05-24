@@ -1,0 +1,27 @@
+From b65158e40d55f67c0c6045caa4e1e4b0ef771fd4 Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Sun, 18 Jul 2010 08:04:49 -0700
+Subject: [PATCH 3/4] check h_addr in gethostbyname result
+
+---
+ xmlrpc++/src/XmlRpcSocket.cpp |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
+
+diff --git a/xmlrpc++/src/XmlRpcSocket.cpp b/xmlrpc++/src/XmlRpcSocket.cpp
+index fb7a622..2a4dad8 100644
+--- a/xmlrpc++/src/XmlRpcSocket.cpp
++++ b/xmlrpc++/src/XmlRpcSocket.cpp
+@@ -159,6 +159,10 @@ XmlRpcSocket::connect(XmlRpcSocket::Socket fd, std::string& host, int port)
+ 
+   struct hostent *hp = gethostbyname(host.c_str());
+   if (hp == 0) return false;
++  if (hp->h_addr == 0) {
++      XmlRpcUtil::error("XmlRpcSocket::connect error: hp->h_addr is null");
++      return false;
++  }
+ 
+   saddr.sin_family = hp->h_addrtype;
+   memcpy(&saddr.sin_addr, hp->h_addr, hp->h_length);
+-- 
+1.7.0
+

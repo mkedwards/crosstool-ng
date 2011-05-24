@@ -1,0 +1,33 @@
+From 1b91ca4cbef8e4ed7a6d48dc051f56c75a17d836 Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Fri, 10 Sep 2010 19:59:07 -0700
+Subject: [PATCH] include errno when select fails
+
+---
+ xmlrpc++/src/XmlRpcDispatch.cpp |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/xmlrpc++/src/XmlRpcDispatch.cpp b/xmlrpc++/src/XmlRpcDispatch.cpp
+index 95321c7..79b0e39 100644
+--- a/xmlrpc++/src/XmlRpcDispatch.cpp
++++ b/xmlrpc++/src/XmlRpcDispatch.cpp
+@@ -9,6 +9,7 @@
+ #include <errno.h>
+ #include <math.h>
+ #include <sys/timeb.h>
++#include <errno.h>
+ 
+ #if defined(_WINDOWS)
+ # include <winsock2.h>
+@@ -215,7 +216,7 @@ XmlRpcDispatch::waitForAndProcessEvents(double timeoutSeconds)
+ 
+   if (nEvents < 0 && errno != EINTR)
+   {
+-    XmlRpcUtil::error("Error in XmlRpcDispatch::work: error in select (%d).", nEvents);
++    XmlRpcUtil::error("Error in XmlRpcDispatch::work: error in select (%d) errno=%d (%s)", nEvents, errno, strerror(errno));
+     return false;
+   }
+ 
+-- 
+1.7.1.rc2
+

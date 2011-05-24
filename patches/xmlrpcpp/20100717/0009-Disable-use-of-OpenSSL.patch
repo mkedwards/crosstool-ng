@@ -1,0 +1,68 @@
+From ed5724b8d375cfd17b675fc394a41b8c1586b8a6 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Thu, 19 May 2011 07:12:18 +0000
+Subject: [PATCH 9/9] Disable use of OpenSSL
+
+---
+ xmlrpc++/Makefile             |    2 +-
+ xmlrpc++/src/XmlRpcSource.cpp |    2 ++
+ xmlrpc++/test/Makefile        |    5 ++---
+ 3 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/xmlrpc++/Makefile b/xmlrpc++/Makefile
+index 364a338..90c80cd 100644
+--- a/xmlrpc++/Makefile
++++ b/xmlrpc++/Makefile
+@@ -4,7 +4,7 @@ SRC		= ./src
+ SHARED		= -shared
+ CPPFLAGS	= -I$(SRC)
+ DEBUG		= -g
+-OPTIMIZE	= -Os -DUSE_OPENSSL
++OPTIMIZE	= -Os -fPIC -DPIC
+ GCCWARN		= -Wall -W
+ CXXFLAGS	= $(DEBUG) $(GCCWARN) $(OPTIMIZE) $(INCLUDES)
+ VERSION		= 0.8
+diff --git a/xmlrpc++/src/XmlRpcSource.cpp b/xmlrpc++/src/XmlRpcSource.cpp
+index 6b5e4e6..767f6aa 100644
+--- a/xmlrpc++/src/XmlRpcSource.cpp
++++ b/xmlrpc++/src/XmlRpcSource.cpp
+@@ -55,6 +55,8 @@ namespace XmlRpc {
+   {
+ #if USE_OPENSSL
+     _sslEnabled = b;
++#else
++    (void)(b);
+ #endif
+   }
+ 
+diff --git a/xmlrpc++/test/Makefile b/xmlrpc++/test/Makefile
+index 0dca1f2..9db9e0f 100644
+--- a/xmlrpc++/test/Makefile
++++ b/xmlrpc++/test/Makefile
+@@ -1,5 +1,4 @@
+ # makefile written for gnu make
+-CXX		= /usr/local/gcc-3.1/bin/g++ 
+ SRC		= ../src
+ CPPFLAGS	= -I$(SRC)
+ DEBUG		= -g
+@@ -7,7 +6,7 @@ DEBUG		= -g
+ GCCWARN		= -Wall -Wstrict-prototypes
+ CXXFLAGS	= $(DEBUG) $(GCCWARN) $(OPTIMIZE) $(INCLUDES)
+ 
+-LIB		= -L.. -lXmlRpc -lssl
++LIB		= -L.. -lXmlRpc
+ 
+ # Add your system-dependent network libs here
+ # Solaris: -lsocket -lnsl
+@@ -15,7 +14,7 @@ SYSTEMLIBS	=
+ 
+ LDLIBS		= $(SYSTEMLIBS) $(LIB)
+ 
+-TESTS		= HelloClient HelloServer TestBase64Client TestBase64Server TestValues TestXml Validator TestEGroupwareSSLClient
++TESTS		= HelloClient HelloServer TestBase64Client TestBase64Server TestValues TestXml Validator
+ 
+ all:		$(TESTS)
+ 
+-- 
+1.7.0.4
+

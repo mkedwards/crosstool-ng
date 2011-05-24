@@ -1,0 +1,64 @@
+From b1b9e8099ee1eadd2471c53ad6e49806798cb201 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Tue, 24 May 2011 06:02:34 +0000
+Subject: [PATCH] Backport ematch parser to Bison 2.3
+
+---
+ lib/route/cls/ematch_syntax.y |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/lib/route/cls/ematch_syntax.y b/lib/route/cls/ematch_syntax.y
+index 61c91d1..0906c4e 100644
+--- a/lib/route/cls/ematch_syntax.y
++++ b/lib/route/cls/ematch_syntax.y
+@@ -28,8 +28,8 @@
+ %}
+ 
+ %error-verbose
+-%define api.pure
+-%name-prefix "ematch_"
++%pure-parser
++%name-prefix = "ematch_"
+ 
+ %parse-param {void *scanner}
+ %parse-param {char **errp}
+@@ -134,10 +134,12 @@ static void yyerror(void *scanner, char **errp, struct nl_list_head *root, const
+ %type <q> pattern
+ %type <mv> meta_value
+ 
++/*
+ %destructor { free($$); NL_DBG(2, "string destructor\n"); } <s>
+ %destructor { rtnl_pktloc_put($$); NL_DBG(2, "pktloc destructor\n"); } <loc>
+ %destructor { free($$.data); NL_DBG(2, "quoted destructor\n"); } <q>
+ %destructor { rtnl_meta_value_put($$); NL_DBG(2, "meta value destructor\n"); } <mv>
++*/
+ 
+ %start input
+ 
+-- 
+1.7.0.4
+
+diff -ur a/lib/route/pktloc_syntax.y b/lib/route/pktloc_syntax.y
+--- a/lib/route/pktloc_syntax.y	2011-03-21 16:07:20.000000000 +0000
++++ b/lib/route/pktloc_syntax.y	2011-05-24 14:47:01.000000000 +0000
+@@ -8,8 +8,8 @@
+ 
+ %locations
+ %error-verbose
+-%define api.pure
+-%name-prefix "pktloc_"
++%pure-parser
++%name-prefix = "pktloc_"
+ 
+ %parse-param {void *scanner}
+ %lex-param {void *scanner}
+@@ -36,7 +36,9 @@
+ %type <i> mask layer align shift
+ %type <l> location
+ 
++/*
+ %destructor { free($$); } NAME
++*/
+ 
+ %start input
+ 

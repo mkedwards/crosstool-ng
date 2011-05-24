@@ -1,0 +1,3137 @@
+From 4252c584ef8ac347cc3dfb47086d3a8269cd4d5d Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@michaedw-vbox-amd64.(none)>
+Date: Wed, 17 Mar 2010 16:57:50 -0700
+Subject: [PATCH] Debian/Ubuntu procps 1:3.2.8-1ubuntu4 (in patched state)
+
+---
+ Makefile         |    2 +-
+ free.1           |   26 +++++-----
+ kill.1           |   86 ++++++++++++++------------------
+ pgrep.1          |   99 ++++++++++++++++++++++--------------
+ pgrep.c          |   25 ++++++---
+ pmap.1           |   24 +++++----
+ proc/library.map |    2 +-
+ proc/module.mk   |    2 +-
+ proc/readproc.c  |   21 +++++++-
+ proc/readproc.h  |    3 +
+ proc/sysinfo.c   |   33 ++++++++++---
+ proc/sysinfo.h   |    2 +-
+ proc/version.c   |   25 ++++++---
+ proc/version.h   |    1 +
+ ps/display.c     |   11 +++--
+ ps/output.c      |   52 +++++++++++++++++---
+ ps/ps.1          |   15 +++---
+ pwdx.c           |   20 ++++++--
+ skill.1          |   63 +++++++++++++-----------
+ skill.c          |    5 +-
+ slabtop.1        |   35 +++++++------
+ sysctl.8         |   90 ++++++++++++++++++++++-----------
+ sysctl.c         |   12 ++++-
+ tload.1          |    2 +-
+ tload.c          |    3 -
+ top.1            |  146 +++++++++++++++++++++++++++++++++---------------------
+ top.c            |   44 ++++++++++++----
+ top.h            |   13 ++++-
+ uptime.1         |   23 +++++++--
+ vmstat.8         |   37 +++++++------
+ vmstat.c         |   82 +++++++++++++-----------------
+ w.1              |   30 +++++++++---
+ w.c              |   26 ++++++++--
+ watch.1          |  130 +++++++++++++++++++++++++++++++++++++++---------
+ watch.c          |  122 +++++++++++++++++++++++++++++++++++++++++++--
+ 35 files changed, 888 insertions(+), 424 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 09fb3ed..9ca6af4 100644
+--- a/Makefile
++++ b/Makefile
+@@ -119,7 +119,7 @@ ifneq ($(MAKECMDGOALS),beta)
+ # Unlike the kernel one, this check_gcc goes all the way to
+ # producing an executable. There might be a -m64 that works
+ # until you go looking for a 64-bit curses library.
+-check_gcc = $(shell if $(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) dummy.c $(ALL_LDFLAGS) $(1) -o /dev/null $(CURSES) > /dev/null 2>&1; then echo "$(1)"; else echo "$(2)"; fi ;)
++check_gcc = $(shell if $(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) dummy.c $(ALL_LDFLAGS) $(1) -o will_this_file_really_exist.tmp $(CURSES) > /dev/null 2>&1; then echo "$(1)"; else echo "$(2)"; fi ; rm -f will_this_file_really_exist.tmp)
+ 
+ # Be 64-bit if at all possible. In a cross-compiling situation, one may
+ # do "make m64=-m32 lib64=lib" to produce 32-bit executables. DO NOT
+diff --git a/free.1 b/free.1
+index 954c8d9..6cee487 100644
+--- a/free.1
++++ b/free.1
+@@ -5,7 +5,7 @@
+ .SH NAME
+ free \- Display amount of free and used memory in the system
+ .SH SYNOPSIS
+-.BR "free " [ "\-b" " | " "\-k" " | " "\-m" "] [" "\-o" "] [" "\-s"
++.BR "free " [ "\-b" " | " "\-k" " | " "\-m" " | " "\-g" "] [" "\-o" "] [" "\-s"
+ .I delay
+ .RB "] [" "\-t" "] [" "\-V" ]
+ .SH DESCRIPTION
+@@ -13,32 +13,34 @@ free \- Display amount of free and used memory in the system
+ memory in the system, as well as the buffers used by the kernel.
+ The shared memory column should be ignored; it is obsolete.
+ .SS Options
+-The \fB-b\fP switch displays the amount of memory in bytes; the 
+-\fB-k\fP switch (set by default) displays it in kilobytes; the \fB-m\fP
+-switch displays it in megabytes.
++The \fB\-b\fP switch displays the amount of memory in bytes; the 
++\fB\-k\fP switch (set by default) displays it in kilobytes; the \fB\-m\fP
++switch displays it in megabytes; the \fB\-g\fP switch displays it in
++gigabytes. 
+ .PP
+-The \fB-t\fP switch displays a line containing the totals.
++The \fB\-t\fP switch displays a line containing the totals.
+ .PP
+-The \fB-o\fP switch disables the display of a "buffer adjusted" line.
+-If the -o option is not specified, \fBfree\fP subtracts buffer memory
++The \fB\-o\fP switch disables the display of a "buffer adjusted" line.
++If the \-o option is not specified, \fBfree\fP subtracts buffer memory
+ from the used memory and adds it to the free memory reported.
+ .PP
+-The \fB-s\fP switch activates continuous polling \fIdelay\fP seconds apart. You
++The \fB\-s\fP switch activates continuous polling \fIdelay\fP seconds apart. You
+ may actually specify any floating point number for \fIdelay\fP, 
+ .BR usleep (3)
+ is used for microsecond resolution delay times.
+ .PP
+ The \fB\-V\fP displays version information.
+ .SH FILES
+-.ta
+-.IR /proc/meminfo "\-\- memory information"
+-.fi
++.TP
++.I /proc/meminfo
++memory information
++
+ 
+ .SH "SEE ALSO"
+ .BR ps (1),
+ .BR slabtop (1),
+ .BR vmstat (8),
+-.BR top(1)
++.BR top (1)
+ 
+ .SH AUTHORS
+ Written by Brian Edmonds. 
+diff --git a/kill.1 b/kill.1
+index aef9dbf..df1bdd7 100644
+--- a/kill.1
++++ b/kill.1
+@@ -10,23 +10,18 @@
+ kill \- send a signal to a process
+ 
+ .SH SYNOPSIS
+-.TS
+-l l.
+-kill pid ...	Send SIGTERM to every process listed.
+-kill -signal pid ...	Send a signal to every process listed.
+-kill -s signal pid ...	Send a signal to every process listed.
+-kill -l	List all signal names.
+-kill -L	List all signal names in a nice table.
+-kill -l signal	Convert a signal number into a name.
+-kill -V,--version	Show version of program
+-.TE
++\fBkill\fR [ \-\fBsignal\fR | \-s \fBsignal\fR ] \fBpid\fR ...
++.br
++\fBkill\fR [ \-L | -V, \-\-version ]
++.br
++\fBkill\fR \-l  [ \fBsignal\fR ]
+ 
+ .SH DESCRIPTION
+-The default signal for kill is TERM. Use -l or -L to list available signals.
++The default signal for kill is TERM. Use \-l or \-L to list available signals.
+ Particularly useful signals include HUP, INT, KILL, STOP, CONT, and 0.
+-Alternate signals may be specified in three ways: -9 -SIGKILL -KILL.
++Alternate signals may be specified in three ways: \-9 \-SIGKILL \-KILL.
+ Negative PID values may be used to choose whole process groups; see the
+-PGID column in ps command output. A PID of -1 is special; it indicates
++PGID column in ps command output. A PID of \-1 is special; it indicates
+ all processes except the kill process itself and init.
+ 
+ .SH SIGNALS
+@@ -37,12 +32,11 @@ When known constant, numbers and default behavior are shown.
+ lB rB lB lB
+ lfCW r l l.
+ Name	Num	Action	Description
+-.TH
+ 0	0	n/a	exit code indicates if a signal may be sent
+ ALRM	14	exit
+ HUP	1	exit
+ INT	2	exit
+-KILL	9	exit	this signal may not be blocked
++KILL	9	exit	cannot be blocked
+ PIPE	13	exit
+ POLL		exit
+ PROF		exit
+@@ -50,15 +44,15 @@ TERM	15	exit
+ USR1		exit
+ USR2		exit
+ VTALRM		exit
+-STKFLT		exit	may not be implemented
+-PWR		ignore	may exit on some systems
++STKFLT		exit	might not be implemented
++PWR		ignore	might exit on some systems
+ WINCH		ignore
+ CHLD		ignore
+ URG		ignore
+-TSTP		stop	may interact with the shell
+-TTIN		stop	may interact with the shell
+-TTOU		stop	may interact with the shell
+-STOP		stop	this signal may not be blocked
++TSTP		stop	might interact with the shell
++TTIN		stop	might interact with the shell
++TTOU		stop	might interact with the shell
++STOP		stop	cannot be blocked
+ CONT		restart	continue if stopped, otherwise ignore
+ ABRT	6	core
+ FPE	8	core
+@@ -66,11 +60,11 @@ ILL	4	core
+ QUIT	3	core
+ SEGV	11	core
+ TRAP	5	core
+-SYS		core	may not be implemented
+-EMT		core	may not be implemented
+-BUS		core	core dump may fail
+-XCPU		core	core dump may fail
+-XFSZ		core	core dump may fail
++SYS		core	might not be implemented
++EMT		core	might not be implemented
++BUS		core	core dump might fail
++XCPU		core	core dump might fail
++XFSZ		core	core dump might fail
+ .TE
+ 
+ .SH NOTES
+@@ -79,36 +73,30 @@ You may need to run the command described here as /bin/kill to solve
+ the conflict.
+ 
+ .SH EXAMPLES
+-
+-.SS
+-.B "kill -9 -1"
+-.nf
++.TP
++.B kill \-9 \-1
+ Kill all processes you can kill.
+-.fi
+-.PP
+-.SS
+-.B "kill -l 11"
+-.nf
++.TP
++.B kill \-l 11
+ Translate number 11 into a signal name.
+-.fi
+-.PP
+-.SS
+-.B "kill -L"
+-.nf
++.TP
++.B kill -L
+ List the available signal choices in a nice table.
+-.fi
+-.PP
+-.SS
+-.B "kill 123 543 2341 3453"
+-.nf
++.TP
++.B kill 123 543 2341 3453
+ Send the default signal, SIGTERM, to all those processes.
+-.fi
+-.PP
++
+ .SH "SEE ALSO"
+-pkill(1) skill(1) kill(2) renice(1) nice(1) signal(7) killall(1)
++.BR pkill (1),
++.BR skill (1),
++.BR kill (2),
++.BR renice (1),
++.BR nice (1),
++.BR signal (7),
++.BR killall (1).
+ 
+ .SH STANDARDS
+-This command meets appropriate standards. The -L flag is Linux-specific.
++This command meets appropriate standards. The \-L flag is Linux-specific.
+ 
+ .SH AUTHOR
+ Albert Cahalan <albert@users.sf.net> wrote kill in 1999 to replace a
+diff --git a/pgrep.1 b/pgrep.1
+index ae2edc2..a1669a8 100644
+--- a/pgrep.1
++++ b/pgrep.1
+@@ -2,35 +2,39 @@
+ .\" Licensed under version 2 of the GNU General Public License.
+ .\" Copyright 2000 Kjetil Torgrim Homme
+ .\"
+-.TH PGREP 1 "June 25, 2000" "Linux" "Linux User's Manual"
++.TH PGREP 1 "October 5, 2007" "Linux" "Linux User's Manual"
+ .SH NAME
+ pgrep, pkill \- look up or signal processes based on name and other attributes
+ 
+ .SH SYNOPSIS
+-pgrep [\-flvx] [\-d \fIdelimiter\fP] [\-n|\-o] [\-P \fIppid\fP,...] [\-g \fIpgrp\fP,...]
+-.br
+-	[\-s \fIsid\fP,...] [\-u \fIeuid\fP,...] [\-U \fIuid\fP,...] [\-G \fIgid\fP,...]
+-.br
+-	[\-t \fIterm\fP,...] [\fIpattern\fP]
+-
+-pkill [\-\fIsignal\fP] [\-fvx] [\-n|\-o] [\-P \fIppid\fP,...] [\-g \fIpgrp\fP,...]
+-.br
+-	[\-s \fIsid\fP,...] [\-u \fIeuid\fP,...] [\-U \fIuid\fP,...] [\-G \fIgid\fP,...]
+-.br
+-	[\-t \fIterm\fP,...] [\fIpattern\fP]
++.na
++\fBpgrep\fR [\fB\-cflvx\fR] [\fB\-d\ \fIdelimiter\fR] [\fB\-n\fR|\fB\-o\fR] \
++[\fB\-P\ \fIppid\fR,...] [\fB\-g\ \fIpgrp\fR,...] [\fB\-s\ \fIsid\fR,...] \
++[\fB\-u\ \fIeuid\fR,...] [\fB\-U\ \fIuid\fR,...] [\fB\-G\ \fIgid\fR,...] \
++[\fB\-t\ \fIterm\fR,...] [\fIpattern\fR]
++
++.HP
++\fBpkill\fR [\fB\-\fIsignal\fR] [\fB\-fvx\fR] [\fB\-n\fR|\fB\-o\fR] \
++[\fB\-P\ \fIppid\fR,...] [\fB\-g\ \fIpgrp\fR,...] [\fB\-s\ \fIsid\fR,...] \
++[\fB\-u\ \fIeuid\fR,...] [\fB\-U\ \fIuid\fR,...] [\fB\-G\ \fIgid\fR,...] \
++[\fB\-t\ \fIterm\fR,...] [\fIpattern\fR]
+ 
+ .SH DESCRIPTION
+ \fBpgrep\fP looks through the currently running processes and lists the
+ process IDs which matches the selection criteria to stdout.  All
+ the criteria have to match.  For example,
+ 
+-pgrep -u root sshd
++.IP
++$ pgrep \-u root sshd
+ 
++.PP
+ will only list the processes called \fBsshd\fP AND owned by \fBroot\fP.
+ On the other hand,
+ 
+-pgrep -u root,daemon
++.IP
++$ pgrep \-u root,daemon
+ 
++.PP
+ will list the processes owned by \fBroot\fP OR \fBdaemon\fP.
+ 
+ \fBpkill\fP will send the specified signal (by default \fBSIGTERM\fP)
+@@ -38,15 +42,18 @@ to each process instead of listing them on stdout.
+ 
+ .SH OPTIONS
+ .TP
+-\-d \fIdelimiter\fP
++\fB\-c\fR
++Suppress normal output; instead print a count of matching processes.
++.TP
++\fB\-d \fIdelimiter\fP
+ Sets the string used to delimit each process ID in the output (by
+ default a newline).  (\fBpgrep\fP only.)
+ .TP
+-\-f
++\fB\-f\fR
+ The \fIpattern\fP is normally only matched against the process name.
+-When \-f is set, the full command line is used.
++When \fB\-f\fR is set, the full command line is used.
+ .TP
+-\-g \fIpgrp\fP,...
++\fB\-g \fIpgrp\fP,...
+ Only match processes in the process group IDs listed.  Process group 0
+ is translated into \fBpgrep\fP's or \fBpkill\fP's own process group.
+ .TP
+@@ -54,40 +61,40 @@ is translated into \fBpgrep\fP's or \fBpkill\fP's own process group.
+ Only match processes whose real group ID is listed.  Either the
+ numerical or symbolical value may be used.
+ .TP
+-\-l
++\fB\-l\fR
+ List the process name as well as the process ID. (\fBpgrep\fP only.)
+ .TP
+-\-n
++\fB\-n\fR
+ Select only the newest (most recently started) of the matching
+ processes.
+ .TP
+-\-o
++\fB\-o\fR
+ Select only the oldest (least recently started) of the matching
+ processes.
+ .TP
+-\-P \fIppid\fP,...
++\fB\-P \fIppid\fP,...
+ Only match processes whose parent process ID is listed.
+ .TP
+-\-s \fIsid\fP,...
++\fB\-s \fIsid\fP,...
+ Only match processes whose process session ID is listed.  Session ID 0
+ is translated into \fBpgrep\fP's or \fBpkill\fP's own session ID.
+ .TP
+-\-t \fIterm\fP,...
++\fB\-t \fIterm\fP,...
+ Only match processes whose controlling terminal is listed.  The
+ terminal name should be specified without the "/dev/" prefix.
+ .TP
+-\-u \fIeuid\fP,...
++\fB\-u \fIeuid\fP,...
+ Only match processes whose effective user ID is listed.  Either the
+ numerical or symbolical value may be used.
+ .TP
+-\-U \fIuid\fP,...
++\fB\-U \fIuid\fP,...
+ Only match processes whose real user ID is listed.  Either the
+ numerical or symbolical value may be used.
+ .TP
+-\-v
++\fB\-v\fR
+ Negates the matching.
+ .TP
+-\-x
++\fB\-x\fR
+ Only match processes whose name (or command line if \-f is specified)
+ \fBexactly\fP match the \fIpattern\fP.
+ .TP
+@@ -104,32 +111,40 @@ process names or command lines.
+ .SH EXAMPLES
+ Example 1: Find the process ID of the \fBnamed\fP daemon:
+ 
+-unix$ pgrep \-u root named
++.IP
++$ pgrep \-u root named
+ 
++.PP
+ Example 2: Make \fBsyslog\fP reread its configuration file:
+ 
+-unix$ pkill \-HUP syslogd
++.IP
++$ pkill \-HUP syslogd
+ 
++.PP
+ Example 3: Give detailed information on all \fBxterm\fP processes:
+ 
+-unix$ ps \-fp $(pgrep \-d, \-x xterm)
++.IP
++$ ps \-fp $(pgrep \-d, \-x xterm)
+ 
++.PP
+ Example 4: Make all \fBnetscape\fP processes run nicer:
+ 
+-unix$ renice +4 `pgrep netscape`
++.IP
++$ renice +4 `pgrep netscape`
+ 
+ .SH "EXIT STATUS"
++.PD 0
+ .TP
+-.I "0"
++.I 0
+ One or more processes matched the criteria.
+ .TP
+-.I "1"
++.I 1
+ No processes matched.
+ .TP
+-.I "2"
++.I 2
+ Syntax error in the command line.
+ .TP
+-.I "3"
++.I 3
+ Fatal error: out of memory etc.
+ 
+ .SH NOTES
+@@ -141,13 +156,19 @@ The running \fBpgrep\fP or \fBpkill\fP process will never report
+ itself as a match.
+ 
+ .SH BUGS
+-The options \-n and \-o and \-v can not be combined.  Let me know if
+-you need to do this.
++The options \fB\-n\fP and \fB\-o\fP and \fB\-v\fP can not be combined.  
++Let me know if you need to do this.
+ 
+ Defunct processes are reported.
+ 
+ .SH "SEE ALSO"
+-ps(1) regex(7) signal(7) killall(1) skill(1) kill(1) kill(2)
++.BR ps (1),
++.BR regex (7),
++.BR signal (7),
++.BR killall (1),
++.BR skill (1),
++.BR kill (1),
++.BR kill (2)
+ 
+ .SH STANDARDS
+ \fBpkill\fP and \fBpgrep\fP were introduced in Sun's Solaris 7.  This
+diff --git a/pgrep.c b/pgrep.c
+index bbb7cd1..36eccb6 100644
+--- a/pgrep.c
++++ b/pgrep.c
+@@ -54,6 +54,7 @@ static int opt_oldest = 0;
+ static int opt_newest = 0;
+ static int opt_negate = 0;
+ static int opt_exact = 0;
++static int opt_count = 0;
+ static int opt_signal = SIGTERM;
+ static int opt_lock = 0;
+ static int opt_case = 0;
+@@ -79,7 +80,7 @@ static int usage (int opt)
+ 	if (i_am_pkill)
+ 		fprintf (fp, "Usage: pkill [-SIGNAL] [-fvx] ");
+ 	else
+-		fprintf (fp, "Usage: pgrep [-flvx] [-d DELIM] ");
++		fprintf (fp, "Usage: pgrep [-cflvx] [-d DELIM] ");
+ 	fprintf (fp, "[-n|-o] [-P PPIDLIST] [-g PGRPLIST] [-s SIDLIST]\n"
+ 		 "\t[-u EUIDLIST] [-U UIDLIST] [-G GIDLIST] [-t TERMLIST] "
+ 		 "[PATTERN]\n");
+@@ -430,7 +431,8 @@ static union el * select_procs (int *num)
+ 	preg = do_regcomp();
+ 
+ 	if (opt_newest) saved_start_time =  0ULL;
+-	if (opt_oldest) saved_start_time = ~0ULL;
++    else
++	    saved_start_time = ~0ULL;
+ 	if (opt_newest) saved_pid = 0;
+ 	if (opt_oldest) saved_pid = INT_MAX;
+ 	
+@@ -564,7 +566,7 @@ static void parse_opts (int argc, char **argv)
+ 		strcat (opts, "ld:");
+ 	}
+ 			
+-	strcat (opts, "LF:fnovxP:g:s:u:U:G:t:?V");
++	strcat (opts, "LF:cfnovxP:g:s:u:U:G:t:?V");
+ 	
+ 	while ((opt = getopt (argc, argv, opts)) != -1) {
+ 		switch (opt) {
+@@ -612,6 +614,9 @@ static void parse_opts (int argc, char **argv)
+ 			exit(EXIT_SUCCESS);
+ //		case 'c':   // Solaris: match by contract ID
+ //			break;
++        case 'c':
++            opt_count = 1;
++            break;
+ 		case 'd':   // Solaris: change the delimiter
+ 			opt_delim = strdup (optarg);
+ 			break;
+@@ -676,7 +681,7 @@ static void parse_opts (int argc, char **argv)
+ //		case 'z':   // Solaris: match by zone ID
+ //			break;
+ 		case '?':
+-			usage (opt);
++			usage (optopt?optopt:opt);
+ 			break;
+ 		}
+ 	}
+@@ -723,10 +728,14 @@ int main (int argc, char *argv[])
+ 				 procs[i].num, strerror (errno));
+ 		}
+ 	} else {
+-		if (opt_long)
+-			output_strlist(procs,num);
+-		else
+-			output_numlist(procs,num);
++		if (opt_count) {
++			fprintf(stdout, "%ld\n", num);
++		} else {
++			if (opt_long)
++				output_strlist (procs,num);
++			else
++				output_numlist (procs,num);
++		}
+ 	}
+ 	return !num; // exit(EXIT_SUCCESS) if match, otherwise exit(EXIT_FAILURE)
+ }
+diff --git a/pmap.1 b/pmap.1
+index a91d0e8..de03e87 100644
+--- a/pmap.1
++++ b/pmap.1
+@@ -10,25 +10,29 @@
+ pmap \- report memory map of a process
+ 
+ .SH SYNOPSIS
+-.nf
+-pmap [ -x | -d ] [ -q ] pids...
+-pmap -V
+-.fi
++.B pmap
++.RB [ \-x | \-d ]
++.RB [ \-q ]
++.I pid
++\& ...
++.br
++.B pmap \-V
+ 
+ .SH DESCRIPTION
+ The pmap command reports the memory map of a process or processes.
+ 
+ .SH "GENERAL OPTIONS"
+ .TS
+-l l l.
+--x	extended	Show the extended format.
+--d	device	Show the device format.
+--q	quiet	Do not display some header/footer lines.
+--V	show version	Displays version of program.
++lB l l.
++\-x	extended	Show the extended format.
++\-d	device	Show the device format.
++\-q	quiet	Do not display some header/footer lines.
++\-V	show version	Displays version of program.
+ .TE
+ 
+ .SH "SEE ALSO"
+-ps(1) pgrep(1)
++.BR ps(1),
++.BR pgrep(1)
+ 
+ .SH STANDARDS
+ No standards apply, but pmap looks an awful lot like a SunOS command.
+diff --git a/proc/library.map b/proc/library.map
+index a38627b..154061b 100644
+--- a/proc/library.map
++++ b/proc/library.map
+@@ -7,7 +7,7 @@ global:
+ 
+   readproc; readtask; readproctab; readproctab2; look_up_our_self; escape_command;
+   escape_str; escape_strlist;
+-  openproc; closeproc;
++  openproc; closeproc; freeproc;
+   tty_to_dev; dev_to_tty; open_psdb_message; open_psdb; lookup_wchan;
+   display_version; procps_version; linux_version_code;
+   Hertz; smp_num_cpus; have_privs;
+diff --git a/proc/module.mk b/proc/module.mk
+index af20334..c4e85b4 100644
+--- a/proc/module.mk
++++ b/proc/module.mk
+@@ -17,7 +17,7 @@
+ # numbers for future use, the ELF soname can be set equal to the
+ # file name until some future date when a stable ABI is declared.
+ 
+-SHARED     := 1
++SHARED     ?= 1
+ 
+ # for lib$(NAME).so and /usr/include/($NAME) and such
+ NAME       :=  proc
+diff --git a/proc/readproc.c b/proc/readproc.c
+index 4fad11d..19d99b2 100644
+--- a/proc/readproc.c
++++ b/proc/readproc.c
+@@ -173,7 +173,7 @@ ENTER(0x220);
+         // examine a field name (hash and compare)
+     base:
+         if(unlikely(!*S)) break;
+-        entry = table[63 & (asso[S[3]] + asso[S[2]] + asso[S[0]])];
++        entry = table[63 & (asso[(int)S[3]] + asso[(int)S[2]] + asso[(int)S[0]])];
+         colon = strchr(S, ':');
+         if(unlikely(!colon)) break;
+         if(unlikely(colon[1]!='\t')) break;
+@@ -598,6 +598,17 @@ static proc_t* simple_readproc(PROCTAB *restrict const PT, proc_t *restrict cons
+ 	p->environ = file2strvec(path, "environ");
+     else
+         p->environ = NULL;
++
++    if(linux_version_code>=LINUX_VERSION(2,6,24) && (flags & PROC_FILLCGROUP)) {
++	p->cgroup = file2strvec(path, "cgroup"); 	/* read /proc/#/cgroup */
++    	if(p->cgroup && *p->cgroup) {
++		int i = strlen(*p->cgroup);
++		if( (*p->cgroup)[i-1]=='\n' )
++			(*p->cgroup)[i-1] = ' '; //little hack to remove trailing \n
++	}
++    }
++    else
++	p->cgroup = NULL;
+     
+     return p;
+ next_proc:
+@@ -686,7 +697,7 @@ static proc_t* simple_readtask(PROCTAB *restrict const PT, const proc_t *restric
+     t->cmdline = p->cmdline;  // better not free these until done with all threads!
+     t->environ = p->environ;
+ #endif
+-
++    t->cgroup = p->cgroup;
+     t->ppid = p->ppid;  // ought to put the per-task ppid somewhere
+ 
+     return t;
+@@ -896,6 +907,8 @@ void freeproc(proc_t* p) {
+ 	free((void*)*p->cmdline);
+     if (p->environ)
+ 	free((void*)*p->environ);
++    if (p->cgroup)
++	free((void*)*p->cgroup);
+     free(p);
+ }
+ 
+@@ -942,6 +955,8 @@ proc_t** readproctab(int flags, ...) {
+     else
+ 	PT = openproc(flags);
+     va_end(ap);
++    if (!PT)
++      return 0;
+     do {					/* read table: */
+ 	tab = xrealloc(tab, (n+1)*sizeof(proc_t*));/* realloc as we go, using */
+ 	tab[n] = readproc_direct(PT, NULL);     /* final null to terminate */
+@@ -1034,7 +1049,7 @@ proc_data_t *readproctab2(int(*want_proc)(proc_t *buf), int(*want_task)(proc_t *
+  * and filled out proc_t structure.
+  */
+ proc_t * get_proc_stats(pid_t pid, proc_t *p) {
+-	static char path[PATH_MAX], sbuf[1024];
++	static char path[32], sbuf[1024];
+ 	struct stat statbuf;
+ 
+ 	sprintf(path, "/proc/%d", pid);
+diff --git a/proc/readproc.h b/proc/readproc.h
+index a953b29..3a9aecf 100644
+--- a/proc/readproc.h
++++ b/proc/readproc.h
+@@ -139,6 +139,7 @@ typedef struct proc_t {
+ 	tpgid,		// stat            terminal process group id
+ 	exit_signal,	// stat            might not be SIGCHLD
+ 	processor;      // stat            current (or most recent?) CPU
++    	char **cgroup;  // cgroup	   current cgroup, looks like a classic filepath
+ } proc_t;
+ 
+ // PROCTAB: data structure holding the persistent information readproc needs
+@@ -239,6 +240,8 @@ extern proc_t * get_proc_stats(pid_t pid, proc_t *p);
+ 
+ #define PROC_LOOSE_TASKS     0x0200 // threat threads as if they were processes
+ 
++#define PROC_FILLCGROUP      0x0400 // alloc and fill in `cgroup`
++
+ // Obsolete, consider only processes with one of the passed:
+ #define PROC_PID             0x1000  // process id numbers ( 0   terminated)
+ #define PROC_UID             0x4000  // user id numbers    ( length needed )
+diff --git a/proc/sysinfo.c b/proc/sysinfo.c
+index cd59534..b3d1629 100644
+--- a/proc/sysinfo.c
++++ b/proc/sysinfo.c
+@@ -124,24 +124,25 @@ int uptime(double *restrict uptime_secs, double *restrict idle_secs) {
+ unsigned long long Hertz;
+ 
+ static void old_Hertz_hack(void){
+-  unsigned long long user_j, nice_j, sys_j, other_j;  /* jiffies (clock ticks) */
++  unsigned long long user_j, nice_j, sys_j, other_j, wait_j, hirq_j, sirq_j, stol_j;  /* jiffies (clock ticks) */
+   double up_1, up_2, seconds;
+   unsigned long long jiffies;
+   unsigned h;
+   char *restrict savelocale;
+ 
++  wait_j = hirq_j = sirq_j = stol_j = 0;
+   savelocale = setlocale(LC_NUMERIC, NULL);
+   setlocale(LC_NUMERIC, "C");
+   do{
+     FILE_TO_BUF(UPTIME_FILE,uptime_fd);  sscanf(buf, "%lf", &up_1);
+     /* uptime(&up_1, NULL); */
+     FILE_TO_BUF(STAT_FILE,stat_fd);
+-    sscanf(buf, "cpu %Lu %Lu %Lu %Lu", &user_j, &nice_j, &sys_j, &other_j);
++    sscanf(buf, "cpu %Lu %Lu %Lu %Lu %Lu %Lu %Lu %Lu", &user_j, &nice_j, &sys_j, &other_j, &wait_j, &hirq_j, &sirq_j, &stol_j);
+     FILE_TO_BUF(UPTIME_FILE,uptime_fd);  sscanf(buf, "%lf", &up_2);
+     /* uptime(&up_2, NULL); */
+   } while((long long)( (up_2-up_1)*1000.0/up_1 )); /* want under 0.1% error */
+   setlocale(LC_NUMERIC, savelocale);
+-  jiffies = user_j + nice_j + sys_j + other_j;
++  jiffies = user_j + nice_j + sys_j + other_j + wait_j + hirq_j + sirq_j + stol_j ;
+   seconds = (up_1 + up_2) / 2;
+   h = (unsigned)( (double)jiffies/seconds/smp_num_cpus );
+   /* actual values used by 2.4 kernels: 32 64 100 128 1000 1024 1200 */
+@@ -212,6 +213,7 @@ static int check_for_privs(void){
+ static void init_libproc(void) __attribute__((constructor));
+ static void init_libproc(void){
+   have_privs = check_for_privs();
++  init_Linux_version(); // make sure we have version before continuing...
+   // ought to count CPUs in /proc/stat instead of relying
+   // on glibc, which foolishly tries to parse /proc/cpuinfo
+   //
+@@ -221,12 +223,13 @@ static void init_libproc(void){
+   // _SC_NPROCESSORS_ONLN returns 1, which should work OK
+   smp_num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+   if(smp_num_cpus<1) smp_num_cpus=1; /* SPARC glibc is buggy */
+-
++#ifdef __linux__
+   if(linux_version_code > LINUX_VERSION(2, 4, 0)){ 
+     Hertz = find_elf_note(AT_CLKTCK);
+     if(Hertz!=NOTE_NOT_FOUND) return;
+     fputs("2.4+ kernel w/o ELF notes? -- report this\n", stderr);
+   }
++#endif
+   old_Hertz_hack();
+ }
+ 
+@@ -794,6 +797,18 @@ unsigned int getpartitions_num(struct disk_stat *disks, int ndisks){
+ }
+ 
+ /////////////////////////////////////////////////////////////////////////////
++static int is_disk(char *dev)
++{
++  char syspath[PATH_MAX];
++  char *slash;
++
++  while ((slash = strchr(dev, '/')))
++    *slash = '!';
++  snprintf(syspath, sizeof(syspath), "/sys/block/%s", dev);
++  return !(access(syspath, F_OK));
++}
++
++/////////////////////////////////////////////////////////////////////////////
+ 
+ unsigned int getdiskstat(struct disk_stat **disks, struct partition_stat **partitions){
+   FILE* fd;
+@@ -801,6 +816,7 @@ unsigned int getdiskstat(struct disk_stat **disks, struct partition_stat **parti
+   int cPartition = 0;
+   int fields;
+   unsigned dummy;
++  char devname[PATH_MAX];
+ 
+   *disks = NULL;
+   *partitions = NULL;
+@@ -813,8 +829,9 @@ unsigned int getdiskstat(struct disk_stat **disks, struct partition_stat **parti
+       fclose(fd);
+       break;
+     }
+-    fields = sscanf(buff, " %*d %*d %*s %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %u", &dummy);
+-    if (fields == 1){
++    fields = sscanf(buff, " %*d %*d %15s %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %u",
++            &devname, &dummy);
++    if (fields == 2 && is_disk(devname)){
+       (*disks) = realloc(*disks, (cDisk+1)*sizeof(struct disk_stat));
+       sscanf(buff,  "   %*d    %*d %15s %u %u %llu %u %u %u %llu %u %u %u %u",
+         //&disk_major,
+@@ -837,7 +854,9 @@ unsigned int getdiskstat(struct disk_stat **disks, struct partition_stat **parti
+     }else{
+       (*partitions) = realloc(*partitions, (cPartition+1)*sizeof(struct partition_stat));
+       fflush(stdout);
+-      sscanf(buff,  "   %*d    %*d %15s %u %llu %u %u",
++      sscanf(buff,  (fields == 2)
++          ? "   %*d    %*d %15s %u %*u %llu %*u %u %*u %llu %*u %*u %*u %*u"
++          : "   %*d    %*d %15s %u %llu %u %llu",
+         //&part_major,
+         //&part_minor,
+         (*partitions)[cPartition].partition_name,
+diff --git a/proc/sysinfo.h b/proc/sysinfo.h
+index e30a38b..494c4b3 100644
+--- a/proc/sysinfo.h
++++ b/proc/sysinfo.h
+@@ -113,7 +113,7 @@ typedef struct partition_stat{
+ 	unsigned           parent_disk;  // index into a struct disk_stat array
+ 	unsigned           reads;
+ 	unsigned           writes;
+-	unsigned           requested_writes;
++	unsigned long long requested_writes;
+ }partition_stat;
+ 
+ extern unsigned int getpartitions_num(struct disk_stat *disks, int ndisks);
+diff --git a/proc/version.c b/proc/version.c
+index 69bae4f..cc215bc 100644
+--- a/proc/version.c
++++ b/proc/version.c
+@@ -33,17 +33,26 @@ void display_version(void) {
+ 
+ int linux_version_code;
+ 
+-static void init_Linux_version(void) __attribute__((constructor));
+-static void init_Linux_version(void) {
+-    static struct utsname uts;
++void init_Linux_version(void) {
+     int x = 0, y = 0, z = 0;	/* cleared in case sscanf() < 3 */
++    FILE *fp;
++    char buf[256];
+     
+-    if (uname(&uts) == -1)	/* failure implies impending death */
+-	exit(1);
+-    if (sscanf(uts.release, "%d.%d.%d", &x, &y, &z) < 3)
++    if ( (fp=fopen("/proc/version","r")) == NULL) {
++      fprintf(stderr, "Cannot find /proc/version - is /proc mounted?\n");
++      exit(1);
++    }
++    if (fgets(buf, 256, fp) == NULL) {
++      fprintf(stderr, "Cannot read kernel version from /proc/version\n");
++      fclose(fp);
++      exit(1);
++    }
++    fclose(fp);
++    if (sscanf(buf, "Linux version %d.%d.%d", &x, &y, &z) < 3)
+ 	fprintf(stderr,		/* *very* unlikely to happen by accident */
+ 		"Non-standard uts for running kernel:\n"
+-		"release %s=%d.%d.%d gives version code %d\n",
+-		uts.release, x, y, z, LINUX_VERSION(x,y,z));
++        "release %s=%d.%d.%d gives version code %d\n",
++        buf,
++        x, y, z, LINUX_VERSION(x,y,z));
+     linux_version_code = LINUX_VERSION(x, y, z);
+ }
+diff --git a/proc/version.h b/proc/version.h
+index 3769b84..c6547f7 100644
+--- a/proc/version.h
++++ b/proc/version.h
+@@ -14,6 +14,7 @@
+ 
+ EXTERN_C_BEGIN
+ 
++extern void init_Linux_version(void);	/* initialize linux version */
+ extern void display_version(void);	/* display suite version */
+ extern const char procps_version[];		/* global buf for suite version */
+ 
+diff --git a/ps/display.c b/ps/display.c
+index 4574b9c..3d6bbde 100644
+--- a/ps/display.c
++++ b/ps/display.c
+@@ -223,8 +223,7 @@ static unsigned task_format_needs;
+ 
+ #define needs_for_format (proc_format_needs|task_format_needs)
+ 
+-#define PROC_ONLY_FLAGS (PROC_FILLENV|PROC_FILLARG|PROC_FILLCOM|PROC_FILLMEM)
+-
++#define PROC_ONLY_FLAGS (PROC_FILLENV|PROC_FILLARG|PROC_FILLCOM|PROC_FILLMEM|PROC_FILLCGROUP)
+ /***** munge lists and determine openproc() flags */
+ static void lists_and_needs(void){
+   check_headers();
+@@ -342,6 +341,7 @@ static void simple_spew(void){
+       }
+       if(buf.cmdline) free((void*)*buf.cmdline); // ought to reuse
+       if(buf.environ) free((void*)*buf.environ); // ought to reuse
++      if(buf.cgroup)  free((void*)*buf.cgroup);
+     }
+     break;
+   case TF_show_proc|TF_loose_tasks:    // H option
+@@ -354,6 +354,7 @@ static void simple_spew(void){
+       }
+       if(buf.cmdline) free((void*)*buf.cmdline); // ought to reuse
+       if(buf.environ) free((void*)*buf.environ); // ought to reuse
++      if(buf.cgroup)  free((void*)*buf.cgroup);
+     }
+     break;
+   case TF_show_proc|TF_show_task:      // m and -m options
+@@ -366,7 +367,8 @@ static void simple_spew(void){
+       }
+       if(buf.cmdline) free((void*)*buf.cmdline); // ought to reuse
+       if(buf.environ) free((void*)*buf.environ); // ought to reuse
+-    }
++      if(buf.cgroup)  free((void*)*buf.cgroup);
++     }
+     break;
+   case TF_show_task:                   // -L and -T options
+     while(readproc(ptp,&buf)){
+@@ -377,7 +379,8 @@ static void simple_spew(void){
+       }
+       if(buf.cmdline) free((void*)*buf.cmdline); // ought to reuse
+       if(buf.environ) free((void*)*buf.environ); // ought to reuse
+-    }
++      if(buf.cgroup)  free((void*)*buf.cgroup);
++   }
+     break;
+   }
+   closeproc(ptp);
+diff --git a/ps/output.c b/ps/output.c
+index 87bf9de..400485d 100644
+--- a/ps/output.c
++++ b/ps/output.c
+@@ -110,6 +110,20 @@ static int sr_ ## NAME (const proc_t* P, const proc_t* Q) { \
+     return (int)(P->NAME) - (int)(Q->NAME); \
+ }
+ 
++#define cook_time(P) (P->utime + P->stime) / Hertz
++
++#define cook_etime(P) seconds_since_boot - (unsigned long)(P->start_time / Hertz)
++
++#define CMP_COOKED_TIME(NAME) \
++static int sr_ ## NAME (const proc_t* P, const proc_t* Q) { \
++    unsigned long p_time,q_time; \
++    p_time=cook_ ##NAME (P); \
++    q_time=cook_ ##NAME (Q); \
++    if (p_time < q_time) return -1; \
++    if (p_time > q_time) return 1; \
++    return 0; \
++}
++
+ CMP_INT(rtprio)
+ CMP_SMALL(sched)
+ CMP_INT(cutime)
+@@ -185,6 +199,9 @@ CMP_SMALL(pcpu)
+ 
+ CMP_SMALL(state)
+ 
++CMP_COOKED_TIME(time)
++CMP_COOKED_TIME(etime)
++
+ /* approximation to: kB of address space that could end up in swap */
+ static int sr_swapable(const proc_t* P, const proc_t* Q) {
+   unsigned long p_swapable = P->vm_data + P->vm_stack;
+@@ -359,6 +376,26 @@ static int pr_args(char *restrict const outbuf, const proc_t *restrict const pp)
+   return max_rightward-rightward;
+ }
+ 
++static int pr_cgroup(char *restrict const outbuf,const proc_t *restrict const pp) {
++ if(pp->cgroup && *pp->cgroup) {
++   char *endp = outbuf;
++   int rightward=max_rightward;	
++   if(forest_prefix){
++       int fh = forest_helper(outbuf);
++       endp += fh;
++       rightward -= fh;
++   }
++   if(rightward>1){
++     *endp++ = ' ';
++     rightward--;
++     endp += escape_str(endp, *pp->cgroup, OUTBUF_SIZE, &rightward);
++   }
++   return max_rightward-rightward;
++ }	
++ else
++   return pr_nop(outbuf,pp);
++}
++
+ /* "ucomm" is the same thing: short unless -f */
+ static int pr_comm(char *restrict const outbuf, const proc_t *restrict const pp){
+   char *endp = outbuf;
+@@ -408,7 +445,7 @@ static int pr_etime(char *restrict const outbuf, const proc_t *restrict const pp
+   unsigned long t;
+   unsigned dd,hh,mm,ss;
+   char *cp = outbuf;
+-  t = seconds_since_boot - (unsigned long)(pp->start_time / Hertz);
++  t = cook_etime(pp);
+   ss = t%60;
+   t /= 60;
+   mm = t%60;
+@@ -476,7 +513,7 @@ static int pr_time(char *restrict const outbuf, const proc_t *restrict const pp)
+   unsigned long t;
+   unsigned dd,hh,mm,ss;
+   int c;
+-  t = (pp->utime + pp->stime) / Hertz;
++  t = cook_time(pp);
+   ss = t%60;
+   t /= 60;
+   mm = t%60;
+@@ -1257,7 +1294,7 @@ static int pr_t_left2(char *restrict const outbuf, const proc_t *restrict const
+ #define GRP PROC_FILLGRP     /* gid_t -> group names */
+ #define WCH PROC_FILLWCHAN   /* do WCHAN lookup */
+ 
+-
++#define CGRP PROC_FILLCGROUP /* read cgroup */
+ /* TODO
+  *      pull out annoying BSD aliases into another table (to macro table?)
+  *      add sorting functions here (to unify names)
+@@ -1286,13 +1323,14 @@ static const format_struct format_array[] = {
+ {"alarm",     "ALARM",   pr_alarm,    sr_alarm,   5,   0,    LNX, AN|RIGHT},
+ {"argc",      "ARGC",    pr_nop,      sr_nop,     4,   0,    LNX, PO|RIGHT},
+ {"args",      "COMMAND", pr_args,     sr_cmd,    27, ARG,    U98, PO|UNLIMITED}, /*command*/
+-{"atime",     "TIME",    pr_time,     sr_nop,     8,   0,    SOE, ET|RIGHT}, /*cputime*/ /* was 6 wide */
++{"atime",     "TIME",    pr_time,     sr_time,     8,   0,    SOE, ET|RIGHT}, /*cputime*/ /* was 6 wide */
+ {"blocked",   "BLOCKED", pr_sigmask,  sr_nop,     9,   0,    BSD, TO|SIGNAL}, /*sigmask*/
+ {"bnd",       "BND",     pr_nop,      sr_nop,     1,   0,    AIX, TO|RIGHT},
+ {"bsdstart",  "START",   pr_bsdstart, sr_nop,     6,   0,    LNX, ET|RIGHT},
+ {"bsdtime",   "TIME",    pr_bsdtime,  sr_nop,     6,   0,    LNX, ET|RIGHT},
+ {"c",         "C",       pr_c,        sr_pcpu,    2,   0,    SUN, ET|RIGHT},
+ {"caught",    "CAUGHT",  pr_sigcatch, sr_nop,     9,   0,    BSD, TO|SIGNAL}, /*sigcatch*/
++{"cgroup",    "CGROUP",  pr_cgroup,     sr_nop,     27, CGRP,  LNX, PO|UNLIMITED},
+ {"class",     "CLS",     pr_class,    sr_sched,   3,   0,    XXX, TO|LEFT},
+ {"cls",       "CLS",     pr_class,    sr_sched,   3,   0,    HPU, TO|RIGHT}, /*says HPUX or RT*/
+ {"cmaj_flt",  "-",       pr_nop,      sr_cmaj_flt, 1,  0,    LNX, AN|RIGHT},
+@@ -1305,7 +1343,7 @@ static const format_struct format_array[] = {
+ {"cp",        "CP",      pr_cp,       sr_pcpu,    3,   0,    DEC, ET|RIGHT}, /*cpu*/
+ {"cpu",       "CPU",     pr_nop,      sr_nop,     3,   0,    BSD, AN|RIGHT}, /* FIXME ... HP-UX wants this as the CPU number for SMP? */
+ {"cpuid",     "CPUID",   pr_psr,      sr_nop,     5,   0,    BSD, TO|RIGHT}, // OpenBSD: 8 wide!
+-{"cputime",   "TIME",    pr_time,     sr_nop,     8,   0,    DEC, ET|RIGHT}, /*time*/
++{"cputime",   "TIME",    pr_time,     sr_time,     8,   0,    DEC, ET|RIGHT}, /*time*/
+ {"cstime",    "-",       pr_nop,      sr_cstime,  1,   0,    LNX, AN|RIGHT},
+ {"ctid",      "CTID",    pr_nop,      sr_nop,     5,   0,    SUN, ET|RIGHT}, // resource contracts?
+ {"cursig",    "CURSIG",  pr_nop,      sr_nop,     6,   0,    DEC, AN|RIGHT},
+@@ -1320,7 +1358,7 @@ static const format_struct format_array[] = {
+ {"end_code",  "E_CODE",  pr_nop,      sr_end_code, 8,  0,    LNx, PO|RIGHT},
+ {"environ","ENVIRONMENT",pr_nop,      sr_nop,    11, ENV,    LNx, PO|UNLIMITED},
+ {"esp",       "ESP",     pr_esp,      sr_kstk_esp, 8,  0,    LNX, TO|RIGHT},
+-{"etime",     "ELAPSED", pr_etime,    sr_nop,    11,   0,    U98, ET|RIGHT}, /* was 7 wide */
++{"etime",     "ELAPSED", pr_etime,    sr_etime,    11,   0,    U98, ET|RIGHT}, /* was 7 wide */
+ {"euid",      "EUID",    pr_euid,     sr_euid,    5,   0,    LNX, ET|RIGHT},
+ {"euser",     "EUSER",   pr_euser,    sr_euser,   8, USR,    LNX, ET|USER},
+ {"f",         "F",       pr_flag,     sr_flags,   1,   0,    XXX, ET|RIGHT}, /*flags*/
+@@ -1463,7 +1501,7 @@ static const format_struct format_array[] = {
+ {"tdev",      "TDEV",    pr_nop,      sr_nop,     4,   0,    XXX, AN|RIGHT},
+ {"thcount",   "THCNT",   pr_nlwp,     sr_nlwp,    5,   0,    AIX, PO|RIGHT},
+ {"tid",       "TID",     pr_thread,   sr_tid,     5,   0,    AIX, TO|PIDMAX|RIGHT},
+-{"time",      "TIME",    pr_time,     sr_nop,     8,   0,    U98, ET|RIGHT}, /*cputime*/ /* was 6 wide */
++{"time",      "TIME",    pr_time,     sr_time,     8,   0,    U98, ET|RIGHT}, /*cputime*/ /* was 6 wide */
+ {"timeout",   "TMOUT",   pr_nop,      sr_nop,     5,   0,    LNX, AN|RIGHT}, // 2.0.xx era
+ {"tmout",     "TMOUT",   pr_nop,      sr_nop,     5,   0,    LNX, AN|RIGHT}, // 2.0.xx era
+ {"tname",     "TTY",     pr_tty8,     sr_tty,     8,   0,    DEC, PO|LEFT},
+diff --git a/ps/ps.1 b/ps/ps.1
+index 64953d5..a33b286 100644
+--- a/ps/ps.1
++++ b/ps/ps.1
+@@ -18,12 +18,6 @@
+ .nh
+ .if n .ss 12 0
+ .\"
+-.\" See /usr/share/groff/current/tmac/an-old.tmac for what these do.
+-.\" Setting them to zero provides extra space, but only do that for
+-.\" plain text output. PostScript and such will remain indented.
+-.if n .nr IN 0n
+-.if n .nr an-prevailing-indent 0n
+-.\"
+ .\"
+ .\" ColSize is used for the format spec table.
+ .\" It's the left margin, minus the right, minus
+@@ -499,7 +493,7 @@ parent process repeatedly forks off short\-lived children to do work.
+ .opt c
+ Show the true command name. This is derived from the name of the
+ executable file, rather than from the argv value. Command arguments
+-and any modifications to them (see\ \fIsetproctitle\fR(3)) are
++and any modifications to them  are
+ thus not shown. This option
+ effectively turns the \fBargs\fR format keyword into the \fBcomm\fR
+ format keyword; it is useful with the \fB\-f\fR format option and with
+@@ -588,7 +582,8 @@ ASCII art process tree
+ repeat header lines, one per page of output
+ 
+ .opt \-\-no\-headers
+-print no header line at all
++print no header line at all. \-\-no\-heading is an alias for this
++option.
+ 
+ .opt \-\-lines \ n
+ set screen height
+@@ -1159,6 +1154,10 @@ ppid	PPID	T{
+ parent process ID.
+ T}
+ 
++pri	PRI	T{
++priority of the process. Higher number means lower priority
++T}
++
+ psr	PSR	T{
+ processor that process is currently assigned to.
+ T}
+diff --git a/pwdx.c b/pwdx.c
+index cb96a52..3e88f3c 100644
+--- a/pwdx.c
++++ b/pwdx.c
+@@ -35,7 +35,6 @@ static void version(void)
+ 
+ int main(int argc, char* argv[])
+ {
+-     char buf[PATH_MAX+1];
+      regex_t re;
+      int i;
+ 
+@@ -59,6 +58,7 @@ int main(int argc, char* argv[])
+ 
+      for (i = 1; i < argc; i++) {
+           if (regexec(&re, argv[i], 0, NULL, 0) != 0) {
++               char buf[27 + strlen (argv[i]) + 1];  // Constant 27 is the length of the error string "pwdx: ... "
+                snprintf(buf, sizeof buf, "pwdx: invalid process id: %s\n", argv[i]);
+                die(buf);
+           }
+@@ -68,9 +68,13 @@ int main(int argc, char* argv[])
+ 
+      regfree(&re);
+ 
++     int alloclen = 128;
++     char *pathbuf = malloc(alloclen);
++
+      for (i = 1; i < argc; i++) {
+-          char * s = buf;
++          char * s;
+           int len;
++          char buf[10 + strlen(argv[i]) + 1]; // Constant 10 is the length of strings "/proc/" + "/cwd" + 1
+           
+           // At this point, all arguments are in the form /proc/nnnn
+           // or nnnn, so a simple check based on the first char is
+@@ -82,14 +86,22 @@ int main(int argc, char* argv[])
+ 
+           // buf contains /proc/nnnn/cwd symlink name on entry, the
+           // target of that symlink on return
+-          if ((len = readlink(buf, buf, PATH_MAX)) < 0) {
++          while ((len = readlink(buf, pathbuf, alloclen)) == alloclen) {
++               alloclen *= 2;
++               pathbuf = realloc(pathbuf, alloclen);
++          }
++
++          if (len < 0) {
+                s = strerror(errno == ENOENT ? ESRCH : errno);
+           } else {
+-               buf[len] = 0;
++               pathbuf[len] = 0;
++               s = pathbuf;
+           }
+ 
+           printf("%s: %s\n", argv[i], s);
+      }
+ 
++     free(pathbuf);
++
+      return 0;
+ }
+diff --git a/skill.1 b/skill.1
+index a4fc274..a56b969 100644
+--- a/skill.1
++++ b/skill.1
+@@ -11,37 +11,38 @@
+ skill, snice \- send a signal or report process status
+ 
+ .SH SYNOPSIS
+-.nf
+-skill [signal to send] [options] process selection criteria
+-snice [new priority] [options] process selection criteria
+-.fi
++.B skill
++.RI [ "signal to send" ]
++.RI [ options ]
++.I process selection criteria
++.br
++.B snice
++.RI [ "new priority" ]
++.RI [ options ]
++.I process selection criteria
+ 
+ .SH DESCRIPTION
+ These tools are probably obsolete and unportable. The command
+ syntax is poorly defined. Consider using the killall, pkill,
+ and pgrep commands instead.
+ 
+-The default signal for skill is TERM. Use -l or -L to list available signals.
++The default signal for skill is TERM. Use \-l or \-L to list available signals.
+ Particularly useful signals include HUP, INT, KILL, STOP, CONT, and 0.
+-Alternate signals may be specified in three ways: -9 -SIGKILL -KILL.
++Alternate signals may be specified in three ways: \-9 \-SIGKILL \-KILL.
+ 
+ The default priority for snice is +4. (snice +4 ...)
+-Priority numbers range from +20 (slowest) to -20 (fastest).
++Priority numbers range from +20 (slowest) to \-20 (fastest).
+ Negative priority numbers are restricted to administrative users.
+ 
+ .SH "GENERAL OPTIONS"
+ .TS
+-l l l.
+--f	fast mode	This is not currently useful.
+--i	interactive use	T{
+-You will be asked to approve each action.
+-T}
+--v	verbose output	T{
+-Display information about selected processes.
+-T}
+--w	warnings enabled	This is not currently useful.
+--n	no action	This only displays the process ID.
+--V	show version	Displays version of program.
++lB l l.
++\-f	fast mode	This is not currently useful.
++\-i	interactive use	You will be asked to approve each action.
++\-v	verbose output	Display information about selected processes.
++\-w	warnings enabled	This is not currently useful.
++\-n	no action	This only displays the process ID.
++\-V	show version	Displays version of program.
+ .TE
+ 
+ .SH "PROCESS SELECTION OPTIONS"
+@@ -49,11 +50,11 @@ Selection criteria can be: terminal, user, pid, command.
+ The options below may be used to ensure correct interpretation.
+ Do not blame Albert for this interesting interface.
+ .TS
+-l l.
+--t	The next argument is a terminal (tty or pty).
+--u	The next argument is a username.
+--p	The next argument is a process ID number.
+--c	The next argument is a command name.
++lB l.
++\-t	The next argument is a terminal (tty or pty).
++\-u	The next argument is a username.
++\-p	The next argument is a process ID number.
++\-c	The next argument is a command name.
+ .TE
+ 
+ .SH SIGNALS
+@@ -63,7 +64,6 @@ When known, numbers and default behavior are shown.
+ lB rB lB lB
+ lfCW r l l.
+ Name	Num	Action	Description
+-.TH
+ 0	0	n/a	exit code indicates if a signal may be sent
+ ALRM	14	exit
+ HUP	1	exit
+@@ -104,15 +104,20 @@ XFSZ		core	core dump may fail
+ lB lB
+ lfCW l.
+ Command	Description
+-.TC
+ snice seti crack +7	Slow down seti and crack
+-skill -KILL -v /dev/pts/*	Kill users on new-style PTY devices
+-skill -STOP viro lm davem	Stop 3 users
+-snice -17 root bash	Give priority to root's shell
++skill \-KILL \-v /dev/pts/*	Kill users on new-style PTY devices
++skill \-STOP viro lm davem	Stop 3 users
++snice \-17 root bash	Give priority to root's shell
+ .TE
+ 
+ .SH "SEE ALSO"
+-killall(1) pkill(1) kill(1) renice(1) nice(1) signal(7) kill(2)
++.BR killall (1),
++.BR pkill (1),
++.BR kill (1),
++.BR renice (1),
++.BR nice(1),
++.BR kill(2),
++.BR signal(7)
+ 
+ .SH STANDARDS
+ No standards apply.
+diff --git a/skill.c b/skill.c
+index 96cc386..c8af9fd 100644
+--- a/skill.c
++++ b/skill.c
+@@ -128,7 +128,7 @@ static void check_proc(int pid){
+   sprintf(buf, "/proc/%d/stat", pid); /* pid (cmd) state ppid pgrp session tty */
+   fd = open(buf,O_RDONLY);
+   if(fd==-1){  /* process exited maybe */
+-    if(pids && w_flag) printf("WARNING: process %d could not be found.",pid);
++    if(pids && w_flag) printf("WARNING: process %d could not be found.\n",pid);
+     return;
+   }
+   fstat(fd, &statbuf);
+@@ -317,6 +317,7 @@ no_more_args:
+       // The standard says we return non-zero if an error occurs. Thus if
+       // killing two processes gives 0 for one and EPERM for the other,
+       // we are required to return both zero and non-zero. Quantum kill???
++      perror("kill");
+       exitvalue = 1;
+       continue;
+     }
+@@ -341,7 +342,7 @@ static void skillsnice_usage(void){
+   }else{
+     fprintf(stderr,
+       "Usage:   snice [new priority] [options] process selection criteria\n"
+-      "Example: snice netscape crack +7\n"
++      "Example: snice +7 netscape crack \n"
+       "\n"
+       "The default priority is +4. (snice +4 ...)\n"
+       "Priority numbers range from +20 (slowest) to -20 (fastest).\n"
+diff --git a/slabtop.1 b/slabtop.1
+index 11f277e..d579e4a 100644
+--- a/slabtop.1
++++ b/slabtop.1
+@@ -7,36 +7,39 @@
+ slabtop \- display kernel slab cache information in real time
+ 
+ .SH SYNOPSIS
+-.BI "slabtop [ " options " ] "
++.B slabtop
++.RI [ options ]
+ 
+ .SH DESCRIPTION
+-.BR slabtop (1)
++.B slabtop
+ displays detailed kernel slab cache information in real time.  It displays a
+ listing of the top caches sorted by one of the listed sort criteria.  It also
+ displays a statistics header filled with slab layer information.
+ 
+ .SH OPTIONS
+ Normal invocation of 
+-.BR slabtop (1)
++.B slabtop
+ does not require any options.  The behavior, however, can be fine-tuned by
+ specifying one or more of the following flags:
+ .TP
+-.B \-\^\-delay=n, \-d n
+-Refresh the display every n seconds.  By default,
+-.BR slabtop (1)
++.B \-\-delay=\fIn\fR, \fB\-d \fIn
++Refresh the display every 
++.I n
++in seconds.  By default,
++.B slabtop
+ refreshes the display every three seconds.  To exit the program, hit
+ .BR q.
+ .TP
+-.B \-\^\-sort=S, \-s S
+-Sort by S, where S is one of the sort criteria.
++.B \-\-sort=\fIS\fR, \fB\-s\fR \fIS
++Sort by \fIS\fR, where \fIS\fR is one of the sort criteria.
+ .TP
+-.B \-\^\-once, \-o
++.B \-\-once\fR, \fB\-o
+ Display the output once and then exit.
+ .TP
+-.B \-\^\-version, \-V
++.B \-\-version\fR, \fB\-V
+ Display version information and exit.
+ .TP
+-.B \-\^\-help
++.B \-\-help
+ Display usage information and exit.
+ 
+ .SH SORT CRITERIA
+@@ -78,7 +81,7 @@ sort by object size
+ sort by cache utilization
+ 
+ .SH COMMANDS
+-.BR slabtop (1)
++.B slabtop
+ accepts keyboard commands from the user during use.  The following are
+ supported.  In the case of letters, both cases are accepted.
+ 
+@@ -94,7 +97,9 @@ Refresh the screen.
+ Quit the program.
+ 
+ .SH FILES
+-.IR /proc/slabinfo " \-\- slab information"
++.TP
++.I /proc/slabinfo 
++slab information
+ 
+ .SH "SEE ALSO"
+ .BR free (1),
+@@ -104,7 +109,7 @@ Quit the program.
+ 
+ .SH NOTES
+ Currently,
+-.BR slabtop (1)
++.B slabtop
+ requires a 2.4 or later kernel (specifically, a version 1.1 or later
+ .IR /proc/slabinfo ).
+ Kernel 2.2 should be supported in the future.
+@@ -116,7 +121,7 @@ file is tracking information about used slab physical memory.
+ .SH AUTHORS
+ Written by Chris Rivera and Robert Love.
+ 
+-.BR slabtop (1)
++.B slabtop
+ was inspired by Martin Bligh's perl script,
+ .BR vmtop .
+ The procps package is maintained by Albert Cahalan <albert@users.sf.net>.
+diff --git a/sysctl.8 b/sysctl.8
+index e26c4fb..b68ee95 100644
+--- a/sysctl.8
++++ b/sysctl.8
+@@ -10,76 +10,108 @@
+ .SH NAME
+ sysctl \- configure kernel parameters at runtime
+ .SH SYNOPSIS
+-.B "sysctl [-n] [-e] variable ..."
++.B sysctl
++.RB [ \-n ]
++.RB [ \-e ]
++.I variable
++\&...
+ .br
+-.B "sysctl [-n] [-e] [-q] -w variable=value ..."
++.B sysctl
++.RB [ \-n ]
++.RB [ \-e ]
++.RB [ \-q ]
++.B \-w
++.IR variable = value
++\&...
+ .br
+-.B "sysctl [-n] [-e] [-q] -p <filename>"
++.B sysctl
++.RB [ \-n ]
++.RB [ \-e ]
++.RB [ \-q ]
++.B \-p
++.RI [ filename ]
+ .br
+-.B "sysctl [-n] [-e] -a"
++.B sysctl
++.RB [ \-n ]
++.RB [ \-e ]
++.B \-a
+ .br
+-.B "sysctl [-n] [-e] -A"
++.B sysctl
++.RB [ \-n ]
++.RB [ \-e ]
++.B \-A
+ .SH DESCRIPTION
+ .B sysctl
+ is used to modify kernel parameters at runtime.  The parameters available
+ are those listed under /proc/sys/.  Procfs is required for 
+-.B sysctl(8)
++.B sysctl
+ support in Linux.  You can use
+-.B sysctl(8)
++.B sysctl
+ to both read and write sysctl data.
+ .SH PARAMETERS
+ .TP
+-.B "variable"
++.I variable
+ The name of a key to read from.  An example is kernel.ostype.  The '/'
+ separator is also accepted in place of a '.'.
+ .TP
+-.B "variable=value"
+-To set a key, use the form variable=value, where variable is the key and
+-value is the value to set it to.  If the value contains quotes or characters
++.IR  variable = value
++To set a key, use the form
++.IR  variable = value
++where
++.I variable
++is the key and
++.I value
++is the value to set it to.  If the value contains quotes or characters
+ which are parsed by the shell, you may need to enclose the value in double
+-quotes.  This requires the -w parameter to use.
++quotes.  This requires the
++.B \-w
++parameter to use.
+ .TP
+-.B "-n"
++.B \-n
+ Use this option to disable printing of the key name when printing values.
+ .TP
+-.B "-e"
++.B \-e
+ Use this option to ignore errors about unknown keys.
+ .TP
+-.B "-N"
++.B \-N
+ Use this option to only print the names. It may be useful with shells that
+ have programmable completion.
+ .TP
+-.B "-q"
++.B \-q
+ Use this option to not display the values set to stdout.
+ .TP
+-.B "-w"
++.B \-w
+ Use this option when you want to change a sysctl setting.
+ .TP
+-.B "-p"
++.B \-p
+ Load in sysctl settings from the file specified or /etc/sysctl.conf if none given.
+ Specifying \- as filename means reading data from standard input.
+ .TP
+-.B "-a"
++.B \-a
+ Display all values currently available.
+ .TP
+-.B "-A"
++.B \-A
+ Display all values currently available in table form.
+ .SH EXAMPLES
+-.TP
+-/sbin/sysctl -a
+-.TP
+-/sbin/sysctl -n kernel.hostname
+-.TP
+-/sbin/sysctl -w kernel.domainname="example.com"
+-.TP
+-/sbin/sysctl -p /etc/sysctl.conf 
++/sbin/sysctl \-a
++.br
++/sbin/sysctl \-n kernel.hostname
++.br
++/sbin/sysctl \-w kernel.domainname="example.com"
++.br
++/sbin/sysctl \-p /etc/sysctl.conf 
+ .SH FILES
+ .I /proc/sys
++.br
+ .I /etc/sysctl.conf
+ .SH SEE ALSO
+ .BR sysctl.conf (5)
+ .SH BUGS
+-The -A parameter behaves just as -a does.
++The 
++.B \-A
++parameter behaves just as 
++.B \-a
++does.
+ .SH AUTHOR
+ George Staikos, <staikos@0wned.org>
+ 
+diff --git a/sysctl.c b/sysctl.c
+index 1470df9..4024f71 100644
+--- a/sysctl.c
++++ b/sysctl.c
+@@ -421,6 +421,7 @@ int main(int argc, char *argv[]) {
+    const char *me = (const char *)basename(argv[0]);
+    bool SwitchesAllowed = true;
+    bool WriteMode = false;
++   bool DisplayAllOpt = false;
+    int ReturnCode = 0;
+    const char *preloadfile = DEFAULT_PRELOAD;
+ 
+@@ -486,8 +487,8 @@ int main(int argc, char *argv[]) {
+          case 'a': // string and integer values (for Linux, all of them)
+          case 'A': // same as -a -o
+          case 'X': // same as -a -x
+-              SwitchesAllowed = false;
+-              return DisplayAll(PROC_PATH);
++              DisplayAllOpt = true;
++              break;
+          case 'V':
+               fprintf(stdout, "sysctl (%s)\n",procps_version);
+               exit(0);
+@@ -502,6 +503,8 @@ int main(int argc, char *argv[]) {
+       } else {
+          if (NameOnly && Quiet)   // nonsense
+             return Usage(me);
++         if (DisplayAllOpt)    // We cannot have values with -a
++             return Usage(me);
+          SwitchesAllowed = false;
+          if (WriteMode || index(*argv, '='))
+             ReturnCode = WriteSetting(*argv);
+@@ -509,6 +512,11 @@ int main(int argc, char *argv[]) {
+             ReturnCode = ReadSetting(*argv);
+       }
+    }
++   if (DisplayAllOpt) {
++       if (Quiet)
++           return Usage(me);
++       return DisplayAll(PROC_PATH);
++   }
+ 
+    return ReturnCode;
+ }
+diff --git a/tload.1 b/tload.1
+index ef82b01..8ec8c43 100644
+--- a/tload.1
++++ b/tload.1
+@@ -39,7 +39,7 @@ The
+ .BI "\-d" " delay"
+ option sets the time argument for an
+ .BR alarm (2);
+-if -d 0 is specified, the alarm is set to 0, which will never send the
++if \-d 0 is specified, the alarm is set to 0, which will never send the
+ .B SIGALRM
+ and update the display.
+ 
+diff --git a/tload.c b/tload.c
+index 1d346bb..cece48c 100644
+--- a/tload.c
++++ b/tload.c
+@@ -30,9 +30,6 @@ static int fd=1;
+ static int dly=5;
+ static jmp_buf jb;
+ 
+-extern int optind;
+-extern char *optarg;
+-
+ static void alrm(int signo)
+ {
+     (void)signo;
+diff --git a/top.1 b/top.1
+index aeee3c9..0ecf040 100644
+--- a/top.1
++++ b/top.1
+@@ -42,7 +42,7 @@
+ .ds EM \ \fB\-\-\ \fR
+ \#                          - these two are for chuckles, makes great grammar
+ .ds Me top
+-.ds ME \fBtop\fR
++.ds NE \fBtop\fR
+ \#                          - other misc strings for consistent usage/emphasis
+ .ds F \fIOff\fR
+ .ds O \fIOn\fR
+@@ -85,7 +85,7 @@ top \- display Linux tasks
+ .\" ----------------------------------------------------------------------
+ .SH SYNOPSIS
+ .\" ----------------------------------------------------------------------
+-\*(ME \-\fBhv\fR | \-\fBbcHisS\fR \-\fBd\fI delay\fR \-\fBn\fI
++\*(NE \-\fBhv\fR | \-\fBbcHisS\fR \-\fBd\fI delay\fR \-\fBn\fI
+ iterations\fR \-\fBp\fI pid\fR [,\fI pid\fR ...]
+ 
+ The traditional switches '-' and whitespace are optional.
+@@ -94,7 +94,7 @@ The traditional switches '-' and whitespace are optional.
+ .\" ----------------------------------------------------------------------
+ .SH DESCRIPTION
+ .\" ----------------------------------------------------------------------
+-The \*(ME program provides a dynamic real-time view of a running system.
++The \*(NE program provides a dynamic real-time view of a running system.
+ It can display\fB system\fR summary information as well as a list of\fB
+ tasks\fR currently being managed by the Linux kernel.
+ The types of system summary information shown and the types, order and
+@@ -104,7 +104,7 @@ that configuration can be made persistent across restarts.
+ The program provides a limited interactive interface for process
+ manipulation as well as a much more extensive interface for personal
+ configuration \*(EM encompassing every aspect of its operation.
+-And while \*(ME is referred to throughout this document, you are free
++And while \*(NE is referred to throughout this document, you are free
+ to name the program anything you wish.
+ That new name, possibly an alias, will then be reflected on \*(Me's display
+ and used when reading and writing a \*(CF.
+@@ -190,7 +190,7 @@ command-line.
+        'I' - Irix mode        On\ \ (no, 'solaris' smp)
+      * 'p' - PID monitoring   Off
+      * 's' - Secure mode      Off (unsecured)
+-       'B' - Bold disable     Off
++       'B' - Bold enable      Off
+     \fISummary_Area_defaults\fR
+        'l' - Load Avg/Uptime  On\ \ (thus program name)
+        't' - Task/Cpu states  On\ \ (1+1 lines, see '1')
+@@ -413,16 +413,14 @@ The swapped out portion of a task's total \*(MV image.
+ q:\fB RES\fR \*(EM Resident size (kb)
+ The non-swapped \*(MP a task has used.
+ 
+-RES = CODE + DATA.
+-
+ .TP 3
+ r:\fB CODE\fR \*(EM Code size (kb)
+-The amount of \*(MP devoted to executable code, also known as
++The amount of \*(MV devoted to executable code, also known as
+ the 'text resident set' size or TRS.
+ 
+ .TP 3
+ s:\fB DATA\fR \*(EM Data+Stack size (kb)
+-The amount of \*(MP devoted to other than executable code, also known as
++The amount of \*(MV devoted to other than executable code, also known as
+ the 'data resident set' size or DRS.
+ 
+ .TP 3
+@@ -436,8 +434,8 @@ u:\fB nFLT\fR \*(EM Page Fault count
+ The number of\fB major\fR page faults that have occurred for a task.
+ A page fault occurs when a process attempts to read from or write to a virtual
+ page that is not currently present in its address space.
+-A major page fault is when disk access is involved in making that
+-page available.
++A major page fault is when backing storage access (such as a disk) is involved
++in making that page available.
+ 
+ .TP 3
+ v:\fB nDRT\fR \*(EM Dirty Pages count
+@@ -504,7 +502,7 @@ and 'Order fields' screens.
+ .\" ......................................................................
+ .SS 2b. SELECTING and ORDERING Columns
+ .\" ----------------------------------------------------------------------
+-After pressing the \*(CIs 'f' (Fields select) or \'o' (Order fields) you will
++After pressing the \*(CIs 'f' (Fields select) or 'o' (Order fields) you will
+ be shown a screen containing the current \fBfields string\fR followed by names
+ and descriptions for all fields.
+ 
+@@ -539,6 +537,42 @@ You\fI move\fR a field to the\fB left\fR by pressing the corresponding\fB
+ upper case\fR letter and to the\fB right\fR with the\fB lower case\fR
+ letter.
+ 
++.\" ......................................................................
++.SS 2c. CPU States
++.\" ----------------------------------------------------------------------
++The CPU states are shown in the Summary Area. They are always shown as a 
++percentage and are for the time between now and the last refresh.
++
++.TP 3
++\fB us\fR \*(EM User CPU time
++The time the CPU has spent running users' processes that are not
++niced.
++
++.TP 3
++\fB sy\fR \*(EM System CPU time
++The time the CPU has spent running the kernel and its processes.
++
++.TP 3
++\fB ni\fR \*(EM Nice CPU time
++The time the CPU has spent running users' proccess that have been
++niced.
++
++.TP 3
++\fB wa\fR \*(EM iowait
++Amount of time the CPU has been waiting for I/O to complete.
++
++.TP 3
++\fB hi\fR \*(EM Hardware IRQ
++The amount of time the CPU has been servicing hardware interrupts.
++
++.TP 3
++\fB si\fR \*(EM Software Interrupts
++The amount of time the CPU has been servicing software interrupts.
++
++.TP 3
++\fB st\fR \*(EM Steal Time
++The amount of CPU 'stolen' from this virtual machine by the hypervisor
++for other tasks (such as running another virtual machine).
+ 
+ .\" ----------------------------------------------------------------------
+ .SH 3. INTERACTIVE Commands
+@@ -580,7 +614,7 @@ Use either of these keys if you have a large delay interval and wish to
+ see current status,
+ 
+ .TP 7
+-\ \ \'\fB?\fR\' or \'\fBh\fR\' :\fIHelp\fR
++\ \ \<\fB?\fR\> or \<\fBh\fR\> :\fIHelp\fR
+ There are two help levels available.
+ The first will provide a reminder of all the basic \*(CIs.
+ If \*(Me is\fI secured\fR, that screen will be abbreviated.
+@@ -589,7 +623,7 @@ Typing 'h' or '?' on that help screen will take you to help for those \*(CIs
+ applicable to \*(AM.
+ 
+ .TP 7
+-\ \ \'\fB=\fR\' :\fIExit_Task_Limits\fR
++\ \ \<\fB=\fR\> :\fIExit_Task_Limits\fR
+ Removes restrictions on which tasks are shown.
+ This command will reverse any 'i' (idle tasks) and 'n' (max tasks) commands
+ that might be active.
+@@ -599,13 +633,13 @@ See the '-p' \*(CO for a discussion of PID monitoring.
+ When operating in \*(AM this command has a slightly broader meaning.
+ 
+ .TP 7
+-\ \ \'\fBA\fR\' :\fIAlternate_Display_Mode_toggle\fR
++\ \ \<\fBA\fR\> :\fIAlternate_Display_Mode_toggle\fR
+ This command will switch between \*(FM and \*(AM.
+-\*(XT 4. ALTERNATE\-DISPLAY Mode and the 'G' \*(CI for insight into
+-\*(CWs and field groups.
++\*(XT 4. ALTERNATE\-DISPLAY Mode and the 'G' \*(CI for insight
++into \*(CWs and field groups.
+ 
+ .TP 7
+-\ \ \'\fBB\fR\' :\fIBold_Disable/Enable_toggle\fR
++\ \ \<\fBB\fR\> :\fIBold_Disable/Enable_toggle\fR
+ This command will influence use of the 'bold' terminfo capability and
+ alters\fB both\fR the \*(SA and \*(TA for the \*(CW.
+ While it is intended primarily for use with dumb terminals, it can be
+@@ -617,7 +651,7 @@ Thus, unless the 'x' and/or 'y' toggles are using reverse for emphasis,
+ there will be no visual confirmation that they are even on.
+ 
+ .TP 7
+-*\ \'\fBd\fR\' or \'\fBs\fR\' :\fIChange_Delay_Time_interval\fR
++*\ \<\fBd\fR\> or \<\fBs\fR\> :\fIChange_Delay_Time_interval\fR
+ You will be prompted to enter the delay time, in seconds, between
+ display updates.
+ 
+@@ -631,32 +665,32 @@ If at any time you wish to know the current delay time, simply ask for help
+ and view the system summary on the second line.
+ 
+ .TP 7
+-\ \ \'\fBG\fR\' :\fIChoose_Another_Window/Field_Group\fR
++\ \ \<\fBG\fR\> :\fIChoose_Another_Window/Field_Group\fR
+ You will be prompted to enter a number between 1 and 4 designating the
+ window/field group which should be made the \*(CW.
+ You will soon grow comfortable with these 4 windows, especially after
+ experimenting with \*(AM.
+ 
+ .TP 7
+-\ \ \'\fBI\fR\' :\fIIrix/Solaris_Mode_toggle\fR
++\ \ \<\fBI\fR\> :\fIIrix/Solaris_Mode_toggle\fR
+ When operating in 'Solaris mode' ('I' toggled \*F), a task's \*(Pu usage
+ will be divided by the total number of \*(PUs.
+ After issuing this command, you'll be informed of the new state of this toggle.
+ 
+ .TP 7
+-\ \ \'\fBu\fR\' :\fIselect a user\fR
++\ \ \<\fBu\fR\> :\fIselect a user\fR
+ You will be prompted for a UID or username. Only processes
+ belonging to the selected user will be displayed. This option
+ matches on the effective UID.
+ 
+ .TP 7
+-\ \ \'\fBU\fR\' :\fIselect a user\fR
++\ \ \<\fBU\fR\> :\fIselect a user\fR
+ You will be prompted for a UID or username. Only processes
+ belonging to the selected user will be displayed. This option
+ matches on the real, effective, saved, and filesystem UID.
+ 
+ .TP 7
+-*\ \'\fBk\fR\' :\fIKill_a_task\fR
++*\ \<\fBk\fR\> :\fIKill_a_task\fR
+ You will be prompted for a PID and then the signal to send.
+ The default signal, as reflected in the prompt, is SIGTERM.
+ However, you can send any signal, via number or name.
+@@ -667,24 +701,24 @@ depending on your progress:
+    2) at the signal prompt, type 0
+ 
+ .TP 7
+-\ \ \'\fBq\fR\' :\fIQuit\fR
++\ \ \<\fBq\fR\> :\fIQuit\fR
+ 
+ .TP 7
+-*\ \'\fBr\fR\' :\fIRenice_a_Task\fR
++*\ \<\fBr\fR\> :\fIRenice_a_Task\fR
+ You will be prompted for a PID and then the value to nice it to.
+ Entering a positive value will cause a process to lose priority.
+ Conversely, a negative value will cause a process to be viewed more
+ favorably by the kernel.
+ 
+ .TP 7
+-\ \ \'\fBW\fR\' :\fIWrite_the_Configuration_File\fR
++\ \ \<\fBW\fR\> :\fIWrite_the_Configuration_File\fR
+ This will save all of your options and toggles plus the current
+ display mode and delay time.
+ By issuing this command just before quitting \*(Me, you will be able restart
+ later in exactly that same state.
+ 
+ .TP 7
+-\ \ \'\fBZ\fR\' :\fIChange_Color_Mapping
++\ \ \<\fBZ\fR\> :\fIChange_Color_Mapping
+ This key will take you to a separate screen where you can change the
+ colors for the \*(CW, or for all windows.
+ For details regarding this \*(CI \*(Xt 3d. COLOR Mapping.
+@@ -700,25 +734,25 @@ They affect the beginning lines of your display and will determine the position
+ of messages and prompts.
+ 
+ These commands always impact just the \*(CW/field group.
+-\*(XT 4. ALTERNATE\-DISPLAY Mode and the 'G' \*(CI for insight into
+-\*(CWs and field groups.
++\*(XT 4. ALTERNATE\-DISPLAY Mode and the 'G' \*(CI for insight
++into \*(CWs and field groups.
+ 
+ .TP 7
+-\ \ \'\fBl\fR\' :\fIToggle_Load_Average/Uptime\fR \*(EM On/Off
++\ \ \<\fBl\fR\> :\fIToggle_Load_Average/Uptime\fR \*(EM On/Off
+ This is also the line containing the program name (possibly an alias) when
+ operating in \*(FM or the \*(CW name when operating in \*(AM.
+ 
+ .TP 7
+-\ \ \'\fBm\fR\' :\fIToggle_Memory/Swap_Usage\fR \*(EM On/Off
++\ \ \<\fBm\fR\> :\fIToggle_Memory/Swap_Usage\fR \*(EM On/Off
+ This command affects two \*(SA lines.
+ 
+ .TP 7
+-\ \ \'\fBt\fR\' :\fIToggle_Task/Cpu_States\fR \*(EM On/Off
++\ \ \<\fBt\fR\> :\fIToggle_Task/Cpu_States\fR \*(EM On/Off
+ This command affects from 2 to many \*(SA lines, depending on the state
+ of the '1' toggle and whether or not \*(Me is running under true SMP.
+ 
+ .TP 7
+-\ \ \'\fB1\fR\' :\fIToggle_Single/Separate_Cpu_States\fR \*(EM On/Off
++\ \ \<\fB1\fR\> :\fIToggle_Single/Separate_Cpu_States\fR \*(EM On/Off
+ This command affects how the 't' command's Cpu States portion is shown.
+ Although this toggle exists primarily to serve massively-parallel SMP machines,
+ it is not restricted to solely SMP environments.
+@@ -750,12 +784,12 @@ global 'B' (bold disable) toggle.
+ .in
+ 
+ .TP 7
+-\ \ \'\fBb\fR\' :\fIBold/Reverse_toggle\fR
++\ \ \<\fBb\fR\> :\fIBold/Reverse_toggle\fR
+ This command will impact how the 'x' and 'y' toggles are displayed.
+ Further, it will only be available when at least one of those toggles is \*O.
+ 
+ .TP 7
+-\ \ \'\fBx\fR\' :\fIColumn_Highlight_toggle\fR
++\ \ \<\fBx\fR\> :\fIColumn_Highlight_toggle\fR
+ Changes highlighting for the current sort field.
+ You probably don't need a constant visual reminder of the sort field and
+ \*(Me hopes that you always run with 'column highlight' \*F, due to the cost
+@@ -765,7 +799,7 @@ If you forget which field is being sorted this command can serve as a quick
+ visual reminder.
+ 
+ .TP 7
+-\ \ \'\fBy\fR\' :\fIRow_Highlight_toggle\fR
++\ \ \<\fBy\fR\> :\fIRow_Highlight_toggle\fR
+ Changes highlighting for "running" tasks.
+ For additional insight into this task state, \*(Xt 2a. DESCRIPTIONS of Fields,
+ Process Status.
+@@ -774,7 +808,7 @@ Use of this provision provides important insight into your system's health.
+ The only costs will be a few additional tty escape sequences.
+ 
+ .TP 7
+-\ \ \'\fBz\fR\' :\fIColor/Monochrome_toggle\fR
++\ \ \<\fBz\fR\> :\fIColor/Monochrome_toggle\fR
+ Switches the \*(CW between your last used color scheme and the older form
+ of black-on-white or white-on-black.
+ This command will alter\fB both\fR the \*(SA and \*(TA but does not affect the
+@@ -785,20 +819,20 @@ state of the 'x', 'y' or 'b' toggles.
+ .B CONTENT\fR of \*(TW
+ .PD 0
+ .TP 7
+-\ \ \'\fBc\fR\' :\fICommand_Line/Program_Name_toggle\fR
++\ \ \<\fBc\fR\> :\fICommand_Line/Program_Name_toggle\fR
+ This command will be honored whether or not the 'Command' column
+ is currently visible.
+ Later, should that field come into view, the change you applied will be seen.
+ 
+ .TP 7
+-\ \ \'\fBf\fR\' and \'\fBo\fR\' :\fIFields_select\fR or \fIOrder_fields\fR
++\ \ \<\fBf\fR\> and \<\fBo\fR\> :\fIFields_select\fR or \fIOrder_fields\fR
+ These keys display separate screens where you can change which
+ fields are displayed and their order.
+ For additional information on these \*(CIs
+ \*(Xt 2b. SELECTING and ORDERING Columns.
+ 
+ .TP 7
+-\ \ \'\fBH\fR\' :\fIThreads_toggle\fR
++\ \ \<\fBS\fR\> :\fICumulative_Time_Mode_toggle\fR
+ When this toggle is \*O, all individual threads will be displayed.  Otherwise, \*(Me displays a summation of all threads in a process.
+ 
+ .TP 7
+@@ -818,7 +852,7 @@ If you wish to know in advance whether or not 'Cumulative mode' is in
+ effect, simply ask for help and view the window summary on the second line.
+ 
+ .TP 7
+-\ \ \'\fBu\fR\' :\fIShow_Specific_User_Only\fR
++\ \ \<\fBu\fR\> :\fIShow_Specific_User_Only\fR
+ You will be prompted to enter the name of the user to display.
+ Thereafter, in that \*(TW only matching User ID's will be shown, or possibly
+ no tasks will be shown.
+@@ -831,7 +865,7 @@ just press <Enter> at the prompt, without providing a name.
+ .B SIZE\fR of \*(TW
+ .PD 0
+ .TP 7
+-\ \ \'\fBi\fR\' :\fIIdle_Processes_toggle\fR
++\ \ \<\fBi\fR\> :\fIIdle_Processes_toggle\fR
+ Displays all tasks or just active tasks.
+ When this toggle is \*F, idled or zombied processes will not be displayed.
+ 
+@@ -839,7 +873,7 @@ If this command is applied to the last \*(TD when in \*(AM, then it will not
+ affect the window's size, as all prior \*(TDs will have already been painted.
+ 
+ .TP 7
+-\ \ \'\fBn\fR\' or \'#\' :\fISet_Maximum_Tasks\fR
++\ \ \<\fBn\fR\> or \<\fB#\fR\> :\fISet_Maximum_Tasks\fR
+ You will be prompted to enter the number of tasks to display.
+ The lessor of your number and available screen rows will be used.
+ 
+@@ -878,12 +912,12 @@ The sort field might\fI not\fR be visible because:
+ .in
+ 
+ .TP 7
+-\ \ \'\fB<\fR\' :\fIMove_Sort_Field_Left\fR
++\ \ \<\fB<\fR\> :\fIMove_Sort_Field_Left\fR
+ Moves the sort column to the left unless the current sort field is
+ the first field being displayed.
+ 
+ .TP 7
+-\ \ \'\fB>\fR\' :\fIMove_Sort_Field_Right\fR
++\ \ \<\fB>\fR\> :\fIMove_Sort_Field_Right\fR
+ Moves the sort column to the right unless the current sort field is
+ the last field being displayed.
+ 
+@@ -894,7 +928,7 @@ the current sort field is visible.
+ .in
+ 
+ .TP 7
+-\ \ \'\fBF\fR\' or \'\fBO\fR\' :\fISelect_Sort_Field\fR
++\ \ \<\fBF\fR\> or \<\fBO\fR\> :\fISelect_Sort_Field\fR
+ These keys display a separate screen where you can change which field
+ is used as the sort column.
+ 
+@@ -907,7 +941,7 @@ This \*(CI can be a convenient way to simply verify the current sort field,
+ when running \*(Me with column highlighting turned \*F.
+ 
+ .TP 7
+-\ \ \'\fBR\fR\' :\fIReverse/Normal_Sort_Field_toggle\fR
++\ \ \<\fBR\fR\> :\fIReverse/Normal_Sort_Field_toggle\fR
+ Using this \*(CI you can alternate between high-to-low and low-to-high sorts.
+ 
+ .PP
+@@ -984,7 +1018,7 @@ know what window is the \*(CW.
+ .\" ......................................................................
+ .SS 4b. COMMANDS for Windows
+ .TP 7
+-\ \ \'\fB-\fR\' and \'\fB_\fR\' :\fIShow/Hide_Window(s)_toggles\fR
++\ \ \<\fB-\fR\> and \<\fB_\fR\> :\fIShow/Hide_Window(s)_toggles\fR
+ The '-' key turns the \*(CW's \*(TD \*O and \*F.
+ When \*O, that \*(TA will show a minimum of the columns header you've
+ established with the 'f' and 'o' commands.
+@@ -998,7 +1032,7 @@ If all 4 \*(TDs are currently visible, this \*(CI will leave the \*(SA
+ as the only display element.
+ 
+ .TP 7
+-*\ \'\fB=\fR\' and \'\fB+\fR\' :\fIEqualize_(re-balance)_Window(s)\fR
++*\ \<\fB=\fR\> and \<\fB+\fR\> :\fIEqualize_(re-balance)_Window(s)\fR
+ The '=' key forces the \*(CW's \*(TD to be visible.
+ It also reverses any 'i' (idle tasks) and 'n' (max tasks) commands that might
+ be active.
+@@ -1009,7 +1043,7 @@ They will also have retained any customizations you had previously applied,
+ except for the 'i' (idle tasks) and 'n' (max tasks) commands.
+ 
+ .TP 7
+-*\ \'\fBA\fR\' :\fIAlternate_Display_Mode_toggle\fR
++*\ \<\fBA\fR\> :\fIAlternate_Display_Mode_toggle\fR
+ This command will switch between \*(FM and \*(AM.
+ 
+ The first time you issue this command, all four \*(TDs will be shown.
+@@ -1017,7 +1051,7 @@ Thereafter when you switch modes, you will see only the \*(TD(s) you've
+ chosen to make visible.
+ 
+ .TP 7
+-*\ \'\fBa\fR\' and \'\fBw\fR\' :\fINext_Window_Forward/Backward\fR
++*\ \<\fBa\fR\> and \<\fBw\fR\> :\fINext_Window_Forward/Backward\fR
+ This will change the \*(CW, which in turn changes the window to which
+ commands are directed.
+ These keys act in a circular fashion so you can reach any desired \*(CW
+@@ -1028,7 +1062,7 @@ whenever the \*(CW name loses its emphasis/color, that's a reminder
+ the \*(TD is \*F and many commands will be restricted.
+ 
+ .TP 7
+-*\ \'\fBG\fR\' :\fIChoose_Another_Window/Field_Group\fR
++*\ \<\fBG\fR\> :\fIChoose_Another_Window/Field_Group\fR
+ You will be prompted to enter a number between 1 and 4 designating the
+ window/field group which should be made the \*(CW.
+ 
+@@ -1037,15 +1071,15 @@ In \*(AM, it is simply a less convenient alternative to the 'a' and 'w'
+ commands.
+ 
+ .TP 7
+-\ \ \'\fBg\fR\' :\fIChange_Window/Field_Group_Name\fR
++\ \ \<\fBg\fR\> :\fIChange_Window/Field_Group_Name\fR
+ You will be prompted for a new name to be applied to the \*(CW.
+ It does not require that the window name be visible
+ (the 'l' toggle to be \*O).
+ 
+ .IP "*" 3
+ The \*(CIs shown with an \*(AS have use beyond \*(AM.
+-    \'=', 'A', 'G'  are always available
+-    \'a', 'w'       act the same when color mapping
++    '=', 'A', 'G'  are always available
++    'a', 'w'       act the same when color mapping
+ 
+ 
+ .\" ----------------------------------------------------------------------
+diff --git a/top.c b/top.c
+index 6d4a7cc..224ae6d 100644
+--- a/top.c
++++ b/top.c
+@@ -140,7 +140,7 @@ static int   Cap_can_goto = 0;
+            are exploited in a macro and represent 90% of our optimization.
+            The Stdout_buf is transparent to our code and regardless of whose
+            buffer is used, stdout is flushed at frame end or if interactive. */
+-static char *Pseudo_scrn;
++static PSEUDO_SCREEN_t Pseudo_scrn;
+ static int   Pseudo_row, Pseudo_cols, Pseudo_size;
+ #ifndef STDOUT_IOLBF
+         // less than stdout's normal buffer but with luck mostly '\n' anyway
+@@ -1106,6 +1106,12 @@ static proc_t **procs_refresh (proc_t **table, int flags)
+    else
+       PT = openproc(flags);
+ 
++    if (PT==NULL) {
++        std_err(strerror(errno));
++        exit(1);
++    }
++
++
+    // i) Allocated Chunks:  *Existing* table;  refresh + reuse
+    if (!(CHKw(Curwin, Show_THREADS))) {
+       while (curmax < savmax) {
+@@ -1231,7 +1237,7 @@ static FLD_t Fieldstab[] = {
+    { "AaAa", "   PID",      " %5u",     -1,    -1, SF(PID), "Process Id",           L_NONE   },
+    { "BbBb", "  PPID",      " %5u",     -1,    -1, SF(PPD), "Parent Process Pid",   L_EITHER },
+    { "CcQq", " RUSER   ",   " %-8.8s",  -1,    -1, SF(URR), "Real user name",       L_RUSER  },
+-   { "DdCc", "  UID",       " %4u",     -1,    -1, SF(UID), "User Id",              L_NONE   },
++   { "DdCc", "   UID",       " %5u",     -1,    -1, SF(UID), "User Id",              L_NONE   },
+    { "EeDd", " USER    ",   " %-8.8s",  -1,    -1, SF(URE), "User Name",            L_EUSER  },
+    { "FfNn", " GROUP   ",   " %-8.8s",  -1,    -1, SF(GRP), "Group Name",           L_GROUP  },
+    { "GgGg", " TTY     ",   " %-8.8s",   8,    -1, SF(TTY), "Controlling Tty",      L_stat   },
+@@ -1783,7 +1789,8 @@ static void configs_read (void)
+       confighlp(Winstk[i].rc.fieldscur);
+    }
+ 
+-   if(Rc.mode_irixps && smp_num_cpus>1){
++   if(Rc.mode_irixps && smp_num_cpus>1 && 
++      !(CHKw(Curwin, Show_THREADS))) {
+       // good for 100 CPUs per process
+       pcpu_max_value = 9999.0;
+       Fieldstab[P_CPU].fmts = " %4.0f";
+@@ -2424,7 +2431,10 @@ static void wins_resize (void)
+    Pseudo_cols = Screen_cols + CLRBUFSIZ + 1;
+    if (Batch) Pseudo_size = ROWBUFSIZ + 1;
+    else       Pseudo_size = Pseudo_cols * Screen_rows;
+-   Pseudo_scrn = alloc_r(Pseudo_scrn, Pseudo_size);
++   if( Pseudo_scrn.buf == NULL || Pseudo_size > Pseudo_scrn.mem_size ) {
++      Pseudo_scrn.buf = alloc_r(Pseudo_scrn.buf, Pseudo_size);
++      Pseudo_scrn.mem_size = Pseudo_size;
++   }
+ 
+    // force rebuild of column headers AND libproc/readproc requirements
+    Frames_libflags = 0;
+@@ -2542,7 +2552,8 @@ static void do_key (unsigned c)
+          else {
+             float tmp =
+                get_float(fmtmk("Change delay from %.1f to", Rc.delay_time));
+-            if (tmp > -1) Rc.delay_time = tmp;
++            if (tmp == 0.0) show_msg("\aNot valid");
++            else if (tmp > 0) Rc.delay_time = tmp;
+          }
+          break;
+ 
+@@ -2570,6 +2581,15 @@ static void do_key (unsigned c)
+       case 'H':
+          if (VIZCHKc) {
+             TOGw(Curwin, Show_THREADS);
++            if(Rc.mode_irixps && smp_num_cpus>1 &&
++               !(CHKw(Curwin, Show_THREADS))){
++               // good for 100 CPUs per process
++               pcpu_max_value = 9999.0;
++               Fieldstab[P_CPU].fmts = " %4.0f";
++            } else {
++               pcpu_max_value = 99.9;
++               Fieldstab[P_CPU].fmts = " %#4.1f";
++            }
+             show_msg(fmtmk("Show threads %s"
+                , CHKw(Curwin, Show_THREADS) ? "On" : "Off"));
+          }
+@@ -2626,7 +2646,8 @@ static void do_key (unsigned c)
+          Rc.mode_irixps = !Rc.mode_irixps;
+          show_msg(fmtmk("Irix mode %s", Rc.mode_irixps ? "On" : "Off"));
+ #endif
+-         if(Rc.mode_irixps && smp_num_cpus>1){
++         if(Rc.mode_irixps && smp_num_cpus>1 &&
++            !(CHKw(Curwin, Show_THREADS))){
+             // good for 100 CPUs per process
+             pcpu_max_value = 9999.0;
+             Fieldstab[P_CPU].fmts = " %4.0f";
+@@ -2895,6 +2916,7 @@ static void summaryhlp (CPU_t *cpu, const char *pfx)
+    s_frme = cpu->s - cpu->s_sav;
+    n_frme = cpu->n - cpu->n_sav;
+    i_frme = TRIMz(cpu->i - cpu->i_sav);
++   if ((u_frme == 0) && (i_frme == 0)) i_frme = 100.0;
+    w_frme = cpu->w - cpu->w_sav;
+    x_frme = cpu->x - cpu->x_sav;
+    y_frme = cpu->y - cpu->y_sav;
+@@ -3033,9 +3055,10 @@ static proc_t **summary_show (void)
+       snprintf(_z, sizeof(_z), f, ## va);                                    \
+       snprintf(cbuf, sizeof(cbuf), "%s%s%s",                                 \
+          q->capclr_rowhigh,                                                  \
+-         _z,                                                                 \
++         _z+advance,                                                         \
+          !(CHKw(q, Show_HIROWS) && 'R' == p->state) ? q->capclr_rownorm : "" \
+       );                                                                     \
++      advance=0;                                                             \
+       pad += q->len_rowhigh;                                                 \
+       if (!(CHKw(q, Show_HIROWS) && 'R' == p->state)) pad += q->len_rownorm; \
+    }                                                                         \
+@@ -3298,7 +3321,7 @@ static void frame_make (void)
+    //       reframewins(), who also builds each window's column headers
+    if (!Frames_libflags) {
+       reframewins();
+-      memset(Pseudo_scrn, '\0', Pseudo_size);
++      memset(Pseudo_scrn.buf, '\0', Pseudo_size);
+    }
+    Pseudo_row = Msg_row = scrlins = 0;
+    ppt = summary_show();
+@@ -3391,9 +3414,8 @@ int main (int dont_care_argc, char *argv[])
+          // check 1st, in case tv zeroed (by sig handler) before it got set
+          rc = chin(0, &c, 1);
+          if (rc <= 0) {
+-            // EOF is pretty much a "can't happen" except for a kernel bug.
+-            // We should quickly die via SIGHUP, and thus not spin here.
+-            // if (rc == 0) end_pgm(0); /* EOF from terminal */
++            if (rc == 0) end_pgm(0); /* EOF from terminal, may happen if top
++                                      * erroneously gets detached from it. */
+             fcntl(STDIN_FILENO, F_SETFL, file_flags);
+             select(1, &fs, NULL, NULL, &tv);
+             fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK|file_flags);
+diff --git a/top.h b/top.h
+index b4ac079..8cf8538 100644
+--- a/top.h
++++ b/top.h
+@@ -135,7 +135,7 @@ do {                                                     \
+    int _len = 1 + snprintf(_str, sizeof(_str), fmt, ## arg);   \
+    putp ( Batch ? _str :                                   \
+    ({                                                 \
+-      char *restrict const _pse = &Pseudo_scrn[Pseudo_row++ * Pseudo_cols];  \
++      char *restrict const _pse = &Pseudo_scrn.buf[Pseudo_row++ * Pseudo_cols];  \
+       memcmp(_pse, _str, _len) ? memcpy(_pse, _str, _len) : "\n";  \
+    })                                \
+    );                   \
+@@ -149,7 +149,11 @@ do {                                                     \
+    int _len = 1 + snprintf(_str, sizeof(_str), fmt, ## arg);   \
+    if (Batch) _ptr = _str;                                   \
+    else {                                                 \
+-      _ptr = &Pseudo_scrn[Pseudo_row++ * Pseudo_cols];  \
++      if (Pseudo_row * Pseudo_cols + _len > Pseudo_size) { \
++         Pseudo_scrn.buf = realloc(Pseudo_scrn.buf, Pseudo_row * Pseudo_cols + _len); \
++	 Pseudo_scrn.mem_size = Pseudo_size = Pseudo_row * Pseudo_cols + _len; \
++      } \
++      _ptr = &Pseudo_scrn.buf[Pseudo_row++ * Pseudo_cols];  \
+       if (memcmp(_ptr, _str, _len)) {                \
+          memcpy(_ptr, _str, _len);                \
+       } else {                                 \
+@@ -237,6 +241,11 @@ typedef struct RCF_t {  // the complete rcfile (new style)
+    RCW_t  win [4];              // a 'WIN_t.rc' for each of the 4 windows
+ } RCF_t;
+ 
++typedef struct PSEUDO_SCREEN_t {
++   char *buf;
++   int	mem_size;
++} PSEUDO_SCREEN_t;
++
+ // The scaling 'type' used with scale_num() -- this is how
+ // the passed number is interpreted should scaling be necessary
+ enum scale_num {
+diff --git a/uptime.1 b/uptime.1
+index 3aae739..75f9b72 100644
+--- a/uptime.1
++++ b/uptime.1
+@@ -6,7 +6,8 @@ uptime \- Tell how long the system has been running.
+ .SH SYNOPSIS
+ .B uptime
+ .br
+-.BR uptime " [" "\-V" ]
++.B uptime
++.RB [ \-V ]
+ .SH DESCRIPTION
+ .B uptime
+ gives a one line display of the following information.
+@@ -14,13 +15,25 @@ The current time,
+ how long the system has been running,
+ how many users are currently logged on,
+ and the system load averages for the past 1, 5, and 15 minutes.
+-.sp
++
+ This is the same information contained in the header line displayed by 
+ .BR w (1).
++.sp
++System load averages is the average number of processes that are either 
++in a runnable or uninterruptable state.  A process in a runnable state is
++either using the CPU or waiting to use the CPU. A process in
++uninterruptable state is waiting for some I/O access, eg waiting for
++disk.  The averages are taken over the three time intervals.
++Load averages are not normalized for the number of CPUs in a system, so
++a load average of 1 means a single CPU system is loaded all the time
++while on a 4 CPU system it means it was idle 75% of the time.
+ .SH FILES
+-.IR /var/run/utmp "	information about who is currently logged on"
+-.br
+-.IR /proc "	process information"
++.TP
++.I /var/run/utmp
++information about who is currently logged on
++.TP
++.I /proc 
++process information
+ .SH AUTHORS
+ .B uptime
+ was written by Larry Greenfield <greenfie@gauss.rutgers.edu> and
+diff --git a/vmstat.8 b/vmstat.8
+index c059ec0..ec584a2 100644
+--- a/vmstat.8
++++ b/vmstat.8
+@@ -1,6 +1,6 @@
+ .\"  This page Copyright (C) 1994 Henry Ware <al172@yfn.ysu.edu>
+ .\"  Distributed under the GPL, Copyleft 1994.
+-.TH VMSTAT 8 "27 July 1994 " "Throatwobbler Ginkgo Labs" "Linux Administrator's Manual"
++.TH VMSTAT 8 "2009 Jan 9" "Throatwobbler Ginkgo Labs" "Linux Administrator's Manual"
+ .SH NAME
+ vmstat \- Report virtual memory statistics
+ .SH SYNOPSIS
+@@ -22,32 +22,35 @@ vmstat \- Report virtual memory statistics
+ .RB [ "\-d"]
+ .br
+ .B vmstat
++.RB [ "\-D"]
++.br
++.B vmstat
+ .RB [ "\-p disk partition"]
+ .br
+ .B vmstat
+ .RB [ "\-V" ]
+ .SH DESCRIPTION
+ \fBvmstat\fP reports information about processes, memory, paging,
+-block IO, traps, and cpu activity.
++block IO, traps, disks and cpu activity.
+ 
+ The first report produced gives averages since the last reboot.  Additional
+ reports give information on a sampling period of length \fIdelay\fP.
+ The process and memory reports are instantaneous in either case.
+ 
+ .SS Options
+-The \fB-a\fP switch displays active/inactive memory, given a 2.5.41 kernel or better.
++The \fB\-a\fP switch displays active/inactive memory, given a 2.5.41 kernel or better.
+ .PP
+-The \fB-f\fP switch displays the number of forks since boot.
++The \fB\-f\fP switch displays the number of forks since boot.
+ This includes the fork, vfork, and clone system calls, and is
+ equivalent to the total number of tasks created. Each process
+ is represented by one or more tasks, depending on thread usage.
+ This display does not repeat.
+ .PP
+-The \fB-m\fP displays slabinfo.
++The \fB\-m\fP displays slabinfo.
+ .PP
+-The \fB-n\fP switch causes the header to be displayed only once rather than periodically.
++The \fB\-n\fP switch causes the header to be displayed only once rather than periodically.
+ .PP
+-The \fB-s\fP switch displays a table of various event counters
++The \fB\-s\fP switch displays a table of various event counters
+ and memory statistics. This display does not repeat.
+ .PP
+ .I delay
+@@ -58,13 +61,15 @@ only one report is printed with the average values since boot.
+ is the number of updates.  If no count is specified and delay is
+ defined, \fIcount\fP defaults to infinity.
+ .PP
+-The \fB-d\fP reports disk statistics (2.5.70 or above required) 
++The \fB\-d\fP reports disk statistics (2.5.70 or above required) 
++.PP
++The \fB-D\fP reports some summary statistics about disk activity.
+ .PP
+-The \fB-p\fP followed by some partition name for detailed statistics (2.5.70 or above required) 
++The \fB\-p\fP followed by some partition name for detailed statistics (2.5.70 or above required) 
+ .PP
+-The \fB-S\fP followed by k or K or m or M switches outputs between 1000, 1024, 1000000, or 1048576 bytes 
++The \fB\-S\fP followed by k or K or m or M switches outputs between 1000, 1024, 1000000, or 1048576 bytes 
+ .PP
+-The \fB-V\fP switch results in displaying version information.
++The \fB\-V\fP switch results in displaying version information.
+ .PP
+ .SH FIELD DESCRIPTION FOR VM MODE
+ .SS
+@@ -81,8 +86,8 @@ swpd: the amount of virtual memory used.
+ free: the amount of idle memory.
+ buff: the amount of memory used as buffers.
+ cache: the amount of memory used as cache.
+-inact: the amount of inactive memory. (-a option)
+-active: the amount of active memory. (-a option)
++inact: the amount of inactive memory. (\-a option)
++active: the amount of active memory. (\-a option)
+ .fi
+ .PP
+ .SS
+@@ -110,9 +115,9 @@ cs: The number of context switches per second.
+ .B "CPU "
+ These are percentages of total CPU time.
+ .nf
+-us: Time spent running non-kernel code. (user time, including nice time)
++us: Time spent running non\-kernel code. (user time, including nice time)
+ sy: Time spent running kernel code. (system time)
+-id: Time spent idle. Prior to Linux 2.5.41, this includes IO-wait time.
++id: Time spent idle. Prior to Linux 2.5.41, this includes IO\-wait time.
+ wa: Time spent waiting for IO. Prior to Linux 2.5.41, included in idle.
+ st: Time stolen from a virtual machine. Prior to Linux 2.6.11, unknown.
+ 
+@@ -161,8 +166,6 @@ num: Number of currently active objects
+ total: Total number of available objects
+ size: Size of each object
+ pages: Number of pages with at least one active object
+-totpages: Total number of allocated pages
+-pslab: Number of pages per slab
+ .fi
+ 
+ .SH NOTES
+diff --git a/vmstat.c b/vmstat.c
+index f022928..e81a4ac 100644
+--- a/vmstat.c
++++ b/vmstat.c
+@@ -29,14 +29,15 @@
+ #include "proc/sysinfo.h"
+ #include "proc/version.h"
+ 
+-static unsigned long dataUnit=1024;
+-static char szDataUnit [16];
+ #define UNIT_B        1
+ #define UNIT_k        1000
+ #define UNIT_K        1024
+ #define UNIT_m        1000000
+ #define UNIT_M        1048576
+ 
++static unsigned long dataUnit=UNIT_K;
++static char szDataUnit[3] = "K";
++
+ #define VMSTAT        0
+ #define DISKSTAT      0x00000001
+ #define VMSUMSTAT     0x00000002
+@@ -285,7 +286,7 @@ static int diskpartition_format(const char* partition_name){
+     struct disk_stat *disks;
+     struct partition_stat *partitions, *current_partition=NULL;
+     unsigned long ndisks, j, k, npartitions;
+-    const char format[] = "%20u %10llu %10u %10u\n";
++    const char format[] = "%20u %10llu %10u %10llu\n";
+ 
+     fDiskstat=fopen("/proc/diskstats","rb");
+     if(!fDiskstat){
+@@ -354,6 +355,7 @@ static void diskformat(void){
+   if ((fDiskstat=fopen("/proc/diskstats", "rb"))){
+     fclose(fDiskstat);
+     ndisks=getdiskstat(&disks,&partitions);
++    if (!moreheaders) diskheader();
+     for(k=0; k<ndisks; k++){
+       if (moreheaders && ((k%height)==0)) diskheader();
+       printf(format,
+@@ -424,6 +426,7 @@ static void slabformat (void){
+     return;
+   }
+ 
++  if (!moreheaders) slabheader();
+   nSlab = getslabinfo(&slabs);
+   for(k=0; k<nSlab; k++){
+     if (moreheaders && ((k%height)==0)) slabheader();
+@@ -582,12 +585,10 @@ static int winhi(void) {
+ ////////////////////////////////////////////////////////////////////////////
+ 
+ int main(int argc, char *argv[]) {
+-  char partition[16];
+-  argc=0; /* redefined as number of integer arguments */
+-  for (argv++;*argv;argv++) {
+-    if ('-' ==(**argv)) {
+-      switch (*(++(*argv))) {
+-    
++  char *partition = NULL;
++  int c;
++
++  while((c = getopt(argc, argv, "VdafmDnp:S:s")) != EOF) switch(c) {
+       case 'V':
+ 	display_version();
+ 	exit(0);
+@@ -603,7 +604,7 @@ int main(int argc, char *argv[]) {
+ 	fork_format();
+         exit(0);
+       case 'm':
+-        statMode |= SLABSTAT; 	
++        statMode |= SLABSTAT;
+ 	break;
+       case 'D':
+         statMode |= DISKSUMSTAT; 	
+@@ -614,53 +615,40 @@ int main(int argc, char *argv[]) {
+         break;
+       case 'p':
+         statMode |= PARTITIONSTAT;
+-	if (argv[1]){
+-	  char *cp = *++argv;
+-	  if(!memcmp(cp,"/dev/",5)) cp += 5;
+-	  snprintf(partition, sizeof partition, "%s", cp);
+-	}else{
+-	  fprintf(stderr, "-p requires an argument\n");
+-          exit(EXIT_FAILURE);
+-	}
++	partition = optarg;
++	if (memcmp(partition, "/dev/", 5) == 0) partition += 5;
+         break;
+       case 'S':
+-	if (argv[1]){
+-	      ++argv;
+-	 	if (!strcmp(*argv, "k")) dataUnit=UNIT_k;
+-	 	else if (!strcmp(*argv, "K")) dataUnit=UNIT_K;
+-	 	else if (!strcmp(*argv, "m")) dataUnit=UNIT_m;
+-	 	else if (!strcmp(*argv, "M")) dataUnit=UNIT_M;
+-		else {fprintf(stderr, "-S requires k, K, m or M (default is kb)\n");
+-		     exit(EXIT_FAILURE);
+-		}
+-		strcpy(szDataUnit, *argv);
+-	 }else {fprintf(stderr, "-S requires an argument\n");
+-		exit(EXIT_FAILURE);
+-	 }
++	switch(optarg[0]) {
++	case 'b': case 'B': dataUnit = UNIT_B; break;
++	case 'k': dataUnit = UNIT_k; break;
++	case 'K': dataUnit = UNIT_K; break;
++	case 'm': dataUnit = UNIT_m; break;
++	case 'M': dataUnit = UNIT_M; break;
++	default:
++	  fprintf(stderr, "-S requires k, K, m or M (default is kb)\n");
++	  exit(EXIT_FAILURE);
++	}
++	szDataUnit[0] = optarg[0];
+ 	break;
+       case 's':
+-        statMode |= VMSUMSTAT; 	
++        statMode |= VMSUMSTAT;
+ 	break;
+       default:
+ 	/* no other aguments defined yet. */
+ 	usage();
+-      }
+-   }else{
+-      argc++;
+-      switch (argc) {
+-      case 1:
+-        if ((sleep_time = atoi(*argv)) == 0)
++  }
++
++  if (optind < argc) {
++    if ((sleep_time = atoi(argv[optind++])) == 0)
+          usage();
+-       num_updates = ULONG_MAX;
+-       break;
+-      case 2:
+-        num_updates = atol(*argv);
+-       break;
+-      default:
+-       usage();
+-      } /* switch */
++    num_updates = ULONG_MAX;
+   }
+-}
++  if (optind < argc)
++    num_updates = atol(argv[optind++]);
++  if (optind < argc)
++     usage();
++
+   if (moreheaders) {
+       int tmp=winhi()-3;
+       height=((tmp>0)?tmp:22);
+diff --git a/w.1 b/w.1
+index d57a9b5..c64b6cd 100644
+--- a/w.1
++++ b/w.1
+@@ -4,26 +4,26 @@
+ .SH NAME
+ w \- Show who is logged on and what they are doing.
+ .SH SYNOPSIS
+-.B w \-
+-.RB [ husfV ]
++.B w
++.RB [ \-husfVo ]
+ .RI [ user ]
+ .SH DESCRIPTION
+-.B "w "
++.B w
+ displays information about the users currently on the machine,
+ and their processes.
+ The header shows, in this order,  the current time,
+ how long the system has been running,
+ how many users are currently logged on,
+ and the system load averages for the past 1, 5, and 15 minutes.
+-.sp
++
+ The following entries are displayed for each user:
+ login name, the tty name, the remote host, login time, idle time, JCPU, PCPU,
+ and the command line of their current process.
+-.sp
++
+ The JCPU time is the time used by all processes attached to the tty.  It
+ does not include past background jobs, but does include currently
+ running background jobs.
+-.sp
++
+ The PCPU time is the time used by the current process, named in the "what"
+ field.
+ 
+@@ -35,7 +35,7 @@ Don't print the header.
+ .TP 0.5i
+ .B "\-u "
+ Ignores the username while figuring out the current process and cpu
+-times.  To demonstrate this, do a "su" and do a "w" and a "w -u".
++times.  To demonstrate this, do a "su" and do a "w" and a "w \-u".
+ .TP 0.5i
+ .B "\-s "
+ Use the short format.
+@@ -55,6 +55,9 @@ field is shown by default.
+ .B "\-V "
+ Display version information.
+ .TP 0.5i
++.B "\-o "
++Old style output. Prints blank space for idle times less than one minute.
++.TP 0.5i
+ .B "user "
+ Show information about the specified user only.
+ 
+@@ -67,6 +70,19 @@ information about who is currently logged on
+ process information
+ .PP
+ 
++.SH NOTES
++The output for Idle, JCPU and PCPU times vaires depending on if you use
++the \-o (old style) option or not. These formats can be confusing if you 
++switch between the old style and standard.  In the following paragraphs
++days are DD, hours HH, minutes MM, seconds SS and 100ths of seconds CC.
++
++The standard format is DDdays, HH:MMm, MM:SS or SS.CC if the times are 
++greater than 2 days, 1hour, or 1 minute respectively.
++
++For the \-o option, the output will be either  DDdays, HH:MM, MM:SSm or
++blank if the times are greater than 2 days, 1 hour or 1 minute
++respectively.
++
+ .SH "SEE ALSO"
+ .BR free (1),
+ .BR ps (1),
+diff --git a/w.c b/w.c
+index 1b2a0fc..2077338 100644
+--- a/w.c
++++ b/w.c
+@@ -30,6 +30,7 @@
+ #include <termios.h>
+ 
+ static int ignoreuser = 0;	/* for '-u' */
++static int oldstyle = 0;	/* for '-o' */
+ static proc_t **procs;		/* our snapshot of the process table */
+ 
+ typedef struct utmp utmp_t;
+@@ -76,6 +77,16 @@ static void print_time_ival7(time_t t, int centi_sec, FILE* fout) {
+       printf("   ?   ");
+       return;
+     }
++    if (oldstyle) {
++      if (t >= 48*60*60)               /* > 2 days */
++        fprintf(fout, " %2ludays", t/(24*60*60));
++      else if (t >= 60*60)            /* > 1 hour */
++        fprintf(fout, " %2lu:%02u ", t/(60*60), (unsigned) ((t/60)%60));
++      else if (t > 60)               /* > 1 minute */
++        fprintf(fout, " %2lu:%02um", t/60, (unsigned) t%60);
++      else
++        fprintf(fout, "       ");
++    } else {
+     if (t >= 48*60*60)				/* > 2 days */
+ 	fprintf(fout, " %2ludays", t/(24*60*60));
+     else if (t >= 60*60)			/* > 1 hour */
+@@ -83,7 +94,8 @@ static void print_time_ival7(time_t t, int centi_sec, FILE* fout) {
+     else if (t > 60)				/* > 1 minute */
+ 	fprintf(fout, " %2lu:%02u ", t/60, (unsigned) t%60);
+     else
+-	fprintf(fout, " %2lu.%02us", t, centi_sec);
++    fprintf(fout, " %2lu.%02us", t, centi_sec);
++    }
+ }
+ 
+ /**** stat the device file to get an idle time */
+@@ -229,17 +241,17 @@ static void showinfo(utmp_t *u, int formtype, int maxcmd, int from) {
+ 
+ /***** main */
+ int main(int argc, char **argv) {
+-    char *user = NULL;
++    char *user = NULL, *p;
+     utmp_t *u;
+     struct winsize win;
+-    int header=1, longform=1, from=1, args, maxcmd=80, ch;
++    int header=1, longform=1, from=1, args, maxcmd, ch;
+ 
+ #ifndef W_SHOWFROM
+     from = 0;
+ #endif
+ 
+     setlocale(LC_ALL, "");
+-    for (args=0; (ch = getopt(argc, argv, "hlusfV")) != EOF; args++)
++    for (args=0; (ch = getopt(argc, argv, "hlusfVo")) != EOF; args++)
+ 	switch (ch) {
+ 	  case 'h': header = 0;		break;
+ 	  case 'l': longform = 1;	break;
+@@ -247,6 +259,7 @@ int main(int argc, char **argv) {
+ 	  case 'f': from = !from;	break;
+ 	  case 'V': display_version();	exit(0);
+ 	  case 'u': ignoreuser = 1;	break;
++	  case 'o': oldstyle = 1;	break;
+ 	  default:
+ 	    printf("usage: w -hlsufV [user]\n"
+ 		   "    -h    skip header\n"
+@@ -254,6 +267,7 @@ int main(int argc, char **argv) {
+ 		   "    -s    short listing\n"
+ 		   "    -u    ignore uid of processes\n"
+ 		   "    -f    toggle FROM field (default %s)\n"
++		   "    -o    old-style output\n"
+ 		   "    -V    display version\n", FROM_STRING);
+ 	    exit(1);
+ 	}
+@@ -263,6 +277,10 @@ int main(int argc, char **argv) {
+ 
+     if (ioctl(1, TIOCGWINSZ, &win) != -1 && win.ws_col > 0)
+ 	maxcmd = win.ws_col;
++    else if (p = getenv("COLUMNS"))
++        maxcmd = atoi(p);
++    else
++	maxcmd = 80;
+     if (maxcmd < 71) {
+ 	fprintf(stderr, "%d column window is too narrow\n", maxcmd);
+ 	exit(1);
+diff --git a/watch.1 b/watch.1
+index 41323f4..faa68ff 100644
+--- a/watch.1
++++ b/watch.1
+@@ -1,45 +1,94 @@
+-.TH WATCH 1 "1999 Apr 3" " " "Linux User's Manual"
++.TH WATCH 1 "2009 May 11" " " "Linux User's Manual"
+ .SH NAME
+ watch \- execute a program periodically, showing output fullscreen
+ .SH SYNOPSIS
++.na
+ .B watch
+-.I [\-dhvt] [\-n <seconds>] [\-\-differences[=cumulative]] [\-\-help] [\-\-interval=<seconds>] [\-\-no\-title] [\-\-version] <command>
++.RB [ \-bdehpvtx ]
++.RB [ \-n
++.IR seconds ]
++.RB [ \-\-beep ]
++.RB [ \-\-differences[=\fIcumulative\fP]]
++.RB [ \-\-errexit ]
++.RB [ \-\-exec ]
++.RB [ \-\-help ]
++.RB [ \-\-interval=\fIseconds\fP]
++.RB [ \-\-no\-title ]
++.RB [ \-\-precise ]
++.RB [ \-\-version ]
++.I command
+ .SH DESCRIPTION
+-.BR watch
++.B watch
+ runs
+ .I command
+-repeatedly, displaying its output (the first screenfull).  This allows you to
++repeatedly, displaying its output and errors (the first screenfull).  This 
++allows you to
+ watch the program output change over time.  By default, the program is run
+ every 2 seconds; use 
+-.I -n
++.B \-n
++or
++.B \-\-interval
++to specify a different interval. Normally, this interval is interpreted
++as the amout of time between the completion of one run of
++.I command
++and the beginning of the next run. However, with the
++.I \-p
+ or
+-.I --interval
+-to specify a different interval.
++.I \-\-precise
++option, you can make
++.BR watch
++attempt to run
++.I command
++every
++.I interval
++seconds. Try it with
++.B ntptime
++and notice how the fractional seconds stays
++(nearly) the same, as opposed to normal mode where they continuously
++increase.
+ .PP
+ The
+-.I -d
++.B \-d
+ or
+-.I --differences
+-flag will highlight the differences between successive updates.  The 
+-.I --cumulative
+-option makes highlighting "sticky", presenting a running display of all
++.B \-\-differences
++flag will highlight the differences between successive updates.  Using
++.B \-\-differences=\fIcumulative\fP
++makes highlighting "sticky", presenting a running display of all
+ positions that have ever changed.  The
+-.I -t
++.B \-t
+ or
+-.I --no-title
++.B \-\-no\-title
+ option turns off the header showing the interval, command, and current
+-time at the top of the display, as well as the following blank line.
++time at the top of the display, as well as the following blank line.  The
++.I \-b
++or 
++.I \-\-beep
++option causes the command to beep if it has a non-zero exit.
+ .PP
+-.BR watch
+-will run until interrupted.
++.B watch
++will normally run until interrupted. If you want
++.B watch
++to exit on an error from the program running use the
++.I \-e
++or
++.I \-\-errexit
++options, which will cause 
++.B watch
++to exit if the return value from the program is non-zero.
++
+ .SH NOTE
+ Note that
+ .I command
+-is given to "sh -c"
++is given to "sh \-c"
+ which means that you may need to use extra quoting to get the desired effect.
++You can disable this with the 
++.I -x
++or 
++.I --exec
++option, which passes the command to exec(2) instead.
+ .PP
+ Note that POSIX option processing is used (i.e., option processing stops at
+-the first non-option argument).  This means that flags after
++the first non\-option argument).  This means that flags after
+ .I command
+ don't get interpreted by
+ .BR watch
+@@ -61,27 +110,58 @@ watch \-d 'ls \-l | fgrep joe'
+ To see the effects of quoting, try these out
+ .IP
+ watch echo $$
+-.IP
++.br
+ watch echo '$$'
+-.IP
++.br
+ watch echo "'"'$$'"'"
+ .PP
++To see the effect of precision time keeping, try adding 
++.I \-p
++to
++.IP
++watch \-n 10 sleep 1
++.PP
+ You can watch for your administrator to install the latest kernel with
+ .IP
+-watch uname -r
++watch uname \-r
+ .PP
+-(Just kidding.)
++(Note that
++.I \-p
++isn't guaranteed to work across reboots, especially in the face of
++.B ntpdate
++or other bootup time-changing mechanisms)
+ .SH BUGS
+ Upon terminal resize, the screen will not be correctly repainted until the
+ next scheduled update.  All
+-.I --differences
++.B \-\-differences
+ highlighting is lost on that update as well.
+ .PP
+ Non-printing characters are stripped from program output.  Use "cat -v" as
+ part of the command pipeline if you want to see them.
++.PP
++.I \-\-precise
++mode doesn't yet have advanced temporal distortion technology to
++compensate for a
++.I command
++that takes more than
++.I interval
++seconds to execute.
++.B watch
++also can get into a state where it rapid-fires as many executions of
++.I command
++as it can to catch up from a previous executions running longer than
++.I interval
++(for example,
++.B netstat
++taking ages on a DNS lookup).
+ .SH AUTHORS
+ The original
+ .B watch
+ was written by Tony Rems <rembo@unisoft.com> in 1991, with mods and
+ corrections by Francois Pinard.  It was reworked and new features added by
+-Mike Coleman <mkc@acm.org> in 1999.
++Mike Coleman <mkc@acm.org> in 1999.  The beep, exec, and error handling 
++features were added by Morty Abzug <morty@frakir.org> in 2008.
++On a not so dark and stormy morning
++in March of 2003, Anthony DeRobertis <asd@suespammers.org> got sick of
++his watches that should update every minute eventually updating many
++seconds after the minute started, and added microsecond precision.
+diff --git a/watch.c b/watch.c
+index 5841168..c7369b6 100644
+--- a/watch.c
++++ b/watch.c
+@@ -8,6 +8,7 @@
+  * Mike Coleman <mkc@acm.org>.
+  *
+  * Changes by Albert Cahalan, 2002-2003.
++ * stderr handling, exec, and beep option added by Morty Abzug, 2008
+  */
+ 
+ #define VERSION "0.2.0"
+@@ -20,6 +21,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <sys/ioctl.h>
++#include <sys/time.h>
+ #include <time.h>
+ #include <unistd.h>
+ #include <termios.h>
+@@ -35,13 +37,17 @@ static struct option longopts[] = {
+ 	{"differences", optional_argument, 0, 'd'},
+ 	{"help", no_argument, 0, 'h'},
+ 	{"interval", required_argument, 0, 'n'},
++	{"beep", no_argument, 0, 'b'},
++	{"errexit", no_argument, 0, 'e'},
++	{"exec", no_argument, 0, 'x'},
++	{"precise", no_argument, 0, 'p'},
+ 	{"no-title", no_argument, 0, 't'},
+ 	{"version", no_argument, 0, 'v'},
+ 	{0, 0, 0, 0}
+ };
+ 
+ static char usage[] =
+-    "Usage: %s [-dhntv] [--differences[=cumulative]] [--help] [--interval=<n>] [--no-title] [--version] <command>\n";
++    "Usage: %s [-bdhnptvx] [--beep] [--differences[=cumulative]] [--exec] [--help] [--interval=<n>] [--no-title] [--version] <command>\n";
+ 
+ static char *progname;
+ 
+@@ -50,6 +56,7 @@ static int height = 24, width = 80;
+ static int screen_size_changed = 0;
+ static int first_screen = 1;
+ static int show_title = 2;  // number of lines used, 2 or 0
++static int precise_timekeeping = 0;
+ 
+ #define min(x,y) ((x) > (y) ? (y) : (x))
+ 
+@@ -134,34 +141,61 @@ get_terminal_size(void)
+ 	}
+ }
+ 
++/* get current time in usec */
++typedef unsigned long long watch_usec_t;
++#define USECS_PER_SEC (1000000ull)
++watch_usec_t get_time_usec() {
++	struct timeval now;
++	gettimeofday(&now, NULL);
++	return USECS_PER_SEC*now.tv_sec + now.tv_usec;
++}
++
+ int
+ main(int argc, char *argv[])
+ {
+ 	int optc;
+ 	int option_differences = 0,
+ 	    option_differences_cumulative = 0,
++			option_exec = 0,
++			option_beep = 0,
++        option_errexit = 0,
+ 	    option_help = 0, option_version = 0;
+ 	double interval = 2;
+ 	char *command;
++	char **command_argv;
+ 	int command_length = 0;	/* not including final \0 */
++    watch_usec_t next_loop; /* next loop time in us, used for precise time
++                               keeping only */
++	int pipefd[2];
++	int status;
++	pid_t child;
+ 
+ 	setlocale(LC_ALL, "");
+ 	progname = argv[0];
+ 
+-	while ((optc = getopt_long(argc, argv, "+d::hn:vt", longopts, (int *) 0))
++	while ((optc = getopt_long(argc, argv, "+bed::hn:pvtx", longopts, (int *) 0))
+ 	       != EOF) {
+ 		switch (optc) {
++		case 'b':
++			option_beep = 1;
++			break;
+ 		case 'd':
+ 			option_differences = 1;
+ 			if (optarg)
+ 				option_differences_cumulative = 1;
+ 			break;
++        case 'e':
++            option_errexit = 1;
++            break;
+ 		case 'h':
+ 			option_help = 1;
+ 			break;
+ 		case 't':
+ 			show_title = 0;
+ 			break;
++		case 'x':
++		  option_exec = 1;
++			break;
+ 		case 'n':
+ 			{
+ 				char *str;
+@@ -174,6 +208,9 @@ main(int argc, char *argv[])
+ 					interval = ~0u/1000000;
+ 			}
+ 			break;
++		case 'p':
++			precise_timekeeping = 1;
++			break;
+ 		case 'v':
+ 			option_version = 1;
+ 			break;
+@@ -191,18 +228,24 @@ main(int argc, char *argv[])
+ 
+ 	if (option_help) {
+ 		fprintf(stderr, usage, progname);
++		fputs("  -b, --beep\t\t\t\tbeep if the command has a non-zero exit\n", stderr);
+ 		fputs("  -d, --differences[=cumulative]\thighlight changes between updates\n", stderr);
+ 		fputs("\t\t(cumulative means highlighting is cumulative)\n", stderr);
++		fputs("  -e, --errexit\t\t\t\texit watch if the command has a non-zero exit\n", stderr);
+ 		fputs("  -h, --help\t\t\t\tprint a summary of the options\n", stderr);
+ 		fputs("  -n, --interval=<seconds>\t\tseconds to wait between updates\n", stderr);
++        fputs("  -p, --precise\t\t\t\tprecise timing, ignore command run time\n", stderr);
+ 		fputs("  -v, --version\t\t\t\tprint the version number\n", stderr);
+ 		fputs("  -t, --no-title\t\t\tturns off showing the header\n", stderr);
++		fputs("  -x, --exec\t\t\t\tpass command to exec instead of sh\n", stderr);
+ 		exit(0);
+ 	}
+ 
+ 	if (optind >= argc)
+ 		do_usage();
+ 
++	command_argv=&(argv[optind]); /* save for later */
++
+ 	command = strdup(argv[optind++]);
+ 	command_length = strlen(command);
+ 	for (; optind < argc; optind++) {
+@@ -231,6 +274,9 @@ main(int argc, char *argv[])
+ 	noecho();
+ 	cbreak();
+ 
++	if (precise_timekeeping)
++		next_loop = get_time_usec();
++
+ 	for (;;) {
+ 		time_t t = time(NULL);
+ 		char *ts = ctime(&t);
+@@ -261,11 +307,57 @@ main(int argc, char *argv[])
+ 			free(header);
+ 		}
+ 
+-		if (!(p = popen(command, "r"))) {
+-			perror("popen");
++		/* allocate pipes */
++		if (pipe(pipefd)<0) {
++		  perror("pipe");
++			do_exit(7);
++	  }
++
++		/* flush stdout and stderr, since we're about to do fd stuff */
++		fflush(stdout);
++		fflush(stderr);
++
++		/* fork to prepare to run command */
++		child=fork();
++
++		if (child<0) { /* fork error */
++		  perror("fork");
+ 			do_exit(2);
++		} else if (child==0) { /* in child */
++			close (pipefd[0]); /* child doesn't need read side of pipe */
++			close (1); /* prepare to replace stdout with pipe */
++			if (dup2 (pipefd[1], 1)<0) { /* replace stdout with write side of pipe */
++			  perror("dup2");
++				exit(3);
++			}
++			dup2(1, 2); /* stderr should default to stdout */
++
++			if (option_exec) { /* pass command to exec instead of system */
++			  if (execvp(command_argv[0], command_argv)==-1) {
++				  perror("exec");
++				  exit(4);
++				}
++			} else {
++		    status=system(command); /* watch manpage promises sh quoting */
++
++			  /* propagate command exit status as child exit status */
++			  if (!WIFEXITED(status)) { /* child exits nonzero if command does */
++			    exit(1);
++			  } else {
++			    exit(WEXITSTATUS(status));
++		    }
++			}
++
++		}
++
++		/* otherwise, we're in parent */
++		close(pipefd[1]); /* close write side of pipe */
++		if ((p=fdopen(pipefd[0], "r"))==NULL) {
++		  perror("fdopen");
++			do_exit(5);
+ 		}
+ 
++
+ 		for (y = show_title; y < height; y++) {
+ 			int eolseen = 0, tabpending = 0;
+ 			for (x = 0; x < width; x++) {
+@@ -297,7 +389,7 @@ main(int argc, char *argv[])
+ 				move(y, x);
+ 				if (option_differences) {
+ 					chtype oldch = inch();
+-					char oldc = oldch & A_CHARTEXT;
++					unsigned char oldc = oldch & A_CHARTEXT;
+ 					attr = !first_screen
+ 					    && ((char)c != oldc
+ 						||
+@@ -313,10 +405,28 @@ main(int argc, char *argv[])
+ 			oldeolseen = eolseen;
+ 		}
+ 
+-		pclose(p);
++		fclose(p);
++
++		/* harvest child process and get status, propagated from command */
++		if (waitpid(child, &status, 0)<0) {
++		  perror("waitpid");
++			do_exit(8);
++		};
++
++		/* if child process exited in error, beep if option_beep is set */
++		if ((!WIFEXITED(status) || WEXITSTATUS(status))) {
++          if (option_beep) beep();
++          if (option_errexit) do_exit(8);
++		}
+ 
+ 		first_screen = 0;
+ 		refresh();
++		if (precise_timekeeping) {
++			watch_usec_t cur_time = get_time_usec();
++			next_loop += USECS_PER_SEC*interval;
++			if (cur_time < next_loop)
++				usleep(next_loop - cur_time);
++		} else
+ 		usleep(interval * 1000000);
+ 	}
+ 
+-- 
+1.7.0
+

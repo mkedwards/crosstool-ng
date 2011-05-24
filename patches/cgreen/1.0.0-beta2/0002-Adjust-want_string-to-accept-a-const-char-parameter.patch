@@ -1,0 +1,39 @@
+From 266ae04c329cdbceef6037a40fb60552f5ef762a Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Sun, 19 Sep 2010 08:36:43 -0700
+Subject: [PATCH] Adjust want_string() to accept a const char* parameter
+
+---
+ include/cgreen/constraint.h |    2 +-
+ src/constraint.c            |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/include/cgreen/constraint.h b/include/cgreen/constraint.h
+index 0af6bd9..4eda629 100644
+--- a/include/cgreen/constraint.h
++++ b/include/cgreen/constraint.h
+@@ -35,7 +35,7 @@ int is_constraint_parameter(Constraint *constraint, const char *label);
+ void test_constraint(Constraint *constraint, const char *function, intptr_t actual, const char *test_file, int test_line, TestReporter *reporter);
+ Constraint *want_(const char *parameter, intptr_t expected);
+ Constraint *want_non_null_(const char *parameter);
+-Constraint *want_string_(const char *parameter, char *expected);
++Constraint *want_string_(const char *parameter, const char *expected);
+ Constraint *want_double_(const char *parameter, intptr_t expected);
+ intptr_t box_double(double d);
+ 
+diff --git a/src/constraint.c b/src/constraint.c
+index 07c1a4e..ff236aa 100644
+--- a/src/constraint.c
++++ b/src/constraint.c
+@@ -52,7 +52,7 @@ Constraint *want_non_null_(const char *parameter) {
+ }
+ 
+ 
+-Constraint *want_string_(const char *parameter, char *expected) {
++Constraint *want_string_(const char *parameter, const char *expected) {
+     Constraint *constraint = create_constraint(parameter);
+     constraint->parameter = parameter;
+     constraint->compare = &compare_want_string;
+-- 
+1.7.1.rc2
+

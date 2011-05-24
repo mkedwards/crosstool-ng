@@ -1,0 +1,24 @@
+# bash
+# depends on ! BACKEND
+
+config DEBUG_bash
+    bool
+
+choice
+    bool
+    prompt "bash version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config BASH_V_3_2_48
+    bool
+    prompt "3.2.48 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config BASH_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "3.2.48" if BASH_V_3_2_48

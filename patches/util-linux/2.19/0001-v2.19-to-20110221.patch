@@ -1,0 +1,6207 @@
+diff --git a/README.devel b/README.devel
+index 752427d..d76baaf 100644
+--- a/README.devel
++++ b/README.devel
+@@ -29,6 +29,10 @@ PATCHES:
+ 
+      * one patch per email, with the changelog in the body of the email.
+ 
++     * many small patches are favoured over one big. Break down is done on
++       basis of logical functionality; for example #endif mark ups, compiler
++       warning and exit codes fixes all should be individual small patches.
++
+      * Subject: [PATCH] subsystem: description
+ 
+      * if someone else wrote the patch, they should be credited (and blamed)
+diff --git a/TODO b/TODO
+index dea4052..c28c45c 100644
+--- a/TODO
++++ b/TODO
+@@ -1,3 +1,28 @@
++
++kill
++----
++ - support real-time signals in format
++
++    kill -RT16 4711
++    kill -RTMIN+16 4711
++    kill -RTMAX-14 4711
++
++   see also https://bugzilla.redhat.com/show_bug.cgi?id=676297
++
++term-utils
++----------
++
++ - create a new top-level directory "term-utils"
++ - move agetty, setterm, reset, script (scriptreplay), mesg and wall to the
++   term-utils/
++
++fsprobe
++-------
++
++ - remove the lib/fsprobe.c wrapper for libblkid used in mount and fsck. Use
++   everywhere libblkid from util-linux only.
++ - update ./configure script
++
+ build-sys
+ --------
+ 
+@@ -13,7 +38,7 @@ build-sys
+ 	AM_CONDITIONAL(BUILD_LIBMOUNT, test "x$build_foo" = xyes)
+ 
+    for Linux-only utils in configure.ac. It would be nice to set all defaults
+-   for all $enable_ variables at begin of the configure script according to
++   for all "$enable_" variables at the begin of the configure script according to
+    $linux_os. Something like:
+ 
+ 	if test "x$linux_os" = xno
+@@ -31,12 +56,46 @@ build-sys
+    The configure.ac has to care about dependence between utils and librares and
+    enable BUILD_<utilname>.
+ 
+-fsprobe
++sysfs
++-----
++
++ - add lib/sysfs.c with functions that read block device attributes from /sys.
++   For more details see devno.c from libblkid, lsblk.c and lomount.c.
++
++procfs
++------
++
++ - add lib/proc.c with functions that read /proc/<pid>/tasks to get info about
++   all process threads.
++
++ - make chrt, taskset, ... threads aware. Currently these utils work with
++   group leader (master thread) and don't propagate requested changes to 
++   the whole group of threads.  It meas add a new option (e.g. -t):
++
++	chrt <prio> <pid>     # master thread only
++        chrt -t <prio> <pid>  # whole group of threads
++
++  Note that we need to scan /proc and call ched_set{scheduler,affinity}
++  syscalls for all individual threads.
++
++agetty:
++------
++
++  - review code and make it more simple for normal console (see mingetty)
++  - merge functionality from unmaintained mingetty package to agetty
++
++lib/tt.c
++--------
++
++ - allows to sort columns, for example sort lsblk(8) output by SIZE
++
++blkid(8)
+ -------
+ 
+- - remove the lib/fsprobe.c wrapper for libblkid used in mount and fsck. Use
+-   everywhere libblkid from util-linux only.
+- - update ./configure script
++  - add something like "blkid --list-known" to list all supported filesystems/raids
++ 
++  - add a new option (-r) that allows to print removable block devices that
++    are missing in /proc/partitions, see blkid_probe_all_removable().
+ 
+ login-utils:
+ -----------
+@@ -54,16 +113,14 @@ losetup
+ 
+     - add sysfs based version of show_loop() and use it for non-root users
+ 
+-sysfs
+------
++ - move all loopdev code to libmount
+ 
+- - add lib/sysfs.c with functions that read block device attributes from /sys.
+-   For more details see devno.c from libblkid, lsblk.c and lomount.c.
+ 
+-lib/tt.c
+---------
++shlib (libblkd and libmount):
++----------------------------
+ 
+- - allows to sort columns, for example sort lsblk(8) output by SIZE
++ - use __attribute__((notnull)) and __attribute__((warn_unused_result))
++   Note that the code has to be usefull for non-gcc compilers too.
+ 
+ libblkid
+ --------
+@@ -78,21 +135,6 @@ libblkid
+ 
+  - add support for dasd PT (used for example on s390)
+ 
+-
+-blkid(8)
+--------
+-
+-  - add something like "blkid --list-known" to list all supported filesystems/raids
+- 
+-  - add a new option (-r) that allows to print removable block devices that
+-    are missing in /proc/partitions, see blkid_probe_all_removable().
+-
+-agetty:
+-------
+-
+-  - review code and make it more simple for normal console (see mingetty)
+-  - merge functionality from unmaintained mingetty package to agetty
+-
+ wipefs
+ ------
+ 
+@@ -156,20 +198,15 @@ misc
+  
+  * use rpmatch() for all Y/N questions
+ 
+- * make chrt, taskset, ... threads aware. Currently these utils work with
+-   group leader (master thread) and don't propagate requested changes to 
+-   the whole group of threads.  It meas add a new option (e.g. -t):
+-
+-	chrt <prio> <pid>     # master thread only
+-        chrt -t <prio> <pid>  # whole group of threads
+-
+-  Note that we need to scan /proc and call ched_set{scheduler,affinity}
+-  syscalls for all individual threads.
+-
+  * umount by label:
+ 	# mount LABEL=mylabel
+ 	# umount LABEL=mylabel
+ 
++
++---------------
++exotic requests
++---------------
++
+  * mount -a -- reorder fstab entries by paths before mount (just idea only)
+ 
+  * mount -a  (just idea only)
+diff --git a/configure.ac b/configure.ac
+index f0e244b..7b5ffff 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -175,6 +175,8 @@ AC_CHECK_DECL([lseek64],
+ 
+ AC_CHECK_FUNCS(
+ 	[inet_aton \
++	err \
++	errx \
+ 	futimens \
+ 	fstat64 \
+ 	fsync \
+@@ -204,6 +206,8 @@ AC_CHECK_FUNCS(
+ 	posix_fadvise \
+ 	getmntinfo \
+ 	__secure_getenv \
++	warn \
++	warnx \
+ 	rpmatch])
+ AC_FUNC_FSEEKO
+ 
+@@ -871,6 +875,15 @@ else
+ fi
+ AM_CONDITIONAL(BUILD_CRAMFS, test "x$build_cramfs" = xyes)
+ 
++build_lsblk=yes
++if test "x$have_openat" = xno; then
++  AC_MSG_WARN([openat() function not found; do not build lsblk])
++  build_lsblk=no
++elif test "x$have_linux" = xno; then
++  AC_MSG_WARN([non-linux system; do not build lsblk])
++  build_lsblk=no
++fi
++AM_CONDITIONAL(BUILD_LSBLK, test "x$build_lsblk" = xyes)
+ 
+ AC_ARG_ENABLE([switch_root],
+   AS_HELP_STRING([--disable-switch_root], [do not build switch_root]),
+diff --git a/disk-utils/Makefile.am b/disk-utils/Makefile.am
+index 664c998..c950ff6 100644
+--- a/disk-utils/Makefile.am
++++ b/disk-utils/Makefile.am
+@@ -28,7 +28,7 @@ swaplabel_SOURCES = swaplabel.c $(utils_common)
+ swaplabel_LDADD = $(uuid_ldadd)
+ swaplabel_CFLAGS = $(AM_CFLAGS) $(uuid_cflags)
+ 
+-mkswap_SOURCES = mkswap.c $(utils_common) $(top_srcdir)/lib/wholedisk.c
++mkswap_SOURCES = mkswap.c $(utils_common) $(top_srcdir)/lib/wholedisk.c $(top_srcdir)/lib/strutils.c
+ mkswap_LDADD = $(uuid_ldadd)
+ mkswap_CFLAGS = $(AM_CFLAGS) $(uuid_cflags)
+ 
+diff --git a/disk-utils/mkfs.minix.c b/disk-utils/mkfs.minix.c
+index 5f01f2b..807a571 100644
+--- a/disk-utils/mkfs.minix.c
++++ b/disk-utils/mkfs.minix.c
+@@ -70,6 +70,7 @@
+ #include <sys/stat.h>
+ #include <mntent.h>
+ #include <getopt.h>
++#include <err.h>
+ 
+ #include "blkdev.h"
+ #include "minix.h"
+@@ -93,6 +94,8 @@
+ 
+ #define BITS_PER_BLOCK (BLOCK_SIZE<<3)
+ 
++#define MAX_INODES 65535
++
+ static char * program_name = "mkfs";
+ static char * device_name = NULL;
+ static int DEV = -1;
+@@ -121,7 +124,6 @@ static char boot_block_buffer[512];
+ #define FIRSTZONE ((unsigned long)Super.s_firstdatazone)
+ #define ZONESIZE ((unsigned long)Super.s_log_zone_size)
+ #define MAXSIZE ((unsigned long)Super.s_max_size)
+-#define MAGIC (Super.s_magic)
+ #define NORM_FIRSTZONE (2+IMAPS+ZMAPS+INODE_BLOCKS)
+ 
+ static char *inode_map;
+@@ -147,13 +149,10 @@ die(char *str) {
+ 	exit(8);
+ }
+ 
+-static void
++static void __attribute__((__noreturn__))
+ usage(void) {
+-	fprintf(stderr, _("%s (%s)\n"), program_name, PACKAGE_STRING);
+-	fprintf(stderr,
+-		_("Usage: %s [-c | -l filename] [-nXX] [-iXX] /dev/name [blocks]\n"),
+-		  program_name);
+-	exit(16);
++	errx(16, _("Usage: %s [-c | -l filename] [-nXX] [-iXX] /dev/name [blocks]"),
++	     program_name);
+ }
+ 
+ /*
+@@ -552,138 +551,141 @@ get_list_blocks(char *filename) {
+ 
+ int
+ main(int argc, char ** argv) {
+-  int i;
+-  char * tmp;
+-  struct stat statbuf;
+-  char * listfile = NULL;
+-  char * p;
+-
+-  if (argc && *argv)
+-    program_name = *argv;
+-  if ((p = strrchr(program_name, '/')) != NULL)
+-    program_name = p+1;
+-
+-  setlocale(LC_ALL, "");
+-  bindtextdomain(PACKAGE, LOCALEDIR);
+-  textdomain(PACKAGE);
+-
+-  if (argc == 2 &&
+-      (!strcmp(argv[1], "-V") || !strcmp(argv[1], "--version"))) {
+-	  printf(_("%s (%s)\n"), program_name, PACKAGE_STRING);
+-	  exit(0);
+-  }
+-
+-  if (INODE_SIZE * MINIX_INODES_PER_BLOCK != BLOCK_SIZE)
+-    die(_("bad inode size"));
+-  if (INODE_SIZE2 * MINIX2_INODES_PER_BLOCK != BLOCK_SIZE)
+-    die(_("bad inode size"));
+-
+-  opterr = 0;
+-  while ((i = getopt(argc, argv, "ci:l:n:v")) != -1)
+-    switch (i) {
+-      case 'c':
+-	check=1; break;
+-      case 'i':
+-	req_nr_inodes = (unsigned long) atol(optarg);
+-	break;
+-      case 'l':
+-	listfile = optarg; break;
+-      case 'n':
+-	i = strtoul(optarg,&tmp,0);
+-	if (*tmp)
+-	  usage();
+-	if (i == 14)
+-	  magic = MINIX_SUPER_MAGIC;
+-	else if (i == 30)
+-	  magic = MINIX_SUPER_MAGIC2;
++	int i;
++	char * tmp;
++	struct stat statbuf;
++	char * listfile = NULL;
++	char * p;
++
++	if (argc && *argv)
++		program_name = *argv;
++	if ((p = strrchr(program_name, '/')) != NULL)
++		program_name = p+1;
++
++	setlocale(LC_ALL, "");
++	bindtextdomain(PACKAGE, LOCALEDIR);
++	textdomain(PACKAGE);
++
++	if (argc == 2 &&
++	    (!strcmp(argv[1], "-V") || !strcmp(argv[1], "--version"))) {
++		printf(_("%s (%s)\n"), program_name, PACKAGE_STRING);
++		exit(0);
++	}
++
++	if (INODE_SIZE * MINIX_INODES_PER_BLOCK != BLOCK_SIZE)
++		die(_("bad inode size"));
++	if (INODE_SIZE2 * MINIX2_INODES_PER_BLOCK != BLOCK_SIZE)
++		die(_("bad inode size"));
++
++	opterr = 0;
++	while ((i = getopt(argc, argv, "ci:l:n:v")) != -1)
++		switch (i) {
++		case 'c':
++			check=1; break;
++		case 'i':
++			req_nr_inodes = (unsigned long) atol(optarg);
++			break;
++		case 'l':
++			listfile = optarg; break;
++		case 'n':
++			i = strtoul(optarg,&tmp,0);
++			if (*tmp)
++				usage();
++			if (i == 14)
++				magic = MINIX_SUPER_MAGIC;
++			else if (i == 30)
++				magic = MINIX_SUPER_MAGIC2;
++			else
++				usage();
++			namelen = i;
++			dirsize = i+2;
++			break;
++		case 'v':
++			version2 = 1;
++			break;
++		default:
++			usage();
++		}
++	argc -= optind;
++	argv += optind;
++	if (argc > 0 && !device_name) {
++		device_name = argv[0];
++		argc--;
++		argv++;
++	}
++	if (argc > 0) {
++		BLOCKS = strtol(argv[0],&tmp,0);
++		if (*tmp) {
++			printf(_("strtol error: number of blocks not specified"));
++			usage();
++		}
++	}
++
++	if (!device_name) {
++		usage();
++	}
++	check_mount();		/* is it already mounted? */
++	tmp = root_block;
++	*(short *)tmp = 1;
++	strcpy(tmp+2,".");
++	tmp += dirsize;
++	*(short *)tmp = 1;
++	strcpy(tmp+2,"..");
++	tmp += dirsize;
++	*(short *)tmp = 2;
++	strcpy(tmp+2,".badblocks");
++	if (stat(device_name, &statbuf) < 0)
++		die(_("unable to stat %s"));
++	if (S_ISBLK(statbuf.st_mode))
++		DEV = open(device_name,O_RDWR | O_EXCL);
+ 	else
+-	  usage();
+-	namelen = i;
+-	dirsize = i+2;
+-	break;
+-      case 'v':
+-	version2 = 1;
+-	break;
+-      default:
+-	usage();
+-    }
+-  argc -= optind;
+-  argv += optind;
+-  if (argc > 0 && !device_name) {
+-    device_name = argv[0];
+-    argc--;
+-    argv++;
+-  }
+-  if (argc > 0) {
+-     BLOCKS = strtol(argv[0],&tmp,0);
+-     if (*tmp) {
+-       printf(_("strtol error: number of blocks not specified"));
+-       usage();
+-     }
+-  }
+-
+-  if (!device_name) {
+-    usage();
+-  }
+-  check_mount();		/* is it already mounted? */
+-  tmp = root_block;
+-  *(short *)tmp = 1;
+-  strcpy(tmp+2,".");
+-  tmp += dirsize;
+-  *(short *)tmp = 1;
+-  strcpy(tmp+2,"..");
+-  tmp += dirsize;
+-  *(short *)tmp = 2;
+-  strcpy(tmp+2,".badblocks");
+-  if (stat(device_name, &statbuf) < 0)
+-    die(_("unable to stat %s"));
+-  if (S_ISBLK(statbuf.st_mode))
+-    DEV = open(device_name,O_RDWR | O_EXCL);
+-  else
+-    DEV = open(device_name,O_RDWR);
+-  if (DEV<0)
+-    die(_("unable to open %s"));
+-  if (S_ISBLK(statbuf.st_mode)) {
+-    int sectorsize;
+-
+-    if (blkdev_get_sector_size(DEV, &sectorsize) == -1)
+-	    die(_("cannot determine sector size for %s"));
+-    if (BLOCK_SIZE < sectorsize)
+-	    die(_("block size smaller than physical sector size of %s"));
+-    if (!BLOCKS) {
+-	    if (blkdev_get_size(DEV, &BLOCKS) == -1)
+-		die(_("cannot determine size of %s"));
+-	    BLOCKS /= BLOCK_SIZE;
+-    }
+-  } else if (!S_ISBLK(statbuf.st_mode)) {
+-    if (!BLOCKS)
+-	    BLOCKS = statbuf.st_size / BLOCK_SIZE;
+-    check=0;
+-  } else if (statbuf.st_rdev == 0x0300 || statbuf.st_rdev == 0x0340)
+-    die(_("will not try to make filesystem on '%s'"));
+-  if (BLOCKS < 10)
+-	  die(_("number of blocks too small"));
+-  if (version2) {
+-    if (namelen == 14)
+-      magic = MINIX2_SUPER_MAGIC;
+-    else
+-      magic = MINIX2_SUPER_MAGIC2;
+-  } else
+-    if (BLOCKS > 65535)
+-      BLOCKS = 65535;
+-  setup_tables();
+-  if (check)
+-    check_blocks();
+-  else if (listfile)
+-    get_list_blocks(listfile);
+-  if (version2) {
+-    make_root_inode2 ();
+-    make_bad_inode2 ();
+-  } else {
+-      make_root_inode();
+-      make_bad_inode();
+-  }
+-  mark_good_blocks();
+-  write_tables();
+-  return 0;
++		DEV = open(device_name,O_RDWR);
++	if (DEV<0)
++		die(_("unable to open %s"));
++	if (S_ISBLK(statbuf.st_mode)) {
++		int sectorsize;
++
++		if (blkdev_get_sector_size(DEV, &sectorsize) == -1)
++			die(_("cannot determine sector size for %s"));
++		if (BLOCK_SIZE < sectorsize)
++			die(_("block size smaller than physical sector size of %s"));
++		if (!BLOCKS) {
++			if (blkdev_get_size(DEV, &BLOCKS) == -1)
++				die(_("cannot determine size of %s"));
++			BLOCKS /= BLOCK_SIZE;
++		}
++	} else if (!S_ISBLK(statbuf.st_mode)) {
++		if (!BLOCKS)
++			BLOCKS = statbuf.st_size / BLOCK_SIZE;
++		check=0;
++	} else if (statbuf.st_rdev == 0x0300 || statbuf.st_rdev == 0x0340)
++		die(_("will not try to make filesystem on '%s'"));
++	if (BLOCKS < 10)
++		die(_("number of blocks too small"));
++	if (version2) {
++		if (namelen == 14)
++			magic = MINIX2_SUPER_MAGIC;
++		else
++			magic = MINIX2_SUPER_MAGIC2;
++	} else
++		if (BLOCKS > MAX_INODES)
++			BLOCKS = MAX_INODES;
++	setup_tables();
++	if (check)
++		check_blocks();
++	else if (listfile)
++		get_list_blocks(listfile);
++	if (version2) {
++		make_root_inode2 ();
++		make_bad_inode2 ();
++	} else {
++		make_root_inode();
++		make_bad_inode();
++	}
++
++	mark_good_blocks();
++	write_tables();
++	close(DEV);
++
++	return 0;
+ }
+diff --git a/disk-utils/mkswap.8 b/disk-utils/mkswap.8
+index 00c089d..ff959cb 100644
+--- a/disk-utils/mkswap.8
++++ b/disk-utils/mkswap.8
+@@ -8,16 +8,9 @@
+ mkswap \- set up a Linux swap area
+ .SH SYNOPSIS
+ .B mkswap
+-.RB [ \-c ]
+-.RB [ \-f ]
+-.RB [ \-p
+-.IR PSZ ]
+-.RB [ \-L
+-.IR label ]
+-.RB [ \-U
+-.IR uuid ]
+-.I device
+-.RI [ size ]
++.RB [ options ]
++.IR device
++.RB [ size ]
+ .SH DESCRIPTION
+ .B mkswap
+ sets up a Linux swap area on a device or in a file.
+@@ -41,18 +34,6 @@ parameter is superfluous but retained for backwards compatibility.
+ will use the entire partition or file if it is omitted.
+ Specifying it is unwise -- a typo may destroy your disk.)
+ 
+-The
+-.I PSZ
+-parameter specifies the page size to use.  It is almost always
+-unnecessary (even unwise) to specify it, but certain old libc
+-versions lie about the page size, so it is possible that
+-.B mkswap
+-gets it wrong.  The symptom is that a subsequent
+-.B swapon
+-fails because no swap signature is found.  Typical values for
+-.I PSZ
+-are 4096 or 8192.
+-
+ After creating the swap area, you need the
+ .B swapon
+ command to start using it.  Usually swap areas are listed in
+@@ -75,12 +56,12 @@ label (SUN, BSD, ...) or on a whole disk (e.g. /dev/sda).
+ 
+ .SH OPTIONS
+ .TP
+-.B \-c
++.BR \-c , " \-\-check"
+ Check the device (if it is a block device) for bad blocks
+ before creating the swap area.
+ If any are found, the count is printed.
+ .TP
+-.B \-f
++.BR \-f , " \-\-force"
+ Force -- go ahead even if the command is stupid.
+ This allows the creation of a swap area larger than the file
+ or partition it resides on.
+@@ -90,41 +71,46 @@ Without this option,
+ will refuse to erase the first block on a device with a partition table or on
+ a whole disk (e.g. /dev/sda).
+ .TP
+-.BI \-L \ label
++.BR \-L , " \-\-label" \ device-label
+ Specify a label, to allow
+ .B swapon
+ by label.
+ .TP
+-.BI \-p \ PSZ
++.BR \-p , " \-\-pagesize" \ SIZE
+ Specify the page size (in bytes) to use.  This option is usually unnecessary,
+ .B mkswap
+ reads the size from the kernel.
+ .TP
+-.BI \-U \ uuid
++.BR \-U , " \-\-uuid" \ UUID
+ Specify the uuid to use.  The default is to generate a UUID.
+ .TP
+-.BR \-v1
+-Specify the swap-space version.  The old \-v0 option has become obsolete
+-and now only \-v1 is supported.
++.BR \-v , " \-\-swapversion" \ 1
++Specify the swap-space version.  The old \-v 0 option has become obsolete
++and now only \-v 1 is supported.
+ 
+-The kernel has not supported v0 swap-space format since 2.5.22.
+-The new version v1 is supported since 2.1.117.
++The kernel has not supported v0 swap-space format since 2.5.22 (Jun 2002).
++The new version v1 is supported since 2.1.117 (Aug 1998).
++.TP
++.BR \-V , " \-\-version"
++Output version information and exit.
++.BR \-h , " \-\-help"
++Output help screen and exit.
+ 
+ .SH NOTES
+ The maximum useful size of a swap area depends on the architecture and
+ the kernel version.
+ It is roughly 2GiB on i386, PPC, m68k and ARM, 1GiB on sparc, 512MiB on mips,
+-128GiB on alpha, and 3TiB on sparc64.  For kernels after 2.3.3 there is no
++128GiB on alpha, and 3TiB on sparc64.  For kernels after 2.3.3 (May 1999) there is no
+ such limitation.
+ 
+ Note that before version 2.1.117 the kernel allocated one byte for each page,
+ while it now allocates two bytes, so that taking into use a swap area of 2 GiB
+ might require 2 MiB of kernel memory.
+ 
+-Presently, Linux allows 32 swap areas (this was 8 before Linux 2.4.10).
++Presently, Linux allows 32 swap areas (this was 8 before Linux 2.4.10 (Sep 2001)).
+ The areas in use can be seen in the file
+ .I /proc/swaps
+-(since 2.1.25).
++(since 2.1.25 (Sep 1997)).
+ 
+ .B mkswap
+ refuses areas smaller than 10 pages.
+diff --git a/disk-utils/mkswap.c b/disk-utils/mkswap.c
+index 3d14a42..0f4ad39 100644
+--- a/disk-utils/mkswap.c
++++ b/disk-utils/mkswap.c
+@@ -41,6 +41,8 @@
+ #include <sys/utsname.h>
+ #include <sys/stat.h>
+ #include <errno.h>
++#include <err.h>
++#include <getopt.h>
+ #ifdef HAVE_LIBSELINUX
+ #include <selinux/selinux.h>
+ #include <selinux/context.h>
+@@ -54,6 +56,7 @@
+ #include "pathnames.h"
+ #include "wholedisk.h"
+ #include "writeall.h"
++#include "xalloc.h"
+ 
+ #ifdef HAVE_LIBUUID
+ # ifdef HAVE_UUID_UUID_H
+@@ -67,8 +70,7 @@
+ # include <blkid.h>
+ #endif
+ 
+-static char * program_name = "mkswap";
+-static char * device_name = NULL;
++static char *device_name = NULL;
+ static int DEV = -1;
+ static unsigned long long PAGES = 0;
+ static unsigned long badpages = 0;
+@@ -82,14 +84,17 @@ static int check = 0;
+ #  define is_be64() 1
+ # else /* sparc32 */
+ static int
+-is_sparc64(void) {
++is_sparc64(void)
++{
+ 	struct utsname un;
+ 	static int sparc64 = -1;
+ 
+-	if (sparc64 != -1) return sparc64;
++	if (sparc64 != -1)
++		return sparc64;
+ 	sparc64 = 0;
+ 
+-	if (uname(&un) < 0) return 0;
++	if (uname(&un) < 0)
++		return 0;
+ 	if (! strcmp(un.machine, "sparc64")) {
+ 		sparc64 = 1;
+ 		return 1;
+@@ -142,54 +147,50 @@ is_sparc64(void) {
+  * What to do? Let us allow the user to specify the pagesize explicitly.
+  *
+  */
+-static int user_pagesize;
++static long user_pagesize;
+ static int pagesize;
+ static unsigned long *signature_page = NULL;
+ 
+ static void
+-init_signature_page(void) {
++init_signature_page(void)
++{
+ 
+ 	int kernel_pagesize = pagesize = getpagesize();
+ 
+ 	if (user_pagesize) {
+-		if ((user_pagesize & (user_pagesize-1)) ||
+-		    user_pagesize < sizeof(struct swap_header_v1_2) + 10) {
+-			fprintf(stderr, _("Bad user-specified page size %d\n"),
++		if ((user_pagesize & (user_pagesize - 1)) ||
++		    user_pagesize < (long) sizeof(struct swap_header_v1_2) + 10)
++			errx(EXIT_FAILURE,
++				_("Bad user-specified page size %lu"),
+ 				user_pagesize);
+-			exit(1);
+-		}
+ 		pagesize = user_pagesize;
+ 	}
+ 
+ 	if (user_pagesize && user_pagesize != kernel_pagesize)
+-		fprintf(stderr, _("Using user-specified page size %d, "
+-				  "instead of the system value %d\n"),
++		warnx(_("Using user-specified page size %d, "
++				"instead of the system value %d"),
+ 				pagesize, kernel_pagesize);
+ 
+-	signature_page = (unsigned long *) calloc(1, pagesize);
+-	if (!signature_page) {
+-		fprintf(stderr, _("%s: calloc() failed: %s\n"),
+-					program_name, strerror(errno));
+-		exit(1);
+-	}
++	signature_page = (unsigned long *) xcalloc(1, pagesize);
+ }
+ 
+ static void
+-write_signature(char *sig) {
++write_signature(char *sig)
++{
+ 	char *sp = (char *) signature_page;
+ 
+-	strncpy(sp+pagesize-10, sig, 10);
++	strncpy(sp + pagesize - 10, sig, 10);
+ }
+ 
+ static void
+-write_uuid_and_label(unsigned char *uuid, char *volume_name) {
++write_uuid_and_label(unsigned char *uuid, char *volume_name)
++{
+ 	struct swap_header_v1_2 *h;
+ 
+ 	/* Sanity check */
+ 	if (sizeof(struct swap_header_v1) !=
+ 	    sizeof(struct swap_header_v1_2)) {
+-		fprintf(stderr,
+-			_("Bad swap header size, no label written.\n"));
++		warnx(_("Bad swap header size, no label written."));
+ 		return;
+ 	}
+ 
+@@ -199,7 +200,7 @@ write_uuid_and_label(unsigned char *uuid, char *volume_name) {
+ 	if (volume_name) {
+ 		xstrncpy(h->volume_name, volume_name, sizeof(h->volume_name));
+ 		if (strlen(volume_name) > strlen(h->volume_name))
+-			fprintf(stderr, _("Label was truncated.\n"));
++			warnx(_("Label was truncated."));
+ 	}
+ 	if (uuid || volume_name) {
+ 		if (volume_name)
+@@ -275,44 +276,51 @@ It is roughly 2GB on i386, PPC, m68k, ARM, 1GB on sparc, 512MB on mips,
+ #define MAX_BADPAGES	((pagesize-1024-128*sizeof(int)-10)/sizeof(int))
+ #define MIN_GOODPAGES	10
+ 
+-static void
+-usage(void) {
+-	fprintf(stderr,
+-		_("Usage: %s [-c] [-pPAGESZ] [-L label] [-U UUID] /dev/name [blocks]\n"),
+-		program_name);
+-	exit(1);
+-}
+-
+-static void
+-die(const char *str) {
+-	fprintf(stderr, "%s: %s\n", program_name, str);
+-	exit(1);
++static void __attribute__ ((__noreturn__)) usage(FILE *out)
++{
++	fprintf(out,
++		_("\nUsage:\n"
++		  " %s [options] device [size]\n"),
++		program_invocation_short_name);
++
++	fprintf(out, _(
++		"\nOptions:\n"
++		" -c, --check               check bad blocks before creating the swap area\n"
++		" -f, --force               allow swap size area be larger than device\n"
++		" -p, --pagesize SIZE       specify page size in bytes\n"
++		" -L, --label LABEL         specify label\n"
++		" -v, --swapversion NUM     specify swap-space version number\n"
++		" -U, --uuid UUID           specify the uuid to use\n"
++		" -V, --version             output version information and exit\n"
++		" -h, --help                display this help and exit\n\n"));
++
++	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
+ }
+ 
+ static void
+-page_bad(int page) {
++page_bad(int page)
++{
+ 	struct swap_header_v1_2 *p = (struct swap_header_v1_2 *) signature_page;
+ 
+ 	if (badpages == MAX_BADPAGES)
+-		die(_("too many bad pages"));
++		errx(EXIT_FAILURE, _("too many bad pages"));
+ 	p->badpages[badpages] = page;
+ 	badpages++;
+ }
+ 
+ static void
+-check_blocks(void) {
++check_blocks(void)
++{
+ 	unsigned int current_page;
+ 	int do_seek = 1;
+ 	char *buffer;
+ 
+-	buffer = malloc(pagesize);
+-	if (!buffer)
+-		die(_("Out of memory"));
++	buffer = xmalloc(pagesize);
+ 	current_page = 0;
+ 	while (current_page < PAGES) {
+ 		if (do_seek && lseek(DEV,current_page*pagesize,SEEK_SET) !=
+ 		    current_page*pagesize)
+-			die(_("seek failed in check_blocks"));
++			errx(EXIT_FAILURE, _("seek failed in check_blocks"));
+ 		if ((do_seek = (pagesize != read(DEV, buffer, pagesize))))
+ 			page_bad(current_page);
+ 		current_page++;
+@@ -326,14 +334,15 @@ check_blocks(void) {
+ 
+ /* return size in pages */
+ static unsigned long long
+-get_size(const char  *file) {
+-	int	fd;
++get_size(const char *file)
++{
++	int fd;
+ 	unsigned long long size;
+ 
+ 	fd = open(file, O_RDONLY);
+ 	if (fd < 0) {
+ 		perror(file);
+-		exit(1);
++		exit(EXIT_FAILURE);
+ 	}
+ 	if (blkdev_get_size(fd, &size) == 0)
+ 		size /= pagesize;
+@@ -342,12 +351,6 @@ get_size(const char  *file) {
+ 	return size;
+ }
+ 
+-static int
+-isnzdigit(char c) {
+-	return (c >= '1' && c <= '9');
+-}
+-
+-
+ /*
+  * Check to make certain that our new filesystem won't be created on
+  * an already mounted partition.  Code adapted from mke2fs, Copyright
+@@ -355,9 +358,10 @@ isnzdigit(char c) {
+  * (C) 2006 Karel Zak -- port to mkswap
+  */
+ static int
+-check_mount(void) {
+-	FILE * f;
+-	struct mntent * mnt;
++check_mount(void)
++{
++	FILE *f;
++	struct mntent *mnt;
+ 
+ 	if ((f = setmntent (_PATH_MOUNTED, "r")) == NULL)
+ 		return 0;
+@@ -379,7 +383,7 @@ zap_bootbits(int fd, const char *devname, int force, int is_blkdev)
+ 
+ 	if (!force) {
+ 		if (lseek(fd, 0, SEEK_SET) != 0)
+-	                die(_("unable to rewind swap-device"));
++			errx(EXIT_FAILURE, _("unable to rewind swap-device"));
+ 
+ 		if (is_blkdev && is_whole_disk_fd(fd, devname)) {
+ 			/* don't zap bootbits on whole disk -- we know nothing
+@@ -390,9 +394,9 @@ zap_bootbits(int fd, const char *devname, int force, int is_blkdev)
+ #ifdef HAVE_LIBBLKID_INTERNAL
+ 			blkid_probe pr = blkid_new_probe();
+ 			if (!pr)
+-				die(_("unable to alloc new libblkid probe"));
++				errx(EXIT_FAILURE, _("unable to alloc new libblkid probe"));
+ 			if (blkid_probe_set_device(pr, fd, 0, 0))
+-				die(_("unable to assign device to libblkid probe"));
++				errx(EXIT_FAILURE, _("unable to assign device to libblkid probe"));
+ 
+ 			blkid_probe_enable_partitions(pr, 1);
+ 			blkid_probe_enable_superblocks(pr, 0);
+@@ -401,7 +405,7 @@ zap_bootbits(int fd, const char *devname, int force, int is_blkdev)
+ 				blkid_probe_lookup_value(pr, "PTTYPE",
+ 						(const char **) &type, NULL);
+ 			if (type) {
+-				type = strdup(type);
++				type = xstrdup(type);
+ 				zap = 0;
+ 			}
+ 			blkid_free_probe(pr);
+@@ -416,16 +420,16 @@ zap_bootbits(int fd, const char *devname, int force, int is_blkdev)
+ 		char buf[1024];
+ 
+ 		if (lseek(fd, 0, SEEK_SET) != 0)
+-	                die(_("unable to rewind swap-device"));
++			errx(EXIT_FAILURE, _("unable to rewind swap-device"));
+ 
+ 		memset(buf, 0, sizeof(buf));
+ 		if (write_all(fd, buf, sizeof(buf)))
+-			die(_("unable to erase bootbits sectors"));
++			errx(EXIT_FAILURE, _("unable to erase bootbits sectors"));
+ 		return;
+ 	}
+ 
+-	fprintf(stderr, _("%s: %s: warning: don't erase bootbits sectors\n"),
+-		program_name, devname);
++	warnx(_("%s: warning: don't erase bootbits sectors"),
++		devname);
+ 	if (type)
+ 		fprintf(stderr, _("        (%s partition table detected). "), type);
+ 	else if (whole)
+@@ -436,97 +440,92 @@ zap_bootbits(int fd, const char *devname, int force, int is_blkdev)
+ }
+ 
+ int
+-main(int argc, char ** argv) {
++main(int argc, char **argv) {
+ 	struct stat statbuf;
+ 	struct swap_header_v1_2 *hdr;
+-	int i;
++	int c;
+ 	unsigned long long maxpages;
+ 	unsigned long long goodpages;
+ 	unsigned long long sz;
+ 	off_t offset;
+ 	int force = 0;
+-	int version = 1;
++	long version = 1;
+ 	char *block_count = 0;
+-	char *pp;
+ 	char *opt_label = NULL;
+ 	unsigned char *uuid = NULL;
+ #ifdef HAVE_LIBUUID
+ 	const char *opt_uuid = NULL;
+ 	uuid_t uuid_dat;
+ #endif
+-
+-	program_name = (argc && *argv) ? argv[0] : "mkswap";
+-	if ((pp = strrchr(program_name, '/')) != NULL)
+-		program_name = pp+1;
++	struct option longopts[] = {
++		{ "check",       no_argument,       0, 'c' },
++		{ "force",       no_argument,       0, 'f' },
++		{ "pagesize",    required_argument, 0, 'p' },
++		{ "label",       required_argument, 0, 'L' },
++		{ "swapversion", required_argument, 0, 'v' },
++		{ "uuid",        required_argument, 0, 'U' },
++		{ "version",     no_argument,       0, 'V' },
++		{ "help",        no_argument,       0, 'h' },
++		{ NULL,          0, 0, 0 }
++	};
+ 
+ 	setlocale(LC_ALL, "");
+ 	bindtextdomain(PACKAGE, LOCALEDIR);
+ 	textdomain(PACKAGE);
+ 
+-	if (argc == 2 &&
+-	    (!strcmp(argv[1], "-V") || !strcmp(argv[1], "--version"))) {
+-		printf(_("%s (%s)\n"), program_name, PACKAGE_STRING);
+-		exit(0);
+-	}
+-
+-	for (i=1; i<argc; i++) {
+-		if (argv[i][0] == '-') {
+-			switch (argv[i][1]) {
+-				case 'c':
+-					check=1;
+-					break;
+-				case 'f':
+-					force=1;
+-					break;
+-				case 'p':
+-					pp = argv[i]+2;
+-					if (!*pp && i+1 < argc)
+-						pp = argv[++i];
+-					if (isnzdigit(*pp))
+-						user_pagesize = atoi(pp);
+-					else
+-						usage();
+-					break;
+-			        case 'L':
+-					pp = argv[i]+2;
+-					if (!*pp && i+1 < argc)
+-						pp = argv[++i];
+-					opt_label = pp;
+-				        break;
+-				case 'v':
+-					version = atoi(argv[i]+2);
+-					break;
+-				case 'U':
++	while((c = getopt_long(argc, argv, "cfp:L:v:U:Vh", longopts, NULL)) != -1) {
++		switch (c) {
++		case 'c':
++			check=1;
++			break;
++		case 'f':
++			force=1;
++			break;
++		case 'p':
++			user_pagesize = strtol_or_err(optarg, _("parse page size failed"));
++			break;
++		case 'L':
++			opt_label = optarg;
++			break;
++		case 'v':
++			version = strtol_or_err(optarg, _("parse version number failed"));
++			break;
++		case 'U':
+ #ifdef HAVE_LIBUUID
+-					opt_uuid = argv[i]+2;
+-					if (!*opt_uuid && i+1 < argc)
+-						opt_uuid = argv[++i];
++			opt_uuid = optarg;
+ #else
+-					fprintf(stderr, _("%1$s: warning: ignore -U (UUIDs are unsupported by %1$s)\n"),
+-						program_name);
++			warnx(_("warning: ignore -U (UUIDs are unsupported by %s)"),
++				program_invocation_short_name);
+ #endif
+-					break;
+-				default:
+-					usage();
+-			}
+-		} else if (!device_name) {
+-			device_name = argv[i];
+-		} else if (!block_count) {
+-			block_count = argv[i];
+-		} else
+-			usage();
++			break;
++		case 'V':
++			printf(_("%s from %s\n"), program_invocation_short_name,
++						  PACKAGE_STRING);
++			exit(EXIT_SUCCESS);
++		case 'h':
++			usage(stdout);
++		default:
++			usage(stderr);
++		}
+ 	}
+-
+-	if (version != 1) {
+-		fprintf(stderr, _("%s: does not support swapspace version %d.\n"),
+-			program_name, version);
+-		exit(EXIT_FAILURE);
++	if (optind < argc)
++		device_name = argv[optind++];
++	if (optind < argc)
++		block_count = argv[optind++];
++	if (optind != argc) {
++		warnx(("only one device as argument is currently supported."));
++		usage(stderr);
+ 	}
+ 
++	if (version != 1)
++		errx(EXIT_FAILURE,
++			_("does not support swapspace version %lu."),
++			version);
++
+ #ifdef HAVE_LIBUUID
+ 	if(opt_uuid) {
+ 		if (uuid_parse(opt_uuid, uuid_dat) != 0)
+-			die(_("error: UUID parsing failed"));
++			errx(EXIT_FAILURE, _("error: UUID parsing failed"));
+ 	} else
+ 		uuid_generate(uuid_dat);
+ 	uuid = uuid_dat;
+@@ -535,43 +534,33 @@ main(int argc, char ** argv) {
+ 	init_signature_page();	/* get pagesize */
+ 
+ 	if (!device_name) {
+-		fprintf(stderr,
+-			_("%s: error: Nowhere to set up swap on?\n"),
+-			program_name);
+-		usage();
++		warnx(_("error: Nowhere to set up swap on?"));
++		usage(stderr);
+ 	}
+ 	if (block_count) {
+ 		/* this silly user specified the number of blocks explicitly */
+-		char *tmp = NULL;
+ 		long long blks;
+ 
+-		errno = 0;
+-		blks = strtoll(block_count, &tmp, 0);
+-		if ((tmp == block_count) ||
+-		    (tmp && *tmp) ||
+-		    (errno != 0 && (blks == LLONG_MAX || blks == LLONG_MIN)) ||
+-		    blks < 0)
+-			usage();
++		blks = strtoll_or_err(block_count, "parse block count failed");
++		if (blks < 0)
++			usage(stderr);
+ 
+ 		PAGES = blks / (pagesize / 1024);
+ 	}
+ 	sz = get_size(device_name);
+-	if (!PAGES) {
++	if (!PAGES)
+ 		PAGES = sz;
+-	} else if (PAGES > sz && !force) {
+-		fprintf(stderr,
+-			_("%s: error: "
+-			  "size %llu KiB is larger than device size %llu KiB\n"),
+-			program_name,
++	else if (PAGES > sz && !force) {
++		errx(EXIT_FAILURE,
++			_("error: "
++			  "size %llu KiB is larger than device size %llu KiB"),
+ 			PAGES*(pagesize/1024), sz*(pagesize/1024));
+-		exit(1);
+ 	}
+ 
+ 	if (PAGES < MIN_GOODPAGES) {
+-		fprintf(stderr,
+-			_("%s: error: swap area needs to be at least %ld KiB\n"),
+-			program_name, (long)(MIN_GOODPAGES * pagesize/1024));
+-		usage();
++		warnx(_("error: swap area needs to be at least %ld KiB"),
++			(long)(MIN_GOODPAGES * pagesize/1024));
++		usage(stderr);
+ 	}
+ 
+ #ifdef __linux__
+@@ -585,9 +574,8 @@ main(int argc, char ** argv) {
+ 
+ 	if (PAGES > maxpages) {
+ 		PAGES = maxpages;
+-		fprintf(stderr,
+-			_("%s: warning: truncating swap area to %llu KiB\n"),
+-			program_name, PAGES * pagesize / 1024);
++		warnx(_("warning: truncating swap area to %llu KiB"),
++			PAGES * pagesize / 1024);
+ 	}
+ 
+ 	if (stat(device_name, &statbuf) < 0) {
+@@ -601,25 +589,20 @@ main(int argc, char ** argv) {
+ 
+ 	if (DEV < 0) {
+ 		perror(device_name);
+-		exit(1);
++		exit(EXIT_FAILURE);
+ 	}
+ 
+ 	/* Want a block device. Probably not /dev/hda or /dev/hdb. */
+ 	if (!S_ISBLK(statbuf.st_mode))
+ 		check=0;
+-	else if (statbuf.st_rdev == 0x0300 || statbuf.st_rdev == 0x0340) {
+-		fprintf(stderr,
+-			_("%s: error: "
+-			  "will not try to make swapdevice on '%s'\n"),
+-			program_name, device_name);
+-		exit(1);
+-	} else if (check_mount()) {
+-		fprintf(stderr,
+-			_("%s: error: "
+-			  "%s is mounted; will not make swapspace.\n"),
+-			program_name, device_name);
+-		exit(1);
+-	}
++	else if (statbuf.st_rdev == 0x0300 || statbuf.st_rdev == 0x0340)
++		errx(EXIT_FAILURE, _("error: "
++			"will not try to make swapdevice on '%s'"),
++			device_name);
++	else if (check_mount())
++		errx(EXIT_FAILURE, _("error: "
++			"%s is mounted; will not make swapspace."),
++			device_name);
+ 
+ 	if (check)
+ 		check_blocks();
+@@ -632,7 +615,7 @@ main(int argc, char ** argv) {
+ 	hdr->nr_badpages = badpages;
+ 
+ 	if (badpages > PAGES - MIN_GOODPAGES)
+-		die(_("Unable to set up swap-space: unreadable"));
++		errx(EXIT_FAILURE, _("Unable to set up swap-space: unreadable"));
+ 
+ 	goodpages = PAGES - badpages - 1;
+ 	printf(_("Setting up swapspace version 1, size = %llu KiB\n"),
+@@ -643,13 +626,12 @@ main(int argc, char ** argv) {
+ 
+ 	offset = 1024;
+ 	if (lseek(DEV, offset, SEEK_SET) != offset)
+-		die(_("unable to rewind swap-device"));
++		errx(EXIT_FAILURE, _("unable to rewind swap-device"));
+ 	if (write_all(DEV, (char *) signature_page + offset,
+-				    pagesize - offset) == -1) {
+-		fprintf(stderr, _("%s: %s: unable to write signature page: %s"),
+-			program_name, device_name, strerror(errno));
+-		exit(1);
+-	}
++				    pagesize - offset) == -1)
++		err(EXIT_FAILURE,
++			_("%s: unable to write signature page"),
++			device_name);
+ 
+ 	/*
+ 	 * A subsequent swapon() will fail if the signature
+@@ -657,7 +639,7 @@ main(int argc, char ** argv) {
+ 	 */
+ #ifdef HAVE_FSYNC
+ 	if (fsync(DEV))
+-		 die(_("fsync failed"));
++		errx(EXIT_FAILURE, _("fsync failed"));
+ #endif
+ 
+ #ifdef HAVE_LIBSELINUX
+@@ -667,34 +649,28 @@ main(int argc, char ** argv) {
+ 		context_t newcontext;
+ 
+ 		if (fgetfilecon(DEV, &oldcontext) < 0) {
+-			if (errno != ENODATA) {
+-				fprintf(stderr, _("%s: %s: unable to obtain selinux file label: %s\n"),
+-						program_name, device_name,
+-						strerror(errno));
+-				exit(1);
+-			}
++			if (errno != ENODATA)
++				err(EXIT_FAILURE,
++					_("%s: unable to obtain selinux file label"),
++					device_name);
+ 			if (matchpathcon(device_name, statbuf.st_mode, &oldcontext))
+-				die(_("unable to matchpathcon()"));
++				errx(EXIT_FAILURE, _("unable to matchpathcon()"));
+ 		}
+ 		if (!(newcontext = context_new(oldcontext)))
+-			die(_("unable to create new selinux context"));
++			errx(EXIT_FAILURE, _("unable to create new selinux context"));
+ 		if (context_type_set(newcontext, SELINUX_SWAPFILE_TYPE))
+-			die(_("couldn't compute selinux context"));
++			errx(EXIT_FAILURE, _("couldn't compute selinux context"));
+ 
+ 		context_string = context_str(newcontext);
+ 
+ 		if (strcmp(context_string, oldcontext)!=0) {
+-			if (fsetfilecon(DEV, context_string)) {
+-				fprintf(stderr, _("%s: unable to relabel %s to %s: %s\n"),
+-						program_name, device_name,
+-						context_string,
+-						strerror(errno));
+-				exit(1);
+-			}
++			if (fsetfilecon(DEV, context_string))
++				err(EXIT_FAILURE, _("unable to relabel %s to %s"),
++						device_name, context_string);
+ 		}
+ 		context_free(newcontext);
+ 		freecon(oldcontext);
+ 	}
+ #endif
+-	return 0;
++	return EXIT_SUCCESS;
+ }
+diff --git a/disk-utils/swaplabel.c b/disk-utils/swaplabel.c
+index 9dc20b4..86b3199 100644
+--- a/disk-utils/swaplabel.c
++++ b/disk-utils/swaplabel.c
+@@ -18,7 +18,6 @@
+ #include <sys/stat.h>
+ #include <unistd.h>
+ #include <stdlib.h>
+-#include <err.h>
+ #include <blkid.h>
+ #include <getopt.h>
+ 
+diff --git a/fdisk/cfdisk.c b/fdisk/cfdisk.c
+index 7faa44a..7b71721 100644
+--- a/fdisk/cfdisk.c
++++ b/fdisk/cfdisk.c
+@@ -1006,8 +1006,6 @@ find_logical(int i) {
+  */
+ 
+ /* Constants for menuType parameter of menuSelect function */
+-#define MENU_HORIZ 1
+-#define MENU_VERT 2
+ #define MENU_ACCEPT_OTHERS 4
+ #define MENU_BUTTON 8
+ /* Miscellenous constants */
+@@ -1033,7 +1031,7 @@ struct MenuItem
+ static int
+ menuUpdate( int y, int x, struct MenuItem *menuItems, int itemLength,
+ 	    char *available, int menuType, int current ) {
+-    int i, lmargin = x, ymargin = y;
++    int i, lmargin = x;
+     char *mcd;
+ 
+     /* Print available buttons */
+@@ -1085,18 +1083,6 @@ menuUpdate( int y, int x, struct MenuItem *menuItems, int itemLength,
+         if( current == i ) /*attroff( A_REVERSE )*/ standend ();
+ 
+         /* Calculate position for the next item */
+-        if( menuType & MENU_VERT )
+-        {
+-            y += 1;
+-            if( y >= WARNING_START )
+-            {
+-                y = ymargin;
+-                x += itemLength + MENU_SPACING;
+-                if( menuType & MENU_BUTTON ) x += 2;
+-            }
+-        }
+-        else
+-        {
+             x += itemLength + MENU_SPACING;
+             if( menuType & MENU_BUTTON ) x += 2;
+             if( x > COLUMNS - lmargin - 12 )
+@@ -1104,7 +1090,6 @@ menuUpdate( int y, int x, struct MenuItem *menuItems, int itemLength,
+                 x = lmargin;
+                 y ++ ;
+             }
+-        }
+     }
+ 
+     /* Print the description of selected item */
+@@ -1121,11 +1106,6 @@ menuSelect( int y, int x, struct MenuItem *menuItems, int itemLength,
+ 	    char *available, int menuType, int menuDefault ) {
+     int i, ylast = y, key = 0, current = menuDefault;
+ 
+-    if( !( menuType & ( MENU_HORIZ | MENU_VERT ) ) ) {
+-        print_warning(_("Menu without direction. Defaulting to horizontal."));
+-        menuType |= MENU_HORIZ;
+-    }
+-
+     /* Make sure that the current is one of the available items */
+     while( !strchr(available, menuItems[current].key) ) {
+         current ++ ;
+@@ -1201,41 +1181,16 @@ menuSelect( int y, int x, struct MenuItem *menuItems, int itemLength,
+ 	if (key == DOWNKEY || key == DOWNKEYVI)	/* ^N or j */
+ 	    key = MENU_DOWN;
+ 
+-	if (key == MENU_UP) {
+-	    if( menuType & MENU_VERT ) {
+-                do {
+-                    current -- ;
+-                    if( current < 0 )
+-			while( menuItems[current+1].key )
+-			    current ++ ;
+-                } while( !strchr( available, menuItems[current].key ));
+-                key = 0;
+-            }
+-	}
+-
+-	if (key == MENU_DOWN) {
+-            if( menuType & MENU_VERT ) {
+-                do {
+-                    current ++ ;
+-		    if( !menuItems[current].key ) current = 0 ;
+-		} while( !strchr( available, menuItems[current].key ));
+-		key = 0;
+-	    }
+-	}
+-
+ 	if (key == MENU_RIGHT) {
+-	    if( menuType & MENU_HORIZ ) {
+ 		do {
+ 		    current ++ ;
+ 		    if( !menuItems[current].key )
+ 			current = 0 ;
+ 		} while( !strchr( available, menuItems[current].key ));
+ 		key = 0;
+-	    }
+ 	}
+ 
+ 	if (key == MENU_LEFT) {
+-	     if( menuType & MENU_HORIZ ) {
+ 		 do {
+ 		     current -- ;
+ 		     if( current < 0 ) {
+@@ -1244,7 +1199,6 @@ menuSelect( int y, int x, struct MenuItem *menuItems, int itemLength,
+ 		     }
+ 		 } while( !strchr( available, menuItems[current].key ));
+ 		 key = 0;
+-	     }
+ 	}
+ 
+         /* Should all keys to be accepted? */
+@@ -1286,7 +1240,7 @@ menuContinue(void) {
+     };
+ 
+     menuSelect(COMMAND_LINE_Y, COMMAND_LINE_X,
+-	menuContinueBtn, 0, "c", MENU_HORIZ | MENU_ACCEPT_OTHERS, 0 );
++	menuContinueBtn, 0, "c", MENU_ACCEPT_OTHERS, 0 );
+ }
+ 
+ /* Function menuSelect takes way too many parameters  *
+@@ -1305,7 +1259,7 @@ menuSimple(struct MenuItem *menuItems, int menuDefault) {
+     }
+     available[i] = 0;
+     return menuSelect(COMMAND_LINE_Y, COMMAND_LINE_X, menuItems, itemLength,
+-        available, MENU_HORIZ | MENU_BUTTON, menuDefault);
++        available, MENU_BUTTON, menuDefault);
+ }
+ 
+ /* End of command menu support code */
+@@ -2688,15 +2642,15 @@ do_curses_fdisk(void) {
+ 	if (p_info[cur_part].id == FREE_SPACE) {
+ 	    s = ((opentype == O_RDWR) ? "hnpquW" : "hnpqu");
+ 	    command = menuSelect(COMMAND_LINE_Y, COMMAND_LINE_X, menuMain, 10,
+-	        s, MENU_HORIZ | MENU_BUTTON | MENU_ACCEPT_OTHERS, 5);
++	        s, MENU_BUTTON | MENU_ACCEPT_OTHERS, 5);
+ 	} else if (p_info[cur_part].id > 0) {
+ 	    s = ((opentype == O_RDWR) ? "bdhmpqtuW" : "bdhmpqtu");
+ 	    command = menuSelect(COMMAND_LINE_Y, COMMAND_LINE_X, menuMain, 10,
+-	        s, MENU_HORIZ | MENU_BUTTON | MENU_ACCEPT_OTHERS, is_first_run ? 7 : 0);
++	        s, MENU_BUTTON | MENU_ACCEPT_OTHERS, is_first_run ? 7 : 0);
+ 	} else {
+ 	    s = ((opentype == O_RDWR) ? "hpquW" : "hpqu");
+ 	    command = menuSelect(COMMAND_LINE_Y, COMMAND_LINE_X, menuMain, 10,
+-	        s, MENU_HORIZ | MENU_BUTTON | MENU_ACCEPT_OTHERS, 0);
++	        s, MENU_BUTTON | MENU_ACCEPT_OTHERS, 0);
+ 	}
+ 	is_first_run = FALSE;
+ 	switch ( command ) {
+diff --git a/fdisk/sfdisk.c b/fdisk/sfdisk.c
+index d99bf3c..b81e7ca 100644
+--- a/fdisk/sfdisk.c
++++ b/fdisk/sfdisk.c
+@@ -99,7 +99,7 @@ do_warn(char *s, ...) {
+ }
+ 
+ static void
+-warn(char *s, ...) {
++my_warn(char *s, ...) {
+     va_list p;
+ 
+     va_start(p, s);
+@@ -488,7 +488,7 @@ get_cylindersize(char *dev, int fd, int silent) {
+ 	    B.cylinders = B.total_size / B.cylindersize;
+ 
+     if (R.start && !force) {
+-	warn(
++	my_warn(
+ 	    _("Warning: start=%lu - this looks like a partition rather than\n"
+ 	      "the entire disk. Using fdisk on it is probably meaningless.\n"
+ 	      "[Use the --force option if you really want this]\n"), R.start);
+@@ -496,19 +496,19 @@ get_cylindersize(char *dev, int fd, int silent) {
+     }
+ #if 0
+     if (R.heads && B.heads != R.heads)
+-	warn(_("Warning: HDIO_GETGEO says that there are %lu heads\n"),
++	my_warn(_("Warning: HDIO_GETGEO says that there are %lu heads\n"),
+ 	     R.heads);
+     if (R.sectors && B.sectors != R.sectors)
+-	warn(_("Warning: HDIO_GETGEO says that there are %lu sectors\n"),
++	my_warn(_("Warning: HDIO_GETGEO says that there are %lu sectors\n"),
+ 	     R.sectors);
+     if (R.cylinders && B.cylinders != R.cylinders
+ 	    && B.cylinders < 65536 && R.cylinders < 65536)
+-	warn(_("Warning: BLKGETSIZE/HDIO_GETGEO says that there are %lu cylinders\n"),
++	my_warn(_("Warning: BLKGETSIZE/HDIO_GETGEO says that there are %lu cylinders\n"),
+ 	     R.cylinders);
+ #endif
+ 
+     if (B.sectors > 63)
+-      warn(_("Warning: unlikely number of sectors (%lu) - usually at most 63\n"
++      my_warn(_("Warning: unlikely number of sectors (%lu) - usually at most 63\n"
+ 	   "This will give problems with all software that uses C/H/S addressing.\n"),
+ 	   B.sectors);
+     if (!silent)
+@@ -594,17 +594,17 @@ chs_ok (chs a, char *v, char *w) {
+     if (is_equal_chs(a, zero_chs))
+       return 1;
+     if (B.heads && aa.h >= B.heads) {
+-	warn(_("%s of partition %s has impossible value for head: "
++	my_warn(_("%s of partition %s has impossible value for head: "
+ 	     "%lu (should be in 0-%lu)\n"), w, v, aa.h, B.heads-1);
+ 	ret = 0;
+     }
+     if (B.sectors && (aa.s == 0 || aa.s > B.sectors)) {
+-	warn(_("%s of partition %s has impossible value for sector: "
++	my_warn(_("%s of partition %s has impossible value for sector: "
+ 	     "%lu (should be in 1-%lu)\n"), w, v, aa.s, B.sectors);
+ 	ret = 0;
+     }
+     if (B.cylinders && aa.c >= B.cylinders) {
+-	warn(_("%s of partition %s has impossible value for cylinders: "
++	my_warn(_("%s of partition %s has impossible value for cylinders: "
+ 	     "%lu (should be in 0-%lu)\n"), w, v, aa.c, B.cylinders-1);
+ 	ret = 0;
+     }
+@@ -1199,13 +1199,13 @@ partitions_ok(struct disk_desc *z) {
+     for (p = partitions; p - partitions < partno; p++)
+       if (p->size == 0) {
+ 	  if (p->p.sys_type != EMPTY_PARTITION)
+-	    warn(_("Warning: partition %s has size 0 but is not marked Empty\n"),
++	    my_warn(_("Warning: partition %s has size 0 but is not marked Empty\n"),
+ 		 PNO(p));
+ 	  else if (p->p.bootable != 0)
+-	    warn(_("Warning: partition %s has size 0 and is bootable\n"),
++	    my_warn(_("Warning: partition %s has size 0 and is bootable\n"),
+ 		 PNO(p));
+ 	  else if (p->p.start_sect != 0)
+-	    warn(_("Warning: partition %s has size 0 and nonzero start\n"),
++	    my_warn(_("Warning: partition %s has size 0 and nonzero start\n"),
+ 		 PNO(p));
+ 	  /* all this is probably harmless, no error return */
+       }
+@@ -1216,8 +1216,8 @@ partitions_ok(struct disk_desc *z) {
+       if (p->size && !is_extended(p->p.sys_type)) {
+ 	  q = p->ep;
+ 	  if (p->start < q->start || p->start + p->size > q->start + q->size) {
+-	      warn(_("Warning: partition %s "), PNO(p));
+-	      warn(_("is not contained in partition %s\n"), PNO(q));
++	      my_warn(_("Warning: partition %s "), PNO(p));
++	      my_warn(_("is not contained in partition %s\n"), PNO(q));
+ 	      return 0;
+ 	  }
+       }
+@@ -1228,8 +1228,8 @@ partitions_ok(struct disk_desc *z) {
+ 	for (q = p+1; q < partitions+partno; q++)
+ 	  if (q->size && !is_extended(q->p.sys_type))
+ 	    if (!((p->start > q-> start) ? disj(q,p) : disj(p,q))) {
+-		warn(_("Warning: partitions %s "), PNO(p));
+-		warn(_("and %s overlap\n"), PNO(q));
++		my_warn(_("Warning: partitions %s "), PNO(p));
++		my_warn(_("and %s overlap\n"), PNO(q));
+ 		return 0;
+ 	    }
+ 
+@@ -1240,7 +1240,7 @@ partitions_ok(struct disk_desc *z) {
+ 	for (q = partitions; q < partitions+partno; q++)
+ 	  if (is_extended(q->p.sys_type))
+ 	    if (p->start <= q->start && p->start + p->size > q->start) {
+-		warn(_("Warning: partition %s contains part of "
++		my_warn(_("Warning: partition %s contains part of "
+ 		       "the partition table (sector %lu),\n"
+ 		       "and will destroy it when filled\n"),
+ 		     PNO(p), q->start);
+@@ -1252,11 +1252,11 @@ partitions_ok(struct disk_desc *z) {
+     for (p = partitions; p < partitions+partno; p++)
+       if (p->size) {
+ 	  if (p->start == 0) {
+-	      warn(_("Warning: partition %s starts at sector 0\n"), PNO(p));
++	      my_warn(_("Warning: partition %s starts at sector 0\n"), PNO(p));
+ 	      return 0;
+ 	  }
+ 	  if (p->size && p->start + p->size > ds) {
+-	      warn(_("Warning: partition %s extends past end of disk\n"),
++	      my_warn(_("Warning: partition %s extends past end of disk\n"),
+ 		   PNO(p));
+ 	      return 0;
+ 	  }
+@@ -1271,7 +1271,7 @@ partitions_ok(struct disk_desc *z) {
+ 	if (p->p.sys_type == EXTENDED_PARTITION)
+ 	  ect++;
+       if (ect > 1 && !Linux) {
+-	  warn(_("Among the primary partitions, at most one can be extended\n"
++	  my_warn(_("Among the primary partitions, at most one can be extended\n"
+ 		 " (although this is not a problem under Linux)\n"));
+ 	  return 0;
+       }
+@@ -1289,13 +1289,13 @@ partitions_ok(struct disk_desc *z) {
+ 	      if (p->start % B.cylindersize != 0
+ 		 && (!p->ep || p->start / B.cylindersize != p->ep->start / B.cylindersize)
+ 		 && (p->p.start_sect >= B.cylindersize)) {
+-		  warn(_("Warning: partition %s does not start "
++		  my_warn(_("Warning: partition %s does not start "
+ 		       "at a cylinder boundary\n"), PNO(p));
+ 		  if (!Linux)
+ 		    return 0;
+ 	      }
+ 	      if ((p->start + p->size) % B.cylindersize) {
+-		  warn(_("Warning: partition %s does not end "
++		  my_warn(_("Warning: partition %s does not end "
+ 		       "at a cylinder boundary\n"), PNO(p));
+ 		  if (!Linux)
+ 		    return 0;
+@@ -1313,20 +1313,20 @@ partitions_ok(struct disk_desc *z) {
+ 	  if (pno == -1)
+ 	    pno = p - partitions;
+ 	  else if (p - partitions < 4) {
+-	      warn(_("Warning: more than one primary partition is marked "
++	      my_warn(_("Warning: more than one primary partition is marked "
+ 		   "bootable (active)\n"
+ 		   "This does not matter for LILO, but the DOS MBR will "
+ 		   "not boot this disk.\n"));
+ 	      break;
+ 	  }
+ 	  if (p - partitions >= 4) {
+-	      warn(_("Warning: usually one can boot from primary partitions "
++	      my_warn(_("Warning: usually one can boot from primary partitions "
+ 		   "only\nLILO disregards the `bootable' flag.\n"));
+ 	      break;
+ 	  }
+       }
+       if (pno == -1 || pno >= 4)
+-	warn(_("Warning: no primary partition is marked bootable (active)\n"
++	my_warn(_("Warning: no primary partition is marked bootable (active)\n"
+ 	     "This does not matter for LILO, but the DOS MBR will "
+ 	     "not boot this disk.\n"));
+     }
+@@ -1343,7 +1343,7 @@ partitions_ok(struct disk_desc *z) {
+ 	if (!chs_ok(b, PNO(p), _("start")))
+ 	  return 0;
+ 	if (a.s && !is_equal_chs(a, b))
+-	  warn(_("partition %s: start: (c,h,s) expected (%ld,%ld,%ld) found (%ld,%ld,%ld)\n"),
++	  my_warn(_("partition %s: start: (c,h,s) expected (%ld,%ld,%ld) found (%ld,%ld,%ld)\n"),
+ 	       PNO(p), aa.c, aa.h, aa.s, bb.c, bb.h, bb.s);
+ 	a = p->size ? ulong_to_chs(p->start + p->size - 1, B) : zero_chs;
+ 	b = p->p.end_chs;
+@@ -1352,10 +1352,10 @@ partitions_ok(struct disk_desc *z) {
+ 	if (!chs_ok(b, PNO(p), _("end")))
+ 	  return 0;
+ 	if (a.s && !is_equal_chs(a, b))
+-	  warn(_("partition %s: end: (c,h,s) expected (%ld,%ld,%ld) found (%ld,%ld,%ld)\n"),
++	  my_warn(_("partition %s: end: (c,h,s) expected (%ld,%ld,%ld) found (%ld,%ld,%ld)\n"),
+ 	       PNO(p), aa.c, aa.h, aa.s, bb.c, bb.h, bb.s);
+ 	if (B.cylinders && B.cylinders < 1024 && bb.c > B.cylinders)
+-	  warn(_("partition %s ends on cylinder %ld, beyond the end of the disk\n"),
++	  my_warn(_("partition %s ends on cylinder %ld, beyond the end of the disk\n"),
+ 	       PNO(p), bb.c);
+     }
+ 
+@@ -1940,7 +1940,7 @@ compute_start_sect(struct part_desc *p, struct part_desc *ep) {
+ 	if (is_extended(p->p.sys_type) && boxes == ONESECTOR)
+ 	  p->size = inc;
+ 	else if (old_size <= -delta) {
+-	    warn(_("no room for partition descriptor\n"));
++	    my_warn(_("no room for partition descriptor\n"));
+ 	    return 0;
+ 	}
+     }
+@@ -1973,7 +1973,7 @@ build_surrounding_extended(struct part_desc *p, struct part_desc *ep,
+ 	ep->start = first_free(ep-p0, 1, eep, format, p->start, z);
+ 	ep->size = max_length(ep-p0, 1, eep, format, ep->start, z);
+ 	if (ep->start > p->start || ep->start + ep->size < p->start + p->size) {
+-	    warn(_("cannot build surrounding extended partition\n"));
++	    my_warn(_("cannot build surrounding extended partition\n"));
+ 	    return 0;
+ 	}
+     } else {
+@@ -2013,8 +2013,8 @@ read_line(int pno, struct part_desc *ep, char *dev, int interactive,
+ 
+     if (interactive) {
+ 	if (pct == 0 && (show_extended || pno == 0))
+-	  warn("\n");
+-	warn("%s:", partname(dev, lpno, 10));
++	  my_warn("\n");
++	my_warn("%s:", partname(dev, lpno, 10));
+     }
+ 
+     /* read input line - skip blank lines when reading from a file */
+@@ -2058,7 +2058,7 @@ read_line(int pno, struct part_desc *ep, char *dev, int interactive,
+ 	}
+ 	if (ml == 0 && pno >= 4) {
+ 	    /* no free blocks left - don't read any further */
+-	    warn(_("No room for more\n"));
++	    my_warn(_("No room for more\n"));
+ 	    return -1;
+ 	}
+     }
+@@ -2077,7 +2077,7 @@ read_line(int pno, struct part_desc *ep, char *dev, int interactive,
+     else if (get_ul(fields[2], &ul, LINUX_NATIVE, 16))
+       return 0;
+     if (ul > 255) {
+-	warn(_("Illegal type\n"));
++	my_warn(_("Illegal type\n"));
+ 	return 0;
+     }
+     p.p.sys_type = ul;
+@@ -2111,13 +2111,13 @@ read_line(int pno, struct part_desc *ep, char *dev, int interactive,
+ 	p.size -= (p.size % unitsize(format));
+     }
+     if (p.size > ml1) {
+-	warn(_("Warning: given size (%lu) exceeds max allowable size (%lu)\n"),
++	my_warn(_("Warning: given size (%lu) exceeds max allowable size (%lu)\n"),
+ 	     (p.size + unitsize(0) - 1) / unitsize(0), ml1 / unitsize(0));
+ 	if (!force)
+ 	  return 0;
+     }
+     if (p.size == 0 && pno >= 4 && (fno < 2 || !*(fields[1]))) {
+-	warn(_("Warning: empty partition\n"));
++	my_warn(_("Warning: empty partition\n"));
+ 	if (!force)
+ 	  return 0;
+     }
+@@ -2131,7 +2131,7 @@ read_line(int pno, struct part_desc *ep, char *dev, int interactive,
+     }
+ 
+     if (p.start < ff1 && p.size > 0) {
+-	warn(_("Warning: bad partition start (earliest %lu)\n"),
++	my_warn(_("Warning: bad partition start (earliest %lu)\n"),
+ 	     (ff1 + unitsize(0) - 1) / unitsize(0));
+ 	if (!force)
+ 	  return 0;
+@@ -2144,7 +2144,7 @@ read_line(int pno, struct part_desc *ep, char *dev, int interactive,
+     else if (!strcmp(fields[3], "*") || !strcmp(fields[3], "+"))
+       ul = 0x80;
+     else {
+-    	warn(_("unrecognized bootable flag - choose - or *\n"));
++	my_warn(_("unrecognized bootable flag - choose - or *\n"));
+     	return 0;
+     }
+     p.p.bootable = ul;
+@@ -2161,7 +2161,7 @@ read_line(int pno, struct part_desc *ep, char *dev, int interactive,
+       if (fno < 5) {
+ 	  bb = aa;
+       } else if (fno < 7) {
+-	  warn(_("partial c,h,s specification?\n"));
++	  my_warn(_("partial c,h,s specification?\n"));
+ 	  return 0;
+       } else if (get_ul(fields[4], &bb.c, aa.c, 0) ||
+ 		get_ul(fields[5], &bb.h, aa.h, 0) ||
+@@ -2174,7 +2174,7 @@ read_line(int pno, struct part_desc *ep, char *dev, int interactive,
+       if (fno < 8) {
+ 	  bb = aa;
+       } else if (fno < 10) {
+-	  warn(_("partial c,h,s specification?\n"));
++	  my_warn(_("partial c,h,s specification?\n"));
+ 	  return 0;
+       } else if (get_ul(fields[7], &bb.c, aa.c, 0) ||
+ 		get_ul(fields[8], &bb.h, aa.h, 0) ||
+@@ -2185,7 +2185,7 @@ read_line(int pno, struct part_desc *ep, char *dev, int interactive,
+ 
+     if (pno > 3 && p.size && show_extended && p.p.sys_type != EMPTY_PARTITION
+ 	        && (is_extended(p.p.sys_type) != (pct == 1))) {
+-	warn(_("Extended partition not where expected\n"));
++	my_warn(_("Extended partition not where expected\n"));
+ 	if (!force)
+ 	  return 0;
+     }
+@@ -2272,7 +2272,7 @@ read_input(char *dev, int interactive, struct disk_desc *z) {
+     z->partno = 0;
+ 
+     if (interactive)
+-      warn(_("Input in the following format; absent fields get a default value.\n"
++      my_warn(_("Input in the following format; absent fields get a default value.\n"
+              "<start> <size> <type [E,S,L,X,hex]> <bootable [-,*]> <c,h,s> <c,h,s>\n"
+              "Usually you only need to specify <start> and <size> (and perhaps <type>).\n"));
+     eof = 0;
+@@ -2737,7 +2737,7 @@ do_list (char *dev, int silent) {
+ 
+     if (verify) {
+ 	if (partitions_ok(z))
+-	  warn(_("%s: OK\n"), dev);
++	  my_warn(_("%s: OK\n"), dev);
+ 	else
+ 	  exit_status = 1;
+     }
+@@ -2888,7 +2888,7 @@ do_activate (char **av, int ac, char *arg) {
+ 		else
+ 		  printf("%s#%d\n", dev, pno);
+ 		if (z->partitions[pno].p.bootable != 0x80)
+-		  warn(_("bad active byte: 0x%x instead of 0x80\n"),
++		  my_warn(_("bad active byte: 0x%x instead of 0x80\n"),
+ 		       z->partitions[pno].p.bootable);
+ 	    }
+ 	}
+@@ -2906,7 +2906,7 @@ do_activate (char **av, int ac, char *arg) {
+ 
+ 	/* then write to disk */
+ 	if (write_partitions(dev, fd, z))
+-	  warn(_("Done\n\n"));
++	  my_warn(_("Done\n\n"));
+ 	else
+ 	  exit_status = 1;
+     }
+@@ -2915,7 +2915,7 @@ do_activate (char **av, int ac, char *arg) {
+       if (z->partitions[pno].p.bootable)
+ 	i++;
+     if (i != 1)
+-      warn(_("You have %d active primary partitions. This does not matter for LILO,\n"
++      my_warn(_("You have %d active primary partitions. This does not matter for LILO,\n"
+ 	   "but the DOS MBR will only boot a disk with 1 active partition.\n"), i);
+ 
+     close(fd);
+@@ -2961,7 +2961,7 @@ do_unhide (char **av, int ac, char *arg) {
+ 
+     /* then write to disk */
+     if (write_partitions(dev, fd, z))
+-      warn(_("Done\n\n"));
++      my_warn(_("Done\n\n"));
+     else
+       exit_status = 1;
+ 
+@@ -2994,7 +2994,7 @@ do_change_id(char *dev, char *pnam, char *id) {
+     z->partitions[pno].p.sys_type = i;
+ 
+     if (write_partitions(dev, fd, z))
+-      warn(_("Done\n\n"));
++      my_warn(_("Done\n\n"));
+     else
+       exit_status = 1;
+ 
+@@ -3035,7 +3035,7 @@ do_fdisk(char *dev){
+     fd = my_open(dev, !no_write, 0);
+ 
+     if (!no_write && !no_reread) {
+-	warn(_("Checking that no-one is using this disk right now ...\n"));
++	my_warn(_("Checking that no-one is using this disk right now ...\n"));
+ 	if (reread_ioctl(fd)) {
+ 	    do_warn(_("\nThis disk is currently in use - repartitioning is probably a bad idea.\n"
+ 		   "Umount all file systems, and swapoff all swap partitions on this disk.\n"
+@@ -3045,7 +3045,7 @@ do_fdisk(char *dev){
+ 		exit(1);
+ 	    }
+ 	} else
+-	  warn(_("OK\n"));
++	  my_warn(_("OK\n"));
+     }
+ 
+     z = &oldp;
+@@ -3108,7 +3108,7 @@ do_fdisk(char *dev){
+ 
+     reread_disk_partition(dev, fd);
+ 
+-    warn(_("If you created or changed a DOS partition, /dev/foo7, say, then use dd(1)\n"
++    my_warn(_("If you created or changed a DOS partition, /dev/foo7, say, then use dd(1)\n"
+ 	 "to zero the first 512 bytes:  dd if=/dev/zero of=/dev/foo7 bs=512 count=1\n"
+ 	 "(See fdisk(8).)\n"));
+ 
+diff --git a/fsck/fsck.c b/fsck/fsck.c
+index 4d8ed86..effc866 100644
+--- a/fsck/fsck.c
++++ b/fsck/fsck.c
+@@ -42,7 +42,6 @@
+ #include <paths.h>
+ #include <unistd.h>
+ #include <errno.h>
+-#include <malloc.h>
+ #include <signal.h>
+ #include <dirent.h>
+ #include <blkid.h>
+@@ -52,9 +51,11 @@
+ #include "nls.h"
+ #include "pathnames.h"
+ #include "ismounted.h"
+-
+-#include "fsck.h"
+ #include "c.h"
++#include "fsck.h"
++
++#define XALLOC_EXIT_CODE	EXIT_ERROR
++#include "xalloc.h"
+ 
+ static const char *ignored_types[] = {
+ 	"ignore",
+@@ -106,7 +107,6 @@ int num_running = 0;
+ int max_running = 0;
+ volatile int cancel_requested = 0;
+ int kill_sent = 0;
+-char *progname;
+ char *fstype = NULL;
+ struct fs_info *filesys_info = NULL, *filesys_last = NULL;
+ struct fsck_instance *instance_list;
+@@ -119,9 +119,8 @@ static char *string_copy(const char *s)
+ 
+ 	if (!s)
+ 		return 0;
+-	ret = malloc(strlen(s)+1);
+-	if (ret)
+-		strcpy(ret, s);
++	ret = xmalloc(strlen(s)+1);
++	strcpy(ret, s);
+ 	return ret;
+ }
+ 
+@@ -242,14 +241,20 @@ static int is_irrotational_disk(dev_t disk)
+ 			"/sys/dev/block/%d:%d/queue/rotational",
+ 			major(disk), minor(disk));
+ 
+-	if (rc < 0 || rc + 1 > sizeof(path))
++	if (rc < 0 || (unsigned int) (rc + 1) > sizeof(path))
+ 		return 0;
+ 
+ 	f = fopen(path, "r");
+ 	if (!f)
+ 		return 0;
+ 
+-	rc = fscanf(f, "%u", &x);
++	rc = fscanf(f, "%d", &x);
++	if (rc != 1) {
++		if (ferror(f))
++			warn(_("failed to read: %s"), path);
++		else
++			warnx(_("parse error: %s"), path);
++	}
+ 	fclose(f);
+ 
+ 	return rc == 1 ? !x : 0;
+@@ -257,7 +262,7 @@ static int is_irrotational_disk(dev_t disk)
+ 
+ static void lock_disk(struct fsck_instance *inst)
+ {
+-	dev_t disk = inst->fs->disk ? : get_disk(inst->fs->device);
++	dev_t disk = inst->fs->disk ? inst->fs->disk : get_disk(inst->fs->device);
+ 	char *diskname;
+ 
+ 	if (!disk || is_irrotational_disk(disk))
+@@ -321,8 +326,7 @@ static struct fs_info *create_fs_device(const char *device, const char *mntpnt,
+ {
+ 	struct fs_info *fs;
+ 
+-	if (!(fs = malloc(sizeof(struct fs_info))))
+-		return NULL;
++	fs = xmalloc(sizeof(struct fs_info));
+ 
+ 	fs->device = string_copy(device);
+ 	fs->mountpt = string_copy(mntpnt);
+@@ -417,8 +421,7 @@ static void load_fs_info(const char *filename)
+ 	struct fs_info *fs;
+ 
+ 	if ((f = fopen(filename, "r")) == NULL) {
+-		fprintf(stderr, _("WARNING: couldn't open %s: %s\n"),
+-			filename, strerror(errno));
++		warn(_("WARNING: couldn't open %s"), filename);
+ 		return;
+ 	}
+ 	while (!feof(f)) {
+@@ -427,8 +430,8 @@ static void load_fs_info(const char *filename)
+ 			break;
+ 		buf[sizeof(buf)-1] = 0;
+ 		if (parse_fstab_line(buf, &fs) < 0) {
+-			fprintf(stderr, _("WARNING: bad format "
+-				"on line %d of %s\n"), lineno, filename);
++			warnx(_("WARNING: bad format "
++				"on line %d of %s"), lineno, filename);
+ 			continue;
+ 		}
+ 		if (!fs)
+@@ -442,10 +445,10 @@ static void load_fs_info(const char *filename)
+ 	fclose(f);
+ 
+ 	if (old_fstab && filesys_info) {
+-		fputs(_(
++		warnx(_(
+ 		"WARNING: Your /etc/fstab does not contain the fsck passno\n"
+ 		"	field.  I will kludge around things for you, but you\n"
+-		"	should fix your /etc/fstab file as soon as you can.\n\n"), stderr);
++		"	should fix your /etc/fstab file as soon as you can.\n"));
+ 
+ 		for (fs = filesys_info; fs; fs = fs->next) {
+ 			fs->passno = 1;
+@@ -515,9 +518,7 @@ static int execute(const char *type, struct fs_info *fs, int interactive)
+ 	struct fsck_instance *inst, *p;
+ 	pid_t	pid;
+ 
+-	inst = malloc(sizeof(struct fsck_instance));
+-	if (!inst)
+-		return ENOMEM;
++	inst = xmalloc(sizeof(struct fsck_instance));
+ 	memset(inst, 0, sizeof(struct fsck_instance));
+ 
+ 	sprintf(prog, "fsck.%s", type);
+@@ -550,7 +551,7 @@ static int execute(const char *type, struct fs_info *fs, int interactive)
+ 
+ 	s = find_fsck(prog);
+ 	if (s == NULL) {
+-		fprintf(stderr, _("fsck: %s: not found\n"), prog);
++		warnx(_("%s: not found"), prog);
+ 		free(inst);
+ 		return ENOENT;
+ 	}
+@@ -670,9 +671,7 @@ static struct fsck_instance *wait_one(int flags)
+ 			if ((errno == EINTR) || (errno == EAGAIN))
+ 				continue;
+ 			if (errno == ECHILD) {
+-				fprintf(stderr,
+-					_("%s: wait: No more child process?!?\n"),
+-					progname);
++				warnx(_("wait: no more child process?!?"));
+ 				return NULL;
+ 			}
+ 			perror("wait");
+@@ -693,13 +692,13 @@ static struct fsck_instance *wait_one(int flags)
+ 		if (sig == SIGINT) {
+ 			status = EXIT_UNCORRECTED;
+ 		} else {
+-			printf(_("Warning... %s for device %s exited "
+-			       "with signal %d.\n"),
++			warnx(_("Warning... %s for device %s exited "
++			       "with signal %d."),
+ 			       inst->prog, inst->fs->device, sig);
+ 			status = EXIT_ERROR;
+ 		}
+ 	} else {
+-		printf(_("%s %s: status is %x, should never happen.\n"),
++		warnx(_("%s %s: status is %x, should never happen."),
+ 		       inst->prog, inst->fs->device, status);
+ 		status = EXIT_ERROR;
+ 	}
+@@ -724,7 +723,7 @@ static struct fsck_instance *wait_one(int flags)
+ 				if (fork() == 0) {
+ 					sleep(1);
+ 					kill(inst2->pid, SIGUSR1);
+-					exit(0);
++					exit(EXIT_OK);
+ 				}
+ 			} else
+ 				kill(inst2->pid, SIGUSR1);
+@@ -798,8 +797,8 @@ static int fsck_device(struct fs_info *fs, int interactive)
+ 	num_running++;
+ 	retval = execute(type, fs, interactive);
+ 	if (retval) {
+-		fprintf(stderr, _("%s: Error %d while executing fsck.%s "
+-			"for %s\n"), progname, retval, type, fs->device);
++		warnx(_("error %d while executing fsck.%s for %s"),
++			retval, type, fs->device);
+ 		num_running--;
+ 		return EXIT_ERROR;
+ 	}
+@@ -837,13 +836,8 @@ static void compile_fs_type(char *fs_type, struct fs_type_compile *cmp)
+ 		}
+ 	}
+ 
+-	cmp->list = malloc(num * sizeof(char *));
+-	cmp->type = malloc(num * sizeof(int));
+-	if (!cmp->list || !cmp->type) {
+-		fputs(_("Couldn't allocate memory for filesystem types\n"),
+-		      stderr);
+-		exit(EXIT_ERROR);
+-	}
++	cmp->list = xmalloc(num * sizeof(char *));
++	cmp->type = xmalloc(num * sizeof(int));
+ 	memset(cmp->list, 0, num * sizeof(char *));
+ 	memset(cmp->type, 0, num * sizeof(int));
+ 	cmp->negate = 0;
+@@ -877,14 +871,13 @@ static void compile_fs_type(char *fs_type, struct fs_type_compile *cmp)
+ 			}
+ 			if ((negate && !cmp->negate) ||
+ 			    (!negate && cmp->negate)) {
+-				fputs(_(fs_type_syntax_error), stderr);
+-				exit(EXIT_USAGE);
++				errx(EXIT_USAGE, _(fs_type_syntax_error));
+ 			}
+ 		}
+ #if 0
+ 		printf("Adding %s to list (type %d).\n", s, cmp->type[num]);
+ #endif
+-	        cmp->list[num++] = string_copy(s);
++		cmp->list[num++] = string_copy(s);
+ 		s = strtok(NULL, ",");
+ 	}
+ 	free(list);
+@@ -910,7 +903,7 @@ static int opt_in_list(const char *opt, char *optlist)
+ 		}
+ 		s = strtok(NULL, ",");
+ 	}
+-        free(list);
++	free(list);
+ 	return 0;
+ }
+ 
+@@ -978,8 +971,8 @@ static int ignore(struct fs_info *fs)
+ 	 * If this is a bind mount, ignore it.
+ 	 */
+ 	if (opt_in_list("bind", fs->opts)) {
+-		fprintf(stderr,
+-			_("%s: skipping bad line in /etc/fstab: bind mount with nonzero fsck pass number\n"),
++		warnx(_("%s: skipping bad line in /etc/fstab: "
++			"bind mount with nonzero fsck pass number"),
+ 			fs->mountpt);
+ 		return 1;
+ 	}
+@@ -1022,7 +1015,7 @@ static int ignore(struct fs_info *fs)
+ 	/* See if the <fsck.fs> program is available. */
+ 	if (find_fsck(fs->type) == NULL) {
+ 		if (wanted)
+-			fprintf(stderr, _("fsck: cannot check %s: fsck.%s not found\n"),
++			warnx(_("cannot check %s: fsck.%s not found"),
+ 				fs->device, fs->type);
+ 		return 1;
+ 	}
+@@ -1217,9 +1210,28 @@ static int check_all(NOARGS)
+ 	return status;
+ }
+ 
+-static void usage(NOARGS)
++static void __attribute__((__noreturn__)) usage(void)
+ {
+-	fputs(_("Usage: fsck [-AMNPRTV] [ -C [ fd ] ] [-t fstype] [fs-options] [filesys ...]\n"), stderr);
++	printf(_("\nUsage:\n"
++		 " %s [fsck-options] [fs-options] [filesys ...]\n"),
++		program_invocation_short_name);
++
++	puts(_(	"\nOptions:\n"
++		"  -A         check all file systems\n"
++		"  -R         skip root, useful only with -A\n"
++		"  -M         do not check mounted filesystems\n"
++		"  -t [type]  specity file system types to be checked\n"
++		"             type is allowed to be comma-separated list\n"
++		"  -P         check file systems in parallel, including root\n"
++		"  -s         serialize fsck operations\n"
++		"  -l         use flock to lock device\n"
++		"  -N         do not execute, just show what would be done\n"
++		"  -T         do not show the title on startup\n"
++		"  -C [fd]    display progress bar, file descriptor is for GUIs\n"
++		"  -V         explain what is being done\n"
++		"  -?         display this help and exit\n\n"
++		"See fsck.* commands for fs-options."));
++
+ 	exit(EXIT_USAGE);
+ }
+ 
+@@ -1249,18 +1261,13 @@ static void PRS(int argc, char *argv[])
+ 	num_args = 0;
+ 	instance_list = 0;
+ 
+-	progname = argv[0];
+-
+ 	for (i=1; i < argc; i++) {
+ 		arg = argv[i];
+ 		if (!arg)
+ 			continue;
+ 		if ((arg[0] == '/' && !opts_for_fsck) || strchr(arg, '=')) {
+-			if (num_devices >= MAX_DEVICES) {
+-				fprintf(stderr, _("%s: too many devices\n"),
+-					progname);
+-				exit(EXIT_ERROR);
+-			}
++			if (num_devices >= MAX_DEVICES)
++				errx(EXIT_ERROR, _("too many devices"));
+ 			dev = fsprobe_get_devname_by_spec(arg);
+ 			if (!dev && strchr(arg, '=')) {
+ 				/*
+@@ -1268,32 +1275,29 @@ static void PRS(int argc, char *argv[])
+ 				 * /proc/partitions isn't found.
+ 				 */
+ 				if (access(_PATH_PROC_PARTITIONS, R_OK) < 0) {
+-					fprintf(stderr, _("Couldn't open %s: %s\n"),
+-						_PATH_PROC_PARTITIONS, strerror(errno));
+-					fprintf(stderr, _("Is /proc mounted?\n"));
+-					exit(EXIT_ERROR);
++					warn(_("couldn't open %s"),
++						_PATH_PROC_PARTITIONS);
++					errx(EXIT_ERROR, _("Is /proc mounted?"));
+ 				}
+ 				/*
+ 				 * Check to see if this is because
+ 				 * we're not running as root
+ 				 */
+ 				if (geteuid())
+-					fprintf(stderr,
+-		_("Must be root to scan for matching filesystems: %s\n"), arg);
++					errx(EXIT_ERROR,
++						_("must be root to scan for matching filesystems: %s"),
++						arg);
+ 				else
+-					fprintf(stderr,
+-		_("Couldn't find matching filesystem: %s\n"), arg);
+-				exit(EXIT_ERROR);
++					errx(EXIT_ERROR,
++						_("couldn't find matching filesystem: %s"),
++						arg);
+ 			}
+ 			devices[num_devices++] = dev ? dev : string_copy(arg);
+ 			continue;
+ 		}
+ 		if (arg[0] != '-' || opts_for_fsck) {
+-			if (num_args >= MAX_ARGS) {
+-				fprintf(stderr, _("%s: too many arguments\n"),
+-					progname);
+-				exit(EXIT_ERROR);
+-			}
++			if (num_args >= MAX_ARGS)
++				errx(EXIT_ERROR, _("too many arguments"));
+ 			args[num_args++] = string_copy(arg);
+ 			continue;
+ 		}
+@@ -1304,10 +1308,10 @@ static void PRS(int argc, char *argv[])
+ 			}
+ 			switch (arg[j]) {
+ 			case 'A':
+-				doall++;
++				doall = 1;
+ 				break;
+ 			case 'C':
+-				progress++;
++				progress = 1;
+ 				if (arg[j+1]) {
+ 					progress_fd = string_to_int(arg+j+1);
+ 					if (progress_fd < 0)
+@@ -1320,34 +1324,34 @@ static void PRS(int argc, char *argv[])
+ 					if (progress_fd < 0)
+ 						progress_fd = 0;
+ 					else {
++						++i;
+ 						goto next_arg;
+-						i++;
+ 					}
+ 				}
+ 				break;
+ 			case 'l':
+-				lockdisk++;
++				lockdisk = 1;
+ 				break;
+ 			case 'V':
+ 				verbose++;
+ 				break;
+ 			case 'N':
+-				noexecute++;
++				noexecute = 1;
+ 				break;
+ 			case 'R':
+-				skip_root++;
++				skip_root = 1;
+ 				break;
+ 			case 'T':
+-				notitle++;
++				notitle = 1;
+ 				break;
+ 			case 'M':
+-				ignore_mounted++;
++				ignore_mounted = 1;
+ 				break;
+ 			case 'P':
+-				parallel_root++;
++				parallel_root = 1;
+ 				break;
+ 			case 's':
+-				serialize++;
++				serialize = 1;
+ 				break;
+ 			case 't':
+ 				tmp = 0;
+@@ -1377,12 +1381,8 @@ static void PRS(int argc, char *argv[])
+ 		if (opt) {
+ 			options[0] = '-';
+ 			options[++opt] = '\0';
+-			if (num_args >= MAX_ARGS) {
+-				fprintf(stderr,
+-					_("%s: too many arguments\n"),
+-					progname);
+-				exit(EXIT_ERROR);
+-			}
++			if (num_args >= MAX_ARGS)
++				errx(EXIT_ERROR, _("too many arguments"));
+ 			args[num_args++] = string_copy(options);
+ 			opt = 0;
+ 		}
+@@ -1413,7 +1413,7 @@ int main(int argc, char *argv[])
+ 	PRS(argc, argv);
+ 
+ 	if (!notitle)
+-		printf(_("fsck from %s\n"), PACKAGE_STRING);
++		printf(_("%s from %s\n"), program_invocation_short_name, PACKAGE_STRING);
+ 
+ 	fstab = getenv("FSTAB_FILE");
+ 	if (!fstab)
+@@ -1422,12 +1422,8 @@ int main(int argc, char *argv[])
+ 
+ 	/* Update our search path to include uncommon directories. */
+ 	if (oldpath) {
+-		fsck_path = malloc (strlen (fsck_prefix_path) + 1 +
++		fsck_path = xmalloc (strlen (fsck_prefix_path) + 1 +
+ 				    strlen (oldpath) + 1);
+-		if (!fsck_path) {
+-			fprintf(stderr, _("%s: Unable to allocate memory for fsck_path\n"), progname);
+-			exit(EXIT_ERROR);
+-		}
+ 		strcpy (fsck_path, fsck_prefix_path);
+ 		strcat (fsck_path, ":");
+ 		strcat (fsck_path, oldpath);
+@@ -1439,8 +1435,8 @@ int main(int argc, char *argv[])
+ 		interactive = 1;
+ 
+ 	if (lockdisk && (doall || num_devices > 1)) {
+-		fprintf(stderr, _("%s: the -l option can be used with one "
+-				  "device only -- ignore\n"), progname);
++		warnx(_("the -l option can be used with one "
++				  "device only -- ignore"));
+ 		lockdisk = 0;
+ 	}
+ 
+diff --git a/getopt/getopt.c b/getopt/getopt.c
+index fbcfb05..cea2f22 100644
+--- a/getopt/getopt.c
++++ b/getopt/getopt.c
+@@ -330,7 +330,7 @@ void print_help(void)
+ 	fputs(_("  -Q, --quiet-output           No normal output\n"),stderr);
+ 	fputs(_("  -s, --shell=shell            Set shell quoting conventions\n"),stderr);	
+ 	fputs(_("  -T, --test                   Test for getopt(1) version\n"),stderr);
+-	fputs(_("  -u, --unqote                 Do not quote the output\n"),stderr);
++	fputs(_("  -u, --unquote                Do not quote the output\n"),stderr);
+ 	fputs(_("  -V, --version                Output version information\n"),stderr);
+ 	exit(2);
+ }
+diff --git a/hwclock/hwclock.8 b/hwclock/hwclock.8
+index 31f7692..b693ae2 100644
+--- a/hwclock/hwclock.8
++++ b/hwclock/hwclock.8
+@@ -169,7 +169,7 @@ was used to set the clock (i.e. hwclock was successfully run with the
+ or
+ .B \-\-adjust
+ options), as recorded in the adjtime file.  If the adjtime file doesn't
+-exist, the default is local time.
++exist, the default is UTC time.
+ 
+ .TP
+ .B \-\-noadjfile
+diff --git a/hwclock/hwclock.c b/hwclock/hwclock.c
+index 279b672..88fb8a0 100644
+--- a/hwclock/hwclock.c
++++ b/hwclock/hwclock.c
+@@ -224,8 +224,8 @@ hw_clock_is_utc(const bool utc, const bool local_opt,
+ 	else if (local_opt)
+ 		ret = FALSE;	/* --localtime explicitly given */
+ 	else
+-				/* get info from adjtime file - default is local */
+-		ret = (adjtime.local_utc == UTC);
++				/* get info from adjtime file - default is UTC */
++		ret = (adjtime.local_utc != LOCAL);
+ 	if (debug)
+ 		printf(_("Assuming hardware clock is kept in %s time.\n"),
+ 		       ret ? _("UTC") : _("local"));
+diff --git a/include/at.h b/include/at.h
+index 7542f97..17c70d1 100644
+--- a/include/at.h
++++ b/include/at.h
+@@ -10,6 +10,7 @@
+ #define UTIL_LINUX_AT_H
+ 
+ #include <stdio.h>
++#include "c.h"
+ 
+ extern int fstat_at(int dir, const char *dirname,
+ 			const char *filename, struct stat *st, int nofollow);
+diff --git a/include/c.h b/include/c.h
+index e525143..0db8b2b 100644
+--- a/include/c.h
++++ b/include/c.h
+@@ -6,6 +6,15 @@
+ #define UTIL_LINUX_C_H
+ 
+ #include <limits.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdarg.h>
++#include <string.h>
++#include <errno.h>
++
++#ifdef HAVE_ERR_H
++# include <err.h>
++#endif
+ 
+ /*
+  * Compiler specific stuff
+@@ -95,6 +104,44 @@
+ #endif
+ 
+ 
++#ifndef HAVE_ERR_H
++static inline void
++errmsg(char doexit, int excode, char adderr, const char *fmt, ...)
++{
++	fprintf(stderr, "%s: ", program_invocation_short_name);
++	if (fmt != NULL) {
++		va_list argp;
++		va_start(argp, fmt);
++		vfprintf(stderr, fmt, argp);
++		va_end(argp);
++		if (adderr)
++			fprintf(stderr, ": ");
++	}
++	if (adderr)
++		fprintf(stderr, "%s", strerror(errno));
++	fprintf(stderr, "\n");
++	if (doexit)
++		exit(excode);
++}
++
++#ifndef HAVE_ERR
++# define err(E, FMT...) errmsg(1, E, 1, FMT)
++#endif
++
++#ifndef HAVE_ERRX
++# define errx(E, FMT...) errmsg(1, E, 0, FMT)
++#endif
++
++#ifndef HAVE_WARN
++# define warn(FMT...) errmsg(0, 0, 1, FMT)
++#endif
++
++#ifndef HAVE_WARNX
++# define warnx(FMT...) errmsg(0, 0, 0, FMT)
++#endif
++#endif /* !HAVE_ERR_H */
++
++
+ static inline __attribute__((const)) int is_power_of_2(unsigned long num)
+ {
+ 	return (num != 0 && ((num & (num - 1)) == 0));
+@@ -149,5 +196,9 @@ prog_inv_sh_nm_from_file(char *f, char stripext)
+ # endif
+ #endif
+ 
++/* very old glibc (2.3) */ 
++#ifndef O_CLOEXEC
++#define O_CLOEXEC 0
++#endif
+ 
+ #endif /* UTIL_LINUX_C_H */
+diff --git a/include/strutils.h b/include/strutils.h
+index 462332d..99d8acd 100644
+--- a/include/strutils.h
++++ b/include/strutils.h
+@@ -7,6 +7,7 @@
+ 
+ extern int strtosize(const char *str, uintmax_t *res);
+ extern long strtol_or_err(const char *str, const char *errmesg);
++extern long long strtoll_or_err(const char *str, const char *errmesg);
+ 
+ #ifndef HAVE_STRNLEN
+ extern size_t strnlen(const char *s, size_t maxlen);
+diff --git a/include/xalloc.h b/include/xalloc.h
+index 841333c..8c505be 100644
+--- a/include/xalloc.h
++++ b/include/xalloc.h
+@@ -4,14 +4,13 @@
+  * This file may be redistributed under the terms of the
+  * GNU Lesser General Public License.
+  *
+- * General memory allocation wrappers for malloc, realloc and calloc
++ * General memory allocation wrappers for malloc, realloc, calloc and strdup
+  */
+ 
+ #ifndef UTIL_LINUX_XALLOC_H
+ #define UTIL_LINUX_XALLOC_H
+ 
+ #include <stdlib.h>
+-#include <err.h>
+ #include <string.h>
+ 
+ #include "c.h"
+diff --git a/lib/at.c b/lib/at.c
+index 1993f99..dd667b5 100644
+--- a/lib/at.c
++++ b/lib/at.c
+@@ -9,6 +9,7 @@
+ #include <sys/stat.h>
+ 
+ #include "at.h"
++#include "c.h"
+ 
+ int fstat_at(int dir, const char *dirname, const char *filename,
+ 				struct stat *st, int nofollow)
+@@ -56,7 +57,6 @@ FILE *fopen_at(int dir, const char *dirname, const char *filename, int flags,
+ }
+ 
+ #ifdef TEST_PROGRAM
+-#include <err.h>
+ #include <errno.h>
+ #include <sys/types.h>
+ #include <dirent.h>
+diff --git a/lib/blkdev.c b/lib/blkdev.c
+index 67c4a1a..0c27a6d 100644
+--- a/lib/blkdev.c
++++ b/lib/blkdev.c
+@@ -22,6 +22,7 @@
+ 
+ #include "blkdev.h"
+ #include "linux_version.h"
++#include "c.h"
+ 
+ static long
+ blkdev_valid_offset (int fd, off_t offset) {
+@@ -208,7 +209,6 @@ blkdev_get_sector_size(int fd, int *sector_size)
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <fcntl.h>
+-#include <err.h>
+ int
+ main(int argc, char **argv)
+ {
+diff --git a/lib/cpuset.c b/lib/cpuset.c
+index 0c483fa..b8a4108 100644
+--- a/lib/cpuset.c
++++ b/lib/cpuset.c
+@@ -20,6 +20,7 @@
+ #include <sys/syscall.h>
+ 
+ #include "cpuset.h"
++#include "c.h"
+ 
+ static inline int val_to_char(int v)
+ {
+@@ -303,7 +304,6 @@ int cpulist_parse(const char *str, cpu_set_t *set, size_t setsize)
+ 
+ #ifdef TEST_PROGRAM
+ 
+-#include <err.h>
+ #include <getopt.h>
+ 
+ int main(int argc, char *argv[])
+@@ -366,6 +366,7 @@ int main(int argc, char *argv[])
+ 	printf("[%s]\n", cpulist_create(buf, buflen, set, setsize));
+ 
+ 	free(buf);
++	free(range);
+ 	cpuset_free(set);
+ 
+ 	return EXIT_SUCCESS;
+diff --git a/lib/mangle.c b/lib/mangle.c
+index 17ca809..99e8281 100644
+--- a/lib/mangle.c
++++ b/lib/mangle.c
+@@ -11,6 +11,7 @@
+ #include <ctype.h>
+ 
+ #include "mangle.h"
++#include "c.h"
+ 
+ #define isoctal(a) (((a) & ~7) == '0')
+ 
+@@ -103,7 +104,6 @@ char *unmangle(const char *s, char **end)
+ }
+ 
+ #ifdef TEST_PROGRAM
+-#include <err.h>
+ #include <errno.h>
+ int main(int argc, char *argv[])
+ {
+diff --git a/lib/strutils.c b/lib/strutils.c
+index 94635b1..21c58da 100644
+--- a/lib/strutils.c
++++ b/lib/strutils.c
+@@ -8,10 +8,10 @@
+ #include <inttypes.h>
+ #include <ctype.h>
+ #include <errno.h>
+-#include <err.h>
+ #include <sys/stat.h>
+ #include <locale.h>
+ #include <string.h>
++#include "c.h"
+ 
+ static int do_scale_by_power (uintmax_t *x, int base, int power)
+ {
+@@ -177,7 +177,31 @@ long strtol_or_err(const char *str, const char *errmesg)
+        errno = 0;
+        num = strtol(str, &end, 10);
+ 
+-       if (errno || (end && *end))
++       if (errno || str == end || (end && *end))
++               goto err;
++
++       return num;
++err:
++       if (errno)
++               err(EXIT_FAILURE, "%s: '%s'", errmesg, str);
++       else
++               errx(EXIT_FAILURE, "%s: '%s'", errmesg, str);
++       return 0;
++}
++/*
++ * same as strtoll(3) but exit on failure instead of returning crap
++ */
++long long strtoll_or_err(const char *str, const char *errmesg)
++{
++       long long num;
++       char *end = NULL;
++
++       if (str == NULL || *str == '\0')
++               goto err;
++       errno = 0;
++       num = strtoll(str, &end, 10);
++
++       if (errno || str == end || (end && *end))
+                goto err;
+ 
+        return num;
+@@ -245,8 +269,9 @@ static int get_exp(uint64_t n)
+ char *size_to_human_string(uint64_t bytes)
+ {
+ 	char buf[32];
+-	int dec, frac, exp;
+-	const char *letters = "BKMGTP";
++	int dec, exp;
++	uint64_t frac;
++	const char *letters = "BKMGTPE";
+ 	char c;
+ 
+ 	exp  = get_exp(bytes);
+@@ -254,6 +279,10 @@ char *size_to_human_string(uint64_t bytes)
+ 	dec  = exp ? bytes / (1ULL << exp) : bytes;
+ 	frac = exp ? bytes % (1ULL << exp) : 0;
+ 
++	/* fprintf(stderr, "exp: %d, c: %c, dec: %d, frac: %jd\n",
++	 *                 exp, c, dec, frac);
++	 */
++
+ 	if (frac) {
+ 		/* round */
+ 		frac = (frac / (1ULL << (exp - 10)) + 50) / 100;
+@@ -267,7 +296,7 @@ char *size_to_human_string(uint64_t bytes)
+ 
+ 		if (!dp || !*dp)
+ 			dp = ".";
+-		snprintf(buf, sizeof(buf), "%d%s%d%c", dec, dp, frac, c);
++		snprintf(buf, sizeof(buf), "%d%s%jd%c", dec, dp, frac, c);
+ 	} else
+ 		snprintf(buf, sizeof(buf), "%d%c", dec, c);
+ 
+@@ -280,6 +309,7 @@ char *size_to_human_string(uint64_t bytes)
+ int main(int argc, char *argv[])
+ {
+ 	uintmax_t size = 0;
++	char *hum;
+ 
+ 	if (argc < 2) {
+ 		fprintf(stderr, "usage: %s <number>[suffix]\n",	argv[0]);
+@@ -289,7 +319,11 @@ int main(int argc, char *argv[])
+ 	if (strtosize(argv[1], &size))
+ 		errx(EXIT_FAILURE, "invalid size '%s' value", argv[1]);
+ 
+-	printf("%25s : %20ju\n", argv[1], size);
++	hum = size_to_human_string(size);
++
++	printf("%25s : %20ju : %8s\n", argv[1], size, hum);
++	free(hum);
++
+ 	return EXIT_FAILURE;
+ }
+ #endif /* TEST_PROGRAM */
+diff --git a/lib/tt.c b/lib/tt.c
+index 3bcdea9..140149d 100644
+--- a/lib/tt.c
++++ b/lib/tt.c
+@@ -709,7 +709,6 @@ int tt_parse_columns_list(const char *list, int cols[], int *ncols,
+ }
+ 
+ #ifdef TEST_PROGRAM
+-#include <err.h>
+ #include <errno.h>
+ 
+ enum { MYCOL_NAME, MYCOL_FOO, MYCOL_BAR, MYCOL_PATH };
+diff --git a/lib/wholedisk.c b/lib/wholedisk.c
+index 35f143d..4a53052 100644
+--- a/lib/wholedisk.c
++++ b/lib/wholedisk.c
+@@ -9,13 +9,12 @@
+ int is_whole_disk_fd(int fd, const char *name)
+ {
+ #ifdef HDIO_GETGEO
+-	struct hd_geometry geometry;
+-	int i = 0;
+-
+-	if (fd != -1)
+-		i = ioctl(fd, HDIO_GETGEO, &geometry);
+-	if (i == 0)
+-		return geometry.start == 0;
++	if (fd != -1) {
++		struct hd_geometry geometry;
++		int i = ioctl(fd, HDIO_GETGEO, &geometry);
++		if (i == 0)
++			return geometry.start == 0;
++	}
+ #endif
+ 	/*
+ 	 * The "silly heuristic" is still sexy for us, because
+diff --git a/login-utils/chfn.c b/login-utils/chfn.c
+index 64f4ac4..7399b17 100644
+--- a/login-utils/chfn.c
++++ b/login-utils/chfn.c
+@@ -30,7 +30,6 @@
+ #include <unistd.h>
+ #include <pwd.h>
+ #include <errno.h>
+-#include <err.h>
+ #include <ctype.h>
+ #include <getopt.h>
+ 
+@@ -44,6 +43,7 @@
+ #include "nls.h"
+ #include "env.h"
+ #include "xalloc.h"
++#include "c.h"
+ 
+ #ifdef HAVE_LIBSELINUX
+ #include <selinux/selinux.h>
+diff --git a/login-utils/chsh.c b/login-utils/chsh.c
+index 778c457..4795bdd 100644
+--- a/login-utils/chsh.c
++++ b/login-utils/chsh.c
+@@ -22,7 +22,6 @@
+  *
+  *
+  */
+-#include <err.h>
+ #include <sys/types.h>
+ #include <stdio.h>
+ #include <string.h>
+@@ -88,9 +87,9 @@ static boolean get_shell_list (char *shell);
+ static void __attribute__((__noreturn__)) usage (FILE *fp)
+ {
+     fprintf (fp,
+-	     _("Usage: %s [ -s shell ] [ --list-shells ] "
+-	       "[ --help ] [ --version ]\n"
+-	       "       [ username ]\n"), whoami);
++	     _("Usage: %1$s [-s shell] [username]\n"
++	       "   or: %1$s (--list-shells | --help | --version)\n"),
++	     whoami);
+ 
+     exit(fp == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
+ }
+diff --git a/login-utils/last.c b/login-utils/last.c
+index de733cd..732343d 100644
+--- a/login-utils/last.c
++++ b/login-utils/last.c
+@@ -29,7 +29,6 @@
+ /*
+  * last
+  */
+-#include <err.h>
+ #include <sys/param.h>
+ #include <sys/stat.h>
+ #include <sys/file.h>
+@@ -51,6 +50,7 @@
+ #include "pathnames.h"
+ #include "nls.h"
+ #include "xalloc.h"
++#include "c.h"
+ 
+ #define	SECDAY	(24*60*60)			/* seconds in a day */
+ #define	NO	0				/* false/no */
+diff --git a/login-utils/login.c b/login-utils/login.c
+index 5584c32..40f23ad 100644
+--- a/login-utils/login.c
++++ b/login-utils/login.c
+@@ -97,7 +97,6 @@
+ #include <sys/wait.h>
+ #include <signal.h>
+ #include <errno.h>
+-#include <err.h>
+ #include <grp.h>
+ #include <pwd.h>
+ #include <utmp.h>
+@@ -120,6 +119,7 @@
+ #include "strutils.h"
+ #include "nls.h"
+ #include "xalloc.h"
++#include "c.h"
+ 
+ #ifdef HAVE_SECURITY_PAM_MISC_H
+ #  include <security/pam_appl.h>
+@@ -1037,7 +1037,11 @@ Michael Riepe <michael@stud.uni-hannover.de>
+     }
+ #endif
+ 
+-    setgid(pwd->pw_gid);
++    if (setgid(pwd->pw_gid) < 0 && pwd->pw_gid) {
++	syslog(LOG_ALERT, _("setgid() failed"));
++	exit(EXIT_FAILURE);
++    }
++
+ 
+     if (*pwd->pw_shell == '\0')
+       pwd->pw_shell = _PATH_BSHELL;
+diff --git a/login-utils/mesg.c b/login-utils/mesg.c
+index c24a109..6176aab 100644
+--- a/login-utils/mesg.c
++++ b/login-utils/mesg.c
+@@ -46,7 +46,6 @@
+  * - cleanups
+  */
+ 
+-#include <err.h>
+ #include <errno.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -55,6 +54,7 @@
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include "nls.h"
++#include "c.h"
+ 
+ /* exit codes */
+ 
+diff --git a/login-utils/newgrp.c b/login-utils/newgrp.c
+index 2ffe387..7016cfa 100644
+--- a/login-utils/newgrp.c
++++ b/login-utils/newgrp.c
+@@ -14,7 +14,6 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <errno.h>
+-#include <err.h>
+ 
+ #ifdef HAVE_CRYPT_H
+ #include <crypt.h>
+diff --git a/login-utils/setpwnam.c b/login-utils/setpwnam.c
+index 2aa7dd5..c1e6efb 100644
+--- a/login-utils/setpwnam.c
++++ b/login-utils/setpwnam.c
+@@ -63,6 +63,7 @@
+ #include <paths.h>
+ 
+ #include "setpwnam.h"
++#include "c.h"
+ 
+ #define false 0
+ #define true 1
+@@ -87,9 +88,7 @@ setpwnam (struct passwd *pwd)
+     int namelen;
+     int buflen = 256;
+     int contlen;
+-    char *linebuf = malloc(buflen);
+-
+-    if (!linebuf) return -1;
++    char *linebuf = NULL;
+ 
+     oldumask = umask(0);   /* Create with exact permissions */
+ 
+@@ -125,19 +124,25 @@ setpwnam (struct passwd *pwd)
+ 
+     namelen = strlen(pwd->pw_name);
+ 
++   linebuf = malloc(buflen);
++   if (!linebuf) goto fail;
++
+     /* parse the passwd file */
+     found = false;
+     /* Do you wonder why I don't use getpwent? Read comments at top of file */
+     while (fgets(linebuf, buflen, pwf) != NULL) {
+ 	contlen = strlen(linebuf);
+ 	while (linebuf[contlen-1] != '\n' && !feof(pwf)) {
++	    char *tmp;
++
+ 	    /* Extend input buffer if it failed getting the whole line */
+ 
+ 	    /* So now we double the buffer size */
+ 	    buflen *= 2;
+ 
+-	    linebuf = realloc(linebuf, buflen);
+-	    if (linebuf == NULL) goto fail;
++	    tmp = realloc(linebuf, buflen);
++	    if (tmp== NULL) goto fail;
++	    linebuf = tmp;
+ 
+ 	    /* And fill the rest of the buffer */
+ 	    if (fgets(&linebuf[contlen], buflen/2, pwf) == NULL) break;
+@@ -173,7 +178,7 @@ setpwnam (struct passwd *pwd)
+     /* we don't care if we can't remove the backup file */
+     unlink(PASSWD_FILE".OLD");
+     /* we don't care if we can't create the backup file */
+-    link(PASSWD_FILE, PASSWD_FILE".OLD");
++    ignore_result( link(PASSWD_FILE, PASSWD_FILE".OLD") );
+     /* we DO care if we can't rename to the passwd file */
+     if(rename(PTMP_FILE, PASSWD_FILE) < 0)
+ 	goto fail;
+diff --git a/login-utils/ttymsg.c b/login-utils/ttymsg.c
+index 92282c1..a4df59e 100644
+--- a/login-utils/ttymsg.c
++++ b/login-utils/ttymsg.c
+@@ -171,7 +171,8 @@ ttymsg(struct iovec *iov, int iovcnt, char *line, int tmout) {
+ 		if (forked)
+ 			_exit(1);
+ 		if (strlen(strerror(errno)) > 1000)
+-			(void) sprintf(errbuf, _("%s: BAD ERROR"), device);
++			(void) sprintf(errbuf, _("%s: BAD ERROR, message is "
++						 "far too long"), device);
+ 		else {
+ 			errsv = errno;
+ 			(void) sprintf(errbuf, "%s: %s", device,
+diff --git a/login-utils/vipw.c b/login-utils/vipw.c
+index 5750e6f..d3ae51e 100644
+--- a/login-utils/vipw.c
++++ b/login-utils/vipw.c
+@@ -60,13 +60,13 @@ static char version_string[] = "vipw 1.4";
+ #include <signal.h>
+ #include <fcntl.h>
+ #include <errno.h>
+-#include <err.h>
+ #include <paths.h>
+ #include <unistd.h>
+ 
+ #include "setpwnam.h"
+ #include "strutils.h"
+ #include "nls.h"
++#include "c.h"
+ 
+ #ifdef HAVE_LIBSELINUX
+ #include <selinux/selinux.h>
+diff --git a/login-utils/wall.c b/login-utils/wall.c
+index fc4d792..bc2e382 100644
+--- a/login-utils/wall.c
++++ b/login-utils/wall.c
+@@ -47,7 +47,6 @@
+ #include <sys/time.h>
+ #include <sys/uio.h>
+ 
+-#include <err.h>
+ #include <errno.h>
+ #include <paths.h>
+ #include <ctype.h>
+@@ -65,6 +64,7 @@
+ #include "ttymsg.h"
+ #include "pathnames.h"
+ #include "carefulputc.h"
++#include "c.h"
+ 
+ void	makemsg __P((char *));
+ 
+diff --git a/misc-utils/Makefile.am b/misc-utils/Makefile.am
+index 3f0843b..3bae648 100644
+--- a/misc-utils/Makefile.am
++++ b/misc-utils/Makefile.am
+@@ -50,7 +50,7 @@ wipefs_SOURCES = wipefs.c $(top_srcdir)/lib/strutils.c
+ wipefs_LDADD = $(ul_libblkid_la)
+ wipefs_CFLAGS = $(AM_CFLAGS) -I$(ul_libblkid_incdir)
+ 
+-if LINUX
++if BUILD_LSBLK
+ bin_PROGRAMS += lsblk
+ dist_man_MANS += lsblk.8
+ lsblk_SOURCES = lsblk.c \
+diff --git a/misc-utils/cal.c b/misc-utils/cal.c
+index 896c453..1e5e2cd 100644
+--- a/misc-utils/cal.c
++++ b/misc-utils/cal.c
+@@ -63,7 +63,6 @@
+ #include <string.h>
+ #include <time.h>
+ #include <unistd.h>
+-#include <err.h>
+ #include <errno.h>
+ 
+ #include "c.h"
+diff --git a/misc-utils/findfs.c b/misc-utils/findfs.c
+index 18608b4..04651b3 100644
+--- a/misc-utils/findfs.c
++++ b/misc-utils/findfs.c
+@@ -8,11 +8,11 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <errno.h>
+-#include <err.h>
+ 
+ #include <blkid.h>
+ 
+ #include "nls.h"
++#include "c.h"
+ 
+ static void __attribute__((__noreturn__)) usage(int rc)
+ {
+diff --git a/misc-utils/findmnt.c b/misc-utils/findmnt.c
+index f81a0c8..e87c70a 100644
+--- a/misc-utils/findmnt.c
++++ b/misc-utils/findmnt.c
+@@ -21,7 +21,6 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <errno.h>
+-#include <err.h>
+ #include <unistd.h>
+ #include <getopt.h>
+ #include <string.h>
+@@ -384,7 +383,7 @@ static struct libmnt_table *parse_tabfile(const char *path)
+ 
+ 	if (rc) {
+ 		mnt_free_table(tb);
+-		warn(_("can't read: %s"), path);
++		warn(_("can't read %s"), path);
+ 		return NULL;
+ 	}
+ 	return tb;
+diff --git a/misc-utils/logger.1 b/misc-utils/logger.1
+index df02f1e..d99c9f4 100644
+--- a/misc-utils/logger.1
++++ b/misc-utils/logger.1
+@@ -46,6 +46,8 @@
+ .Op Fl p Ar pri
+ .Op Fl t Ar tag
+ .Op Fl u Ar socket
++.Op Fl n Ar server
++.Op Fl P Ar udpport
+ .Op Ar message ...
+ .Sh DESCRIPTION
+ .Nm Logger
+@@ -83,6 +85,14 @@ Write to socket as specified with
+ instead of builtin syslog routines.
+ .It Fl d
+ Use a datagram instead of a stream connection to this socket.
++.It Fl n Ar serv
++Write to remote syslog server using UDP as specified with
++.Ar server
++instead of builtin syslog routines.
++.It Fl P Ar port
++Change UDP port to the value as specified with
++.Ar udpport  .
++Default port number is 514.
+ .It --
+ End the argument list. This is to allow the
+ .Ar message
+@@ -114,6 +124,8 @@ For the priority order and intended purposes of these levels, see
+ logger System rebooted
+ 
+ logger \-p local0.notice \-t HOSTIDM \-f /dev/idmc
++
++logger \-n loghost.example.com System rebooted
+ .Ed
+ .Sh SEE ALSO
+ .Xr syslog 3 ,
+diff --git a/misc-utils/logger.c b/misc-utils/logger.c
+index 95050a1..9873399 100644
+--- a/misc-utils/logger.c
++++ b/misc-utils/logger.c
+@@ -47,6 +47,8 @@
+ #include <sys/types.h>
+ #include <sys/socket.h>
+ #include <sys/un.h>
++#include <arpa/inet.h>
++#include <netdb.h>
+ #include "nls.h"
+ 
+ #define	SYSLOG_NAMES
+@@ -57,6 +59,7 @@ int	pencode __P((char *));
+ void	usage __P((void));
+ 
+ static int optd = 0;
++static int udpport = 514;
+ 
+ static int
+ myopenlog(const char *sock) {
+@@ -83,6 +86,32 @@ myopenlog(const char *sock) {
+        return fd;
+ }
+ 
++static int
++udpopenlog(const char *servername,int port) {
++	int fd;
++	struct sockaddr_in s_addr;
++	struct hostent *serverhost;
++
++	if ((serverhost = gethostbyname(servername)) == NULL ){
++		printf (_("unable to resolve '%s'\n"), servername);
++                exit(1);
++	}
++
++	if ((fd = socket(AF_INET, SOCK_DGRAM , 0)) == -1) {
++		printf (_("socket: %s.\n"), strerror(errno));
++		exit (1);
++	}
++
++	bcopy(serverhost->h_addr,&s_addr.sin_addr,serverhost->h_length);
++        s_addr.sin_family=AF_INET;
++        s_addr.sin_port=htons(port);
++
++        if (connect(fd, (struct sockaddr *) &s_addr, sizeof(s_addr)) == -1) {
++		printf (_("connect: %s.\n"), strerror(errno));
++                exit(1);
++        }
++	return fd;
++}
+ static void
+ mysyslog(int fd, int logflags, int pri, char *tag, char *msg) {
+        char buf[1000], pid[30], *cp, *tp;
+@@ -122,6 +151,7 @@ main(int argc, char **argv) {
+ 	int ch, logflags, pri;
+ 	char *tag, buf[1024];
+ 	char *usock = NULL;
++	char *udpserver = NULL;
+ 	int LogSock = -1;
+ 
+ 	setlocale(LC_ALL, "");
+@@ -131,7 +161,7 @@ main(int argc, char **argv) {
+ 	tag = NULL;
+ 	pri = LOG_NOTICE;
+ 	logflags = 0;
+-	while ((ch = getopt(argc, argv, "f:ip:st:u:d")) != -1)
++	while ((ch = getopt(argc, argv, "f:ip:st:u:dn:P:")) != -1)
+ 		switch((char)ch) {
+ 		case 'f':		/* file to log */
+ 			if (freopen(optarg, "r", stdin) == NULL) {
+@@ -159,6 +189,13 @@ main(int argc, char **argv) {
+ 		case 'd':
+ 			optd = 1;	/* use datagrams */
+ 			break;
++		case 'n':		/* udp socket */
++			optd = 1;	/* use datagrams because udp */
++			udpserver = optarg;
++			break;
++		case 'P':		/* change udp port */
++			udpport = atoi(optarg);
++			break;
+ 		case '?':
+ 		default:
+ 			usage();
+@@ -167,8 +204,10 @@ main(int argc, char **argv) {
+ 	argv += optind;
+ 
+ 	/* setup for logging */
+-	if (!usock)
++	if (!usock && !udpserver)
+ 		openlog(tag ? tag : getlogin(), logflags, 0);
++	else if (udpserver)
++		LogSock = udpopenlog(udpserver,udpport);
+ 	else
+ 		LogSock = myopenlog(usock);
+ 
+@@ -182,14 +221,14 @@ main(int argc, char **argv) {
+ 		for (p = buf, endp = buf + sizeof(buf) - 2; *argv;) {
+ 			len = strlen(*argv);
+ 			if (p + len > endp && p > buf) {
+-			    if (!usock)
++			    if (!usock && !udpserver)
+ 				syslog(pri, "%s", buf);
+ 			    else
+ 				mysyslog(LogSock, logflags, pri, tag, buf);
+ 				p = buf;
+ 			}
+ 			if (len > sizeof(buf) - 1) {
+-			    if (!usock)
++			    if (!usock && !udpserver)
+ 				syslog(pri, "%s", *argv++);
+ 			    else
+ 				mysyslog(LogSock, logflags, pri, tag, *argv++);
+diff --git a/misc-utils/lsblk.c b/misc-utils/lsblk.c
+index 44358fd..263ad95 100644
+--- a/misc-utils/lsblk.c
++++ b/misc-utils/lsblk.c
+@@ -31,7 +31,6 @@
+ #include <dirent.h>
+ #include <fcntl.h>
+ #include <string.h>
+-#include <err.h>
+ #include <sys/ioctl.h>
+ #include <inttypes.h>
+ #include <stdarg.h>
+@@ -51,6 +50,7 @@
+ #include "tt.h"
+ #include "xalloc.h"
+ #include "strutils.h"
++#include "c.h"
+ 
+ /* column IDs */
+ enum {
+@@ -90,7 +90,7 @@ struct colinfo {
+ /* columns descriptions */
+ static struct colinfo infos[__NCOLUMNS] = {
+ 	[COL_NAME]   = { "NAME",    0.25, TT_FL_TREE, N_("device name") },
+-	[COL_KNAME]  = { "KNAME",   0.3, 0, N_("internel kernel device name") },
++	[COL_KNAME]  = { "KNAME",   0.3, 0, N_("internal kernel device name") },
+ 	[COL_MAJMIN] = { "MAJ:MIN", 6, 0, N_("major:minor device number") },
+ 	[COL_FSTYPE] = { "FSTYPE",  0.1, TT_FL_TRUNC, N_("filesystem type") },
+ 	[COL_TARGET] = { "MOUNTPOINT", 0.10, TT_FL_TRUNC, N_("where the device is mounted") },
+@@ -768,7 +768,7 @@ static int process_one_device(char *devname)
+ {
+ 	struct blkdev_cxt parent = {}, cxt = {};
+ 	struct stat st;
+-	char buf[PATH_MAX];
++	char buf[PATH_MAX + 1];
+ 	dev_t disk = 0;
+ 
+ 	if (stat(devname, &st) || !S_ISBLK(st.st_mode)) {
+@@ -795,7 +795,7 @@ static int process_one_device(char *devname)
+ 				    major(st.st_rdev), minor(st.st_rdev));
+ 		diskname = xstrdup(buf);
+ 
+-		len = readlink(path, buf, sizeof(buf));
++		len = readlink(path, buf, PATH_MAX);
+ 		if (len < 0) {
+ 			warn(_("%s: failed to read link"), path);
+ 			return EXIT_FAILURE;
+@@ -871,7 +871,7 @@ static void __attribute__((__noreturn__)) help(FILE *out)
+ 	fprintf(out, _("\nAvailable columns:\n"));
+ 
+ 	for (i = 0; i < __NCOLUMNS; i++)
+-		fprintf(out, " %10s  %s\n", infos[i].name, gettext(infos[i].help));
++		fprintf(out, " %10s  %s\n", infos[i].name, _(infos[i].help));
+ 
+ 	fprintf(out, _("\nFor more information see lsblk(8).\n"));
+ 
+@@ -946,7 +946,7 @@ int main(int argc, char *argv[])
+ 				return EXIT_FAILURE;
+ 			break;
+ 		case 'i':
+-			tt_flags = TT_FL_ASCII;
++			tt_flags |= TT_FL_ASCII;
+ 			break;
+ 		case 'r':
+ 			tt_flags &= ~TT_FL_TREE;	/* disable the default */
+diff --git a/misc-utils/namei.c b/misc-utils/namei.c
+index 1c20b37..2115fe7 100644
+--- a/misc-utils/namei.c
++++ b/misc-utils/namei.c
+@@ -30,7 +30,6 @@
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <sys/param.h>
+-#include <err.h>
+ #include <pwd.h>
+ #include <grp.h>
+ 
+diff --git a/misc-utils/script.1 b/misc-utils/script.1
+index 7a7760e..f411dc6 100644
+--- a/misc-utils/script.1
++++ b/misc-utils/script.1
+@@ -31,7 +31,7 @@
+ .\"
+ .\"	@(#)script.1	6.5 (Berkeley) 7/27/91
+ .\"
+-.Dd July 30, 2000
++.Dd Feb 20, 2011
+ .Dt SCRIPT 1
+ .Os Linux
+ .Sh NAME
+@@ -45,6 +45,8 @@
+ .Op Fl f
+ .Op Fl q
+ .Op Fl t
++.Op Fl V
++.Op Fl h
+ .Op Ar file
+ .Sh DESCRIPTION
+ .Nm Script
+@@ -65,31 +67,35 @@ If no file name is given, the typescript is saved in the file
+ .Pp
+ Options:
+ .Bl -tag -width Ds
+-.It Fl a
++.It Fl a, Fl Fl append
+ Append the output to
+ .Ar file
+ or
+ .Pa typescript ,
+ retaining the prior contents.
+-.It Fl c Ar COMMAND
++.It Fl c, Fl Fl command Ar COMMAND
+ Run the COMMAND rather than an interactive shell.
+ This makes it easy for a script to capture the output of a program that
+ behaves differently when its stdout is not a tty.
+-.It Fl e
++.It Fl e, Fl Fl return
+ Return the exit code of the child process. Uses the same format as bash
+ termination on signal termination exit code is 128+n.
+-.It Fl f
++.It Fl f, Fl Fl flush
+ Flush output after each write. This is nice for telecooperation:
+ One person does `mkfifo foo; script -f foo' and another can
+ supervise real-time what is being done using `cat foo'.
+-.It Fl q
++.It Fl q, Fl Fl quiet
+ Be quiet.
+-.It Fl t
++.It Fl t, Fl Fl timing
+ Output timing data to standard error. This data contains two fields,
+ separated by a space. The first field indicates how much time elapsed since
+ the previous output. The second field indicates how many characters were
+ output this time. This information can be used to replay typescripts with
+ realistic typing and output delays.
++.It Fl V, Fl Fl version
++Output version information and exit.
++.It Fl h, Fl Fl help
++Output help and exit.
+ .El
+ .Pp
+ The script ends when the forked shell exits (a
+diff --git a/misc-utils/script.c b/misc-utils/script.c
+index 9367faf..788c4c4 100644
+--- a/misc-utils/script.c
++++ b/misc-utils/script.c
+@@ -53,6 +53,7 @@
+ #include <sys/file.h>
+ #include <signal.h>
+ #include <errno.h>
++#include <err.h>
+ #include <string.h>
+ #include <getopt.h>
+ #include <unistd.h>
+@@ -101,8 +102,6 @@ int	fflg = 0;
+ int	qflg = 0;
+ int	tflg = 0;
+ 
+-static char *progname;
+-
+ int die;
+ int resized;
+ 
+@@ -110,15 +109,35 @@ static void
+ die_if_link(char *fn) {
+ 	struct stat s;
+ 
+-	if (lstat(fn, &s) == 0 && (S_ISLNK(s.st_mode) || s.st_nlink > 1)) {
+-		fprintf(stderr,
++	if (lstat(fn, &s) == 0 && (S_ISLNK(s.st_mode) || s.st_nlink > 1))
++	        /* FIXME: there is no [options] to allow/force this to happen.  */
++		errx(EXIT_FAILURE,
+ 			_("Warning: `%s' is a link.\n"
+ 			  "Use `%s [options] %s' if you really "
+ 			  "want to use it.\n"
+-			  "Script not started.\n"),
+-			fn, progname, fn);
+-		exit(1);
+-	}
++			  "Program not started.\n"),
++			fn, program_invocation_short_name, fn);
++}
++
++static void __attribute__((__noreturn__))
++usage(FILE *out)
++{
++	fprintf(out, _(
++		"\nUsage:\n"
++		" %s [options] [file]\n"), program_invocation_short_name);
++
++	fprintf(out, _(
++		"\nOptions:\n"
++		" -a, --append            append output\n"
++		" -c, --command COMMAND   run command rather than interactive shell\n"
++		" -r, --return            return exit code of the child process\n"
++		" -f, --flush             run flush after each write\n"
++		" -q, --quiet             be quiet\n"
++		" -t, --timing            output timing data to stderr\n"
++		" -V, --version           output version information and exit\n"
++		" -h, --help              display this help and exit\n\n"));
++
++	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
+ }
+ 
+ /*
+@@ -135,28 +154,26 @@ main(int argc, char **argv) {
+ 	sigset_t block_mask, unblock_mask;
+ 	struct sigaction sa;
+ 	extern int optind;
+-	char *p;
+ 	int ch;
+ 
+-	progname = argv[0];
+-	if ((p = strrchr(progname, '/')) != NULL)
+-		progname = p+1;
+-
++	struct option longopts[] = {
++		{ "append",	no_argument,	   0, 'a' },
++		{ "command",	required_argument, 0, 'c' },
++		{ "return",	no_argument,	   0, 'e' },
++		{ "flush",	no_argument,	   0, 'f' },
++		{ "quiet",	no_argument,	   0, 'q' },
++		{ "timing",	no_argument,	   0, 't' },
++		{ "version",	no_argument,	   0, 'V' },
++		{ "help",	no_argument,	   0, 'h' },
++		{ NULL,		0, 0, 0 }
++	};
+ 
+ 	setlocale(LC_ALL, "");
+ 	setlocale(LC_NUMERIC, "C");	/* see comment above */
+ 	bindtextdomain(PACKAGE, LOCALEDIR);
+ 	textdomain(PACKAGE);
+ 
+-	if (argc == 2) {
+-		if (!strcmp(argv[1], "-V") || !strcmp(argv[1], "--version")) {
+-			printf(_("%s (%s)\n"),
+-			       progname, PACKAGE_STRING);
+-			return 0;
+-		}
+-	}
+-
+-	while ((ch = getopt(argc, argv, "ac:efqt")) != -1)
++	while ((ch = getopt_long(argc, argv, "ac:efqtVh", longopts, NULL)) != -1)
+ 		switch((char)ch) {
+ 		case 'a':
+ 			aflg++;
+@@ -176,11 +193,17 @@ main(int argc, char **argv) {
+ 		case 't':
+ 			tflg++;
+ 			break;
++		case 'V':
++			printf(_("%s from %s\n"), program_invocation_short_name,
++						  PACKAGE_STRING);
++			exit(EXIT_SUCCESS);
++			break;
++		case 'h':
++			usage(stdout);
++			break;
+ 		case '?':
+ 		default:
+-			fprintf(stderr,
+-				_("usage: script [-a] [-e] [-f] [-q] [-t] [file]\n"));
+-			exit(1);
++			usage(stderr);
+ 		}
+ 	argc -= optind;
+ 	argv += optind;
+@@ -192,7 +215,7 @@ main(int argc, char **argv) {
+ 		die_if_link(fname);
+ 	}
+ 	if ((fscript = fopen(fname, aflg ? "a" : "w")) == NULL) {
+-		perror(fname);
++		warn(_("open failed: %s"), fname);
+ 		fail();
+ 	}
+ 
+@@ -223,7 +246,7 @@ main(int argc, char **argv) {
+ 	sigprocmask(SIG_SETMASK, &unblock_mask, NULL);
+ 
+ 	if (child < 0) {
+-		perror("fork");
++		warn(_("fork failed"));
+ 		fail();
+ 	}
+ 	if (child == 0) {
+@@ -233,7 +256,7 @@ main(int argc, char **argv) {
+ 		sigprocmask(SIG_SETMASK, &unblock_mask, NULL);
+ 
+ 		if (child < 0) {
+-			perror("fork");
++			warn(_("fork failed"));
+ 			fail();
+ 		}
+ 		if (child)
+@@ -246,7 +269,7 @@ main(int argc, char **argv) {
+ 	}
+ 	doinput();
+ 
+-	return 0;
++	return EXIT_SUCCESS;
+ }
+ 
+ void
+@@ -260,9 +283,7 @@ doinput() {
+ 		if ((cc = read(0, ibuf, BUFSIZ)) > 0) {
+ 			ssize_t wrt = write(master, ibuf, cc);
+ 			if (wrt == -1) {
+-				int err = errno;
+-				fprintf (stderr, _("%s: write error %d: %s\n"),
+-					progname, err, strerror(err));
++				warn (_("write failed"));
+ 				fail();
+ 			}
+ 		}
+@@ -278,7 +299,7 @@ doinput() {
+ #include <sys/wait.h>
+ 
+ void
+-finish(int dummy) {
++finish(int dummy __attribute__ ((__unused__))) {
+ 	int status;
+ 	register int pid;
+ 
+@@ -290,7 +311,7 @@ finish(int dummy) {
+ }
+ 
+ void
+-resize(int dummy) {
++resize(int dummy __attribute__ ((__unused__))) {
+ 	resized = 1;
+ 	/* transmit window change information to the child */
+ 	(void) ioctl(0, TIOCGWINSZ, (char *)&win);
+@@ -315,7 +336,7 @@ dooutput() {
+ 	double oldtime=time(NULL), newtime;
+ 	int flgs = 0;
+ 	ssize_t wrt;
+-	size_t fwrt;
++	ssize_t fwrt;
+ 
+ 	(void) close(0);
+ #ifdef HAVE_LIBUTIL
+@@ -354,16 +375,12 @@ dooutput() {
+ 		}
+ 		wrt = write(1, obuf, cc);
+ 		if (wrt < 0) {
+-			int err = errno;
+-			fprintf (stderr, _("%s: write error: %s\n"),
+-				progname, strerror(err));
++			warn (_("write failed"));
+ 			fail();
+ 		}
+ 		fwrt = fwrite(obuf, 1, cc, fscript);
+ 		if (fwrt < cc) {
+-			int err = errno;
+-			fprintf (stderr, _("%s: cannot write script file, error: %s\n"),
+-				progname, strerror(err));
++			warn (_("cannot write script file"));
+ 			fail();
+ 		}
+ 		if (fflg)
+@@ -410,7 +427,7 @@ doshell() {
+ 	else
+ 		execl(shell, shname, "-i", NULL);
+ 
+-	perror(shell);
++	warn(_("failed to execute %s"), shell);
+ 	fail();
+ }
+ 
+@@ -462,7 +479,7 @@ done() {
+ 		else
+ 			exit(WEXITSTATUS(childstatus));
+ 	}
+-	exit(0);
++	exit(EXIT_SUCCESS);
+ }
+ 
+ void
+@@ -471,7 +488,7 @@ getmaster() {
+ 	(void) tcgetattr(0, &tt);
+ 	(void) ioctl(0, TIOCGWINSZ, (char *)&win);
+ 	if (openpty(&master, &slave, NULL, &tt, &win) < 0) {
+-		fprintf(stderr, _("openpty failed\n"));
++		warn(_("openpty failed"));
+ 		fail();
+ 	}
+ #else
+@@ -507,7 +524,7 @@ getmaster() {
+ 		}
+ 	}
+ 	master = -1;
+-	fprintf(stderr, _("Out of pty's\n"));
++	warn(_("out of pty's"));
+ 	fail();
+ #endif /* not HAVE_LIBUTIL */
+ }
+@@ -518,7 +535,7 @@ getslave() {
+ 	line[strlen("/dev/")] = 't';
+ 	slave = open(line, O_RDWR);
+ 	if (slave < 0) {
+-		perror(line);
++		warn(_("open failed: %s"), line);
+ 		fail();
+ 	}
+ 	(void) tcsetattr(slave, TCSANOW, &tt);
+diff --git a/misc-utils/scriptreplay.c b/misc-utils/scriptreplay.c
+index e13edf3..992e949 100644
+--- a/misc-utils/scriptreplay.c
++++ b/misc-utils/scriptreplay.c
+@@ -26,9 +26,9 @@
+ #include <math.h>
+ #include <sys/select.h>
+ #include <unistd.h>
+-#include <err.h>
+ 
+ #include "nls.h"
++#include "c.h"
+ 
+ #define SCRIPT_MIN_DELAY 0.0001		/* from original sripreplay.pl */
+ 
+@@ -133,7 +133,7 @@ main(int argc, char *argv[])
+ 	bindtextdomain(PACKAGE, LOCALEDIR);
+ 	textdomain(PACKAGE);
+ 
+-	if (argc < 2 && argc > 4)
++	if (argc < 2 || 4  < argc)
+ 		usage(EXIT_FAILURE);
+ 
+ 	tname = argv[1];
+diff --git a/misc-utils/uuidd.8 b/misc-utils/uuidd.8
+index c2834fd..758dd66 100644
+--- a/misc-utils/uuidd.8
++++ b/misc-utils/uuidd.8
+@@ -79,5 +79,5 @@ daemon  was written by Theodore Ts'o <tytso@mit.edu>.
+ uuidd is part of the util-linux package and is available from
+ ftp://ftp.kernel.org/pub/linux/utils/util-linux/.
+ .SH "SEE ALSO"
+-.BR libuuid (3),
++.BR uuid (3),
+ .BR uuidgen (1)
+diff --git a/misc-utils/uuidd.c b/misc-utils/uuidd.c
+index 145e6d0..a01cf56 100644
+--- a/misc-utils/uuidd.c
++++ b/misc-utils/uuidd.c
+@@ -346,7 +346,7 @@ static void server_loop(const char *socket_path, const char *pidfile_path,
+ 			break;
+ 		case UUIDD_OP_TIME_UUID:
+ 			num = 1;
+-			uuid__generate_time(uu, &num);
++			__uuid_generate_time(uu, &num);
+ 			if (debug) {
+ 				uuid_unparse(uu, str);
+ 				printf(_("Generated time UUID: %s\n"), str);
+@@ -356,7 +356,7 @@ static void server_loop(const char *socket_path, const char *pidfile_path,
+ 			break;
+ 		case UUIDD_OP_RANDOM_UUID:
+ 			num = 1;
+-			uuid__generate_random(uu, &num);
++			__uuid_generate_random(uu, &num);
+ 			if (debug) {
+ 				uuid_unparse(uu, str);
+ 				printf(_("Generated random UUID: %s\n"), str);
+@@ -365,7 +365,7 @@ static void server_loop(const char *socket_path, const char *pidfile_path,
+ 			reply_len = sizeof(uu);
+ 			break;
+ 		case UUIDD_OP_BULK_TIME_UUID:
+-			uuid__generate_time(uu, &num);
++			__uuid_generate_time(uu, &num);
+ 			if (debug) {
+ 				uuid_unparse(uu, str);
+ 				printf(_("Generated time UUID %s and %d "
+@@ -383,7 +383,7 @@ static void server_loop(const char *socket_path, const char *pidfile_path,
+ 				num = 1000;
+ 			if (num * UUID_LEN > (int) (sizeof(reply_buf)-sizeof(num)))
+ 				num = (sizeof(reply_buf)-sizeof(num)) / UUID_LEN;
+-			uuid__generate_random((unsigned char *) reply_buf +
++			__uuid_generate_random((unsigned char *) reply_buf +
+ 					      sizeof(num), &num);
+ 			if (debug) {
+ 				printf(_("Generated %d UUIDs:\n"), num);
+diff --git a/misc-utils/wipefs.c b/misc-utils/wipefs.c
+index 079a9bc..9016f2f 100644
+--- a/misc-utils/wipefs.c
++++ b/misc-utils/wipefs.c
+@@ -27,7 +27,6 @@
+ #include <stdlib.h>
+ #include <unistd.h>
+ #include <getopt.h>
+-#include <err.h>
+ #include <string.h>
+ #include <limits.h>
+ 
+@@ -37,6 +36,7 @@
+ #include "xalloc.h"
+ #include "strutils.h"
+ #include "writeall.h"
++#include "c.h"
+ 
+ struct wipe_desc {
+ 	loff_t		offset;		/* magic string offset */
+diff --git a/mount/lomount.c b/mount/lomount.c
+index 4d23a61..0bbcbc1 100644
+--- a/mount/lomount.c
++++ b/mount/lomount.c
+@@ -64,7 +64,7 @@ loop_info64_to_old(const struct loop_info64 *info64, struct loop_info *info)
+ struct looplist {
+ 	int		flag;		/* scanning options */
+ 	FILE		*proc;		/* /proc/partitions */
+-	int		ncur;		/* current possition */
++	int		ncur;		/* current position */
+ 	int		*minors;	/* ary of minor numbers (when scan whole /dev) */
+ 	int		nminors;	/* number of items in *minors */
+ 	char		name[128];	/* device name */
+@@ -289,7 +289,7 @@ cmpnum(const void *p1, const void *p2)
+ 
+ /*
+  * The classic scandir() is more expensive and less portable.
+- * We needn't full loop device names -- minor numers (loop<N>)
++ * We needn't full loop device names -- minor numbers (loop<N>)
+  * are enough.
+  */
+ static int
+@@ -384,7 +384,7 @@ looplist_next(struct looplist *ll)
+ 		ll->flag &= ~LLFLG_DFLT;
+ 	}
+ 
+-	/* C) the worst posibility, scan all /dev or /dev/loop
++	/* C) the worst possibility, scan all /dev or /dev/loop
+ 	 */
+ 	if (!ll->minors) {
+ 		ll->nminors = (ll->flag & LLFLG_SUBDIR) ?
+@@ -403,6 +403,51 @@ done:
+ 	return -1;
+ }
+ 
++/* Find loop device associated with given @filename. Used for unmounting loop
++ * device specified by associated backing file.
++ *
++ * returns: 1 no such device/error
++ *          2 more than one loop device associated with @filename
++ *          0 exactly one loop device associated with @filename
++ *            (@loopdev points to string containing full device name)
++ */
++int
++find_loopdev_by_backing_file(const char *filename, char **loopdev)
++{
++	struct looplist ll;
++	struct stat filestat;
++	int fd;
++	int devs_n = 0;		/* number of loop devices found */
++	char* devname = NULL;
++
++	if (stat(filename, &filestat) == -1) {
++		perror(filename);
++		return 1;
++	}
++
++	if (looplist_open(&ll, LLFLG_USEDONLY) == -1) {
++		error(_("%s: /dev directory does not exist."), progname);
++		return 1;
++	}
++
++	while((devs_n < 2) && (fd = looplist_next(&ll)) != -1) {
++		if (is_associated(fd, &filestat, 0, 0) == 1) {
++			if (!devname)
++				devname = xstrdup(ll.name);
++			devs_n++;
++		}
++		close(fd);
++	}
++	looplist_close(&ll);
++
++	if (devs_n == 1) {
++		*loopdev = devname;
++		return 0;		/* exactly one loopdev */
++	}
++	free(devname);
++	return devs_n ? 2 : 1;		/* more loopdevs or error */
++}
++
+ #ifdef MAIN
+ 
+ static int
+@@ -565,6 +610,7 @@ show_associated_loop_devices(char *filename, unsigned long long offset, int isof
+ 	return 0;
+ }
+ 
++
+ #endif /* MAIN */
+ 
+ /* check if the loopfile is already associated with the same given
+@@ -879,7 +925,7 @@ set_loop(const char *device, const char *file, unsigned long long offset,
+ 	}
+ 
+ 	/*
+-	 * HACK: here we're leeking a file descriptor,
++	 * HACK: here we're leaking a file descriptor,
+ 	 * but mount is a short-lived process anyway.
+ 	 */
+ 	if (!(*options & SETLOOP_AUTOCLEAR))
+@@ -946,6 +992,13 @@ find_unused_loop_device (void) {
+ 	return 0;
+ }
+ 
++int
++find_loopdev_by_backing_file(const char *filename, char **loopdev)
++{
++	mutter();
++	return 1;
++}
++
+ #endif /* !LOOP_SET_FD */
+ 
+ #ifdef MAIN
+diff --git a/mount/lomount.h b/mount/lomount.h
+index de8b76b..4acc371 100644
+--- a/mount/lomount.h
++++ b/mount/lomount.h
+@@ -11,6 +11,7 @@ extern char * find_unused_loop_device(void);
+ extern int loopfile_used_with(char *devname, const char *filename, unsigned long long offset);
+ extern char *loopfile_used (const char *filename, unsigned long long offset);
+ extern char *loopdev_get_loopfile(const char *device);
++extern int find_loopdev_by_backing_file(const char *filename, char **loopdev);
+ 
+ 
+ #define SETLOOP_RDONLY     (1<<0)  /* Open loop read-only */
+diff --git a/mount/swapon.c b/mount/swapon.c
+index 5c9c3be..49771f5 100644
+--- a/mount/swapon.c
++++ b/mount/swapon.c
+@@ -13,7 +13,6 @@
+ #include <sys/wait.h>
+ #include <fcntl.h>
+ #include <stdint.h>
+-#include <err.h>
+ #include <ctype.h>
+ 
+ #include "bitops.h"
+@@ -25,6 +24,7 @@
+ #include "swapheader.h"
+ #include "mangle.h"
+ #include "canonicalize.h"
++#include "c.h"
+ 
+ #define PATH_MKSWAP	"/sbin/mkswap"
+ 
+diff --git a/mount/umount.c b/mount/umount.c
+index 468fb60..8ef342a 100644
+--- a/mount/umount.c
++++ b/mount/umount.c
+@@ -502,6 +502,7 @@ umount_file (char *arg) {
+ 	const char *file, *options;
+ 	int fstab_has_user, fstab_has_users, fstab_has_owner, fstab_has_group;
+ 	int ok;
++	struct stat statbuf;
+ 
+ 	if (!*arg) {		/* "" would be expanded to `pwd` */
+ 		die(2, _("Cannot unmount \"\"\n"));
+@@ -509,6 +510,27 @@ umount_file (char *arg) {
+ 	}
+ 
+ 	file = canonicalize(arg); /* mtab paths are canonicalized */
++
++	/* if file is a regular file, check if it is associated
++	 * with some loop device
++	 */
++	if (!stat(file, &statbuf) && S_ISREG(statbuf.st_mode)) {
++		char *loopdev = NULL;
++		switch (find_loopdev_by_backing_file(file, &loopdev)) {
++		case 0:
++			if (verbose)
++				printf(_("%s is associated with %s, trying to unmount it\n"),
++				       arg, loopdev);
++			file = loopdev;
++			break;
++		case 2:
++			if (verbose)
++				printf(_("%s is associated with more than one loop device: not unmounting\n"),
++				       arg);
++			break;
++		}
++	}
++
+ 	if (verbose > 1)
+ 		printf(_("Trying to unmount %s\n"), file);
+ 
+diff --git a/partx/partx.c b/partx/partx.c
+index efb627f..62a8f87 100644
+--- a/partx/partx.c
++++ b/partx/partx.c
+@@ -13,7 +13,6 @@
+ 
+ #include <stdio.h>
+ #include <fcntl.h>
+-#include <err.h>
+ #include <errno.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -141,7 +140,7 @@ static int get_partno_from_device(char *partition, dev_t devno)
+ 	assert(partition);
+ 
+ 	if (devno) {
+-		/* the device exits, read the partition number from /sys
++		/* the device exists, read the partition number from /sys
+ 		 * TODO: move this to stuff to lib/sysfs.c */
+ 		char path[PATH_MAX];
+ 		FILE *f;
+@@ -262,7 +261,7 @@ static int del_parts(int fd, const char *device, dev_t devno,
+ 			lower = n + lower + 1;
+ 	}
+ 	if (lower > upper) {
+-		warnx(_("defined range <%d:%d> "
++		warnx(_("specified range <%d:%d> "
+ 			"does not make sense"), lower, upper);
+ 		return -1;
+ 	}
+@@ -275,7 +274,7 @@ static int del_parts(int fd, const char *device, dev_t devno,
+ 		}
+ 		rc = -1;
+ 		if (verbose)
+-			warn(_("%s: delete partition #%d failed"), device, i);
++			warn(_("%s: deleting partition #%d failed"), device, i);
+ 		if (!errfirst)
+ 			errlast = errfirst = i;
+ 		else if (errlast + 1 == i)
+@@ -326,8 +325,8 @@ static int add_parts(int fd, const char *device,
+ 
+ 		if (blkid_partition_is_extended(par))
+ 			/*
+-			 * Let's follow Linux kernel and reduce
+-			 * DOS extended partition to 1 or 2 sectors
++			 * Let's follow the Linux kernel and reduce
++			 * DOS extended partition to 1 or 2 sectors.
+ 			 */
+ 			size = min(size, (uintmax_t) 2);
+ 
+@@ -338,7 +337,7 @@ static int add_parts(int fd, const char *device,
+ 		}
+ 		rc = -1;
+ 		if (verbose)
+-			warn(_("%s: add partition #%d failed"), device, n);
++			warn(_("%s: adding partition #%d failed"), device, n);
+ 		if (!errfirst)
+ 			errlast = errfirst = n;
+ 		else if (errlast + 1 == n)
+@@ -375,7 +374,7 @@ static int list_parts(blkid_partlist ls, int lower, int upper)
+ 		start = blkid_partition_get_start(par);
+ 		size =  blkid_partition_get_size(par);
+ 
+-		printf("#%2d: %9ju-%9ju (%9ju sectors, %6ju MB)\n",
++		printf(_("#%2d: %9ju-%9ju (%9ju sectors, %6ju MB)\n"),
+ 		       n, start, start + size -1,
+ 		       size, (size << 9) / 1000000);
+ 	}
+@@ -562,7 +561,7 @@ static blkid_partlist get_partlist(blkid_probe pr,
+ 		if (blkid_probe_filter_partitions_type(pr,
+ 				BLKID_FLTR_ONLYIN, name)) {
+ 			warnx(_("failed to initialize blkid "
+-					"filter for '%s'"), type);
++				"filter for '%s'"), type);
+ 			return NULL;
+ 		}
+ 	}
+@@ -575,9 +574,8 @@ static blkid_partlist get_partlist(blkid_probe pr,
+ 
+ 	tab = blkid_partlist_get_table(ls);
+ 	if (verbose && tab)
+-		printf(_("%s: partition table '%s' detected\n"),
+-				device,
+-				blkid_parttable_get_type(tab));
++		printf(_("%s: partition table type '%s' detected\n"),
++		       device, blkid_parttable_get_type(tab));
+ 
+ 	if (!blkid_partlist_numof_partitions(ls)) {
+ 		warnx(_("%s: %s partition table does not contains "
+@@ -594,7 +592,7 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
+ 
+ 	fprintf(out, _(
+ 		"\nUsage:\n"
+-		" %s [-a|-d|-s] [--nr <N:M> | <device>] <wholedisk>\n"),
++		" %s [-a|-d|-s] [--nr <N:M> | <partition>] <disk>\n"),
+ 		program_invocation_short_name);
+ 
+ 	fprintf(out, _(
+@@ -608,14 +606,14 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
+ 		" -g, --noheadings     don't print headings for --show\n"
+ 		" -r, --raw            use raw format output\n"
+ 		" -t, --type <TYPE>    specify the partition type (dos, bsd, solaris, etc.)\n"
+-		" -n, --nr <M:N>       specify the range of partitions (--nr 2:4)\n"
+-		" -o, --output <LIST>  output column\n"
++		" -n, --nr <M:N>       specify the range of partitions (e.g. --nr 2:4)\n"
++		" -o, --output <LIST>  define which output columns to use\n"
+ 		" -h, --help           print this help\n\n"));
+ 
+ 	fprintf(out, _("\nAvailable columns (for --show):\n"));
+ 
+ 	for (i = 0; i < __NCOLUMNS; i++)
+-		fprintf(out, " %10s  %s\n", infos[i].name, gettext(infos[i].help));
++		fprintf(out, " %10s  %s\n", infos[i].name, _(infos[i].help));
+ 
+ 	fprintf(out, _("\nFor more information see partx(8).\n"));
+ 
+@@ -625,7 +623,7 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
+ static void __attribute__((__noreturn__))
+ errx_mutually_exclusive(const char *opts)
+ {
+-	errx(EXIT_FAILURE, "%s %s", opts, _("options are mutually exclusive"));
++	errx(EXIT_FAILURE, _("the options %s are mutually exclusive"), opts);
+ }
+ 
+ int main(int argc, char **argv)
+@@ -775,7 +773,7 @@ int main(int argc, char **argv)
+ 		usage(stderr);
+ 
+ 	if (device && (upper || lower))
+-		errx(EXIT_FAILURE, _("--nr and <partition> are mutually exclusive}"));
++		errx(EXIT_FAILURE, _("--nr and <partition> are mutually exclusive"));
+ 
+ 	assert(wholedisk);
+ 
+@@ -794,7 +792,7 @@ int main(int argc, char **argv)
+ 	}
+ 
+ 	if (verbose)
+-		printf("device: %s, whole-disk: %s, lower: %d, upper: %d\n",
++		printf(_("partition: %s, disk: %s, lower: %d, upper: %d\n"),
+ 				device, wholedisk, lower, upper);
+ 
+ 	if (what == ACT_ADD || what == ACT_DELETE) {
+@@ -826,7 +824,7 @@ int main(int argc, char **argv)
+ 			if (upper < 0)
+ 				upper = n + upper + 1;
+ 			if (lower > upper) {
+-				warnx(_("defined range <%d:%d> "
++				warnx(_("specified range <%d:%d> "
+ 					"does not make sense"), lower, upper);
+ 				rc = -1, what = 0;
+ 			}
+diff --git a/schedutils/chrt.c b/schedutils/chrt.c
+index bd7070c..489f299 100644
+--- a/schedutils/chrt.c
++++ b/schedutils/chrt.c
+@@ -27,7 +27,6 @@
+ #include <unistd.h>
+ #include <getopt.h>
+ #include <errno.h>
+-#include <err.h>
+ 
+ #include "c.h"
+ #include "nls.h"
+diff --git a/schedutils/ionice.c b/schedutils/ionice.c
+index ecfb4fd..dc18add 100644
+--- a/schedutils/ionice.c
++++ b/schedutils/ionice.c
+@@ -12,11 +12,10 @@
+ #include <getopt.h>
+ #include <unistd.h>
+ #include <sys/syscall.h>
+-#include <err.h>
+ 
+ #include "nls.h"
+-
+ #include "strutils.h"
++#include "c.h"
+ 
+ static int tolerant;
+ 
+diff --git a/schedutils/taskset.c b/schedutils/taskset.c
+index fa16647..39b2245 100644
+--- a/schedutils/taskset.c
++++ b/schedutils/taskset.c
+@@ -24,12 +24,11 @@
+ #include <unistd.h>
+ #include <getopt.h>
+ #include <errno.h>
+-#include <err.h>
+ 
+ #include "cpuset.h"
+ #include "nls.h"
+-
+ #include "strutils.h"
++#include "c.h"
+ 
+ static void __attribute__((__noreturn__)) usage(FILE *out)
+ {
+diff --git a/shlibs/blkid/samples/mkfs.c b/shlibs/blkid/samples/mkfs.c
+index ff6a632..5c3ebe7 100644
+--- a/shlibs/blkid/samples/mkfs.c
++++ b/shlibs/blkid/samples/mkfs.c
+@@ -10,7 +10,6 @@
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <fcntl.h>
+-#include <err.h>
+ #include <errno.h>
+ 
+ #include <blkid.h>
+diff --git a/shlibs/blkid/samples/partitions.c b/shlibs/blkid/samples/partitions.c
+index 8ee5599..3b52736 100644
+--- a/shlibs/blkid/samples/partitions.c
++++ b/shlibs/blkid/samples/partitions.c
+@@ -10,7 +10,6 @@
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <fcntl.h>
+-#include <err.h>
+ #include <errno.h>
+ 
+ #include <blkid.h>
+diff --git a/shlibs/blkid/samples/superblocks.c b/shlibs/blkid/samples/superblocks.c
+index 276c29e..20e39c9 100644
+--- a/shlibs/blkid/samples/superblocks.c
++++ b/shlibs/blkid/samples/superblocks.c
+@@ -10,7 +10,6 @@
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <fcntl.h>
+-#include <err.h>
+ #include <errno.h>
+ 
+ #include <blkid.h>
+diff --git a/shlibs/blkid/samples/topology.c b/shlibs/blkid/samples/topology.c
+index e73cd9e..de1c3a5 100644
+--- a/shlibs/blkid/samples/topology.c
++++ b/shlibs/blkid/samples/topology.c
+@@ -10,7 +10,6 @@
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <fcntl.h>
+-#include <err.h>
+ #include <errno.h>
+ 
+ #include <blkid.h>
+diff --git a/shlibs/mount/samples/mount.c b/shlibs/mount/samples/mount.c
+index 8095ffc..ed3c99a 100644
+--- a/shlibs/mount/samples/mount.c
++++ b/shlibs/mount/samples/mount.c
+@@ -24,7 +24,6 @@
+ #include <errno.h>
+ #include <string.h>
+ #include <getopt.h>
+-#include <err.h>
+ #include <unistd.h>
+ #include <sys/types.h>
+ 
+@@ -306,7 +305,7 @@ int main(int argc, char **argv)
+ 		case 'L':
+ 		case 'U':
+ 			if (source)
+-				errx(EX_USAGE, _("only one <source> could be specified"));
++				errx(EX_USAGE, _("only one <source> may be specified"));
+ 			if (asprintf(&srcbuf, "%s=\"%s\"",
+ 				     c == 'L' ? "LABEL" : "UUID", optarg) <= 0)
+ 				err(EX_SYSERR, _("failed to allocate source buffer"));
+diff --git a/shlibs/mount/src/context_umount.c b/shlibs/mount/src/context_umount.c
+index bd9be69..1187a87 100644
+--- a/shlibs/mount/src/context_umount.c
++++ b/shlibs/mount/src/context_umount.c
+@@ -21,6 +21,34 @@
+ #include "strutils.h"
+ #include "mountP.h"
+ 
++#if defined(MNT_FORCE)
++/* Interesting ... it seems libc knows about MNT_FORCE and presumably
++   about umount2 as well -- need not do anything */
++#else /* MNT_FORCE */
++/* Does the present kernel source know about umount2? */
++# include <linux/unistd.h>
++# ifdef __NR_umount2
++static int umount2(const char *path, int flags);
++_syscall2(int, umount2, const char *, path, int, flags);
++# else /* __NR_umount2 */
++static int
++umount2(const char *path, int flags) {
++	fprintf(stderr, _("umount: compiled without support for -f\n"));
++	errno = ENOSYS;
++	return -1;
++}
++#endif /* __NR_umount2 */
++# if !defined(MNT_FORCE)
++# define MNT_FORCE 1
++#endif
++
++#endif /* MNT_FORCE */
++
++#if !defined(MNT_DETACH)
++#define MNT_DETACH 2
++#endif
++
++
+ static int lookup_umount_fs(struct libmnt_context *cxt)
+ {
+ 	int rc;
+diff --git a/shlibs/mount/src/lock.c b/shlibs/mount/src/lock.c
+index ef7498d..5549158 100644
+--- a/shlibs/mount/src/lock.c
++++ b/shlibs/mount/src/lock.c
+@@ -29,6 +29,7 @@
+ 
+ #include "pathnames.h"
+ #include "nls.h"
++#include "c.h"
+ 
+ #include "mountP.h"
+ 
+@@ -429,7 +430,6 @@ failed:
+ }
+ 
+ #ifdef TEST_PROGRAM
+-#include <err.h>
+ 
+ struct libmnt_lock *lock;
+ 
+diff --git a/shlibs/mount/src/mountP.h b/shlibs/mount/src/mountP.h
+index aeceb7f..71314a5 100644
+--- a/shlibs/mount/src/mountP.h
++++ b/shlibs/mount/src/mountP.h
+@@ -118,7 +118,7 @@ extern int mnt_in_group(gid_t gid);
+ 
+ extern char *mnt_get_mountpoint(const char *path);
+ extern char *mnt_get_fs_root(const char *path, const char *mountpoint);
+-extern int mnt_open_uniq_filename(const char *filename, char **name, int flags);
++extern int mnt_open_uniq_filename(const char *filename, char **name);
+ extern int mnt_has_regular_utab(const char **utab, int *writable);
+ extern const char *mnt_get_utab_path(void);
+ 
+diff --git a/shlibs/mount/src/tab_update.c b/shlibs/mount/src/tab_update.c
+index a0f99f1..5373e2f 100644
+--- a/shlibs/mount/src/tab_update.c
++++ b/shlibs/mount/src/tab_update.c
+@@ -561,7 +561,7 @@ static int update_table(struct libmnt_update *upd, struct libmnt_table *tb)
+ 
+ 	DBG(UPDATE, mnt_debug_h(upd, "%s: updating", upd->filename));
+ 
+-	fd = mnt_open_uniq_filename(upd->filename, &uq, O_WRONLY);
++	fd = mnt_open_uniq_filename(upd->filename, &uq);
+ 	if (fd < 0)
+ 		return fd;	/* error */
+ 
+@@ -619,7 +619,7 @@ static int utab_lock(const char *filename)
+ 
+ 	while (flock(fd, LOCK_EX) < 0) {
+ 		int errsv;
+-		if (errno == EINTR)
++		if ((errno == EAGAIN) || (errno == EINTR))
+ 			continue;
+ 		errsv = errno;
+ 		close(fd);
+diff --git a/shlibs/mount/src/utils.c b/shlibs/mount/src/utils.c
+index cb0ed1c..b02b6fe 100644
+--- a/shlibs/mount/src/utils.c
++++ b/shlibs/mount/src/utils.c
+@@ -642,7 +642,7 @@ const char *mnt_get_utab_path(void)
+ 
+ /* returns file descriptor or -errno, @name returns uniques filename
+  */
+-int mnt_open_uniq_filename(const char *filename, char **name, int flags)
++int mnt_open_uniq_filename(const char *filename, char **name)
+ {
+ 	int rc, fd;
+ 	char *n;
+@@ -656,7 +656,7 @@ int mnt_open_uniq_filename(const char *filename, char **name, int flags)
+ 	if (rc <= 0)
+ 		return -errno;
+ 
+-	fd = mkostemp(n, flags | O_EXCL);
++	fd = mkstemp(n);
+ 	if (fd >= 0 && name)
+ 		*name = n;
+ 	else
+diff --git a/shlibs/uuid/man/Makefile.am b/shlibs/uuid/man/Makefile.am
+index 3880952..8e9ed6d 100644
+--- a/shlibs/uuid/man/Makefile.am
++++ b/shlibs/uuid/man/Makefile.am
+@@ -3,7 +3,7 @@ include $(top_srcdir)/config/include-Makefile.am
+ dist_man_MANS = uuid.3 uuid_clear.3 uuid_compare.3 uuid_copy.3 uuid_generate.3 \
+ 		uuid_is_null.3 uuid_parse.3 uuid_time.3 uuid_unparse.3
+ 
+-UUID_GENERATE_LINKS = uuid_generate_random.3 uuid_generate_time.3
++UUID_GENERATE_LINKS = uuid_generate_random.3 uuid_generate_time.3 uuid_generate_time_safe.3
+ 
+ man_MANS = $(UUID_GENERATE_LINKS)
+ CLEANFILES = $(man_MANS)
+diff --git a/shlibs/uuid/man/uuid_generate.3 b/shlibs/uuid/man/uuid_generate.3
+index 95a2100..8185056 100644
+--- a/shlibs/uuid/man/uuid_generate.3
++++ b/shlibs/uuid/man/uuid_generate.3
+@@ -31,7 +31,8 @@
+ .\" Created  Wed Mar 10 17:42:12 1999, Andreas Dilger
+ .TH UUID_GENERATE 3 "May 2009" "util-linux" "Libuuid API"
+ .SH NAME
+-uuid_generate, uuid_generate_random, uuid_generate_time \- create a new unique UUID value
++uuid_generate, uuid_generate_random, uuid_generate_time,
++uuid_generate_time_safe \- create a new unique UUID value
+ .SH SYNOPSIS
+ .nf
+ .B #include <uuid/uuid.h>
+@@ -39,6 +40,7 @@ uuid_generate, uuid_generate_random, uuid_generate_time \- create a new unique U
+ .BI "void uuid_generate(uuid_t " out );
+ .BI "void uuid_generate_random(uuid_t " out );
+ .BI "void uuid_generate_time(uuid_t " out );
++.BI "int uuid_generate_time_safe(uuid_t " out );
+ .fi
+ .SH DESCRIPTION
+ The
+@@ -58,7 +60,7 @@ function forces the use of the all-random UUID format, even if
+ a high-quality random number generator (i.e.,
+ .IR /dev/urandom )
+ is not available, in which case a pseudo-random
+-generator will be subsituted.  Note that the use of a pseudo-random
++generator will be substituted.  Note that the use of a pseudo-random
+ generator may compromise the uniqueness of UUIDs
+ generated in this fashion.
+ .sp
+@@ -72,10 +74,27 @@ information about when and where the UUID was generated.  This can cause
+ privacy problems in some applications, so the
+ .B uuid_generate
+ function only uses this algorithm if a high-quality source of
+-randomness is not available.
++randomness is not available.  To guarantee uniqueness of UUIDs generated
++by concurrently running processes, the uuid library uses global
++clock state counter (if the process has permissions to gain exclusive access
++to this file) and/or the
++.B uuidd
++daemon, if it is running already or can be be spawned by the process (if
++installed and the process has enough permissions to run it).  If neither of
++these two synchronization mechanisms can be used, it is theoretically possible
++that two concurrently running processes obtain the same UUID(s).  To tell
++whether the UUID has been generated in a safe manner, use
++.BR uuid_generate_time_safe .
++.sp
++The
++.B uuid_generate_time_safe
++is similar to
++.BR uuid_generate_time ,
++except that it returns a value which denotes whether any of the synchronization
++mechanisms (see above) has been used.
+ .sp
+ The UUID is 16 bytes (128 bits) long, which gives approximately 3.4x10^38
+-unique values (there are approximately 10^80 elemntary particles in
++unique values (there are approximately 10^80 elementary particles in
+ the universe according to Carl Sagan's
+ .IR Cosmos ).
+ The new UUID can reasonably be considered unique among all UUIDs created
+@@ -84,6 +103,8 @@ and in the future.
+ .SH RETURN VALUE
+ The newly created UUID is returned in the memory location pointed to by
+ .IR out .
++.B uuid_generate_time_safe
++returns zero if the UUID has been generated in a safe manner, -1 otherwise.
+ .SH "CONFORMING TO"
+ OSF DCE 1.1
+ .SH AUTHOR
+@@ -95,6 +116,7 @@ ftp://ftp.kernel.org/pub/linux/utils/util-linux/.
+ .SH "SEE ALSO"
+ .BR uuid (3),
+ .BR uuidgen (1),
++.BR uuidd (8),
+ .BR uuid_clear (3),
+ .BR uuid_compare (3),
+ .BR uuid_copy (3),
+diff --git a/shlibs/uuid/man/uuid_time.3 b/shlibs/uuid/man/uuid_time.3
+index 786e8c4..b2d1579 100644
+--- a/shlibs/uuid/man/uuid_time.3
++++ b/shlibs/uuid/man/uuid_time.3
+@@ -47,7 +47,9 @@ was created.  Note that the UUID creation time is only encoded within
+ certain types of UUIDs.  This function can only reasonably expect to
+ extract the creation time for UUIDs created with the
+ .BR uuid_generate_time (3)
+-function.  It may or may not work with UUIDs created by other mechanisms.
++and
++.BR uuid_generate_time_safe (3)
++functions.  It may or may not work with UUIDs created by other mechanisms.
+ .SH "RETURN VALUES"
+ The time at which the UUID was created, in seconds since January 1, 1970 GMT
+ (the epoch), is returned (see
+diff --git a/shlibs/uuid/src/gen_uuid.c b/shlibs/uuid/src/gen_uuid.c
+index e567b29..f4c8997 100644
+--- a/shlibs/uuid/src/gen_uuid.c
++++ b/shlibs/uuid/src/gen_uuid.c
+@@ -306,6 +306,12 @@ static int get_node_id(unsigned char *node_id)
+ /* Assume that the gettimeofday() has microsecond granularity */
+ #define MAX_ADJUSTMENT 10
+ 
++/*
++ * Get clock from global sequence clock counter.
++ *
++ * Return -1 if the clock counter could not be opened/locked (in this case
++ * pseudorandom value is returned in @ret_clock_seq), otherwise return 0.
++ */
+ static int get_clock(uint32_t *clock_high, uint32_t *clock_low,
+ 		     uint16_t *ret_clock_seq, int *num)
+ {
+@@ -318,26 +324,33 @@ static int get_clock(uint32_t *clock_high, uint32_t *clock_low,
+ 	uint64_t			clock_reg;
+ 	mode_t				save_umask;
+ 	int				len;
++	int				ret = 0;
+ 
+ 	if (state_fd == -2) {
+ 		save_umask = umask(0);
+ 		state_fd = open("/var/lib/libuuid/clock.txt",
+ 				O_RDWR|O_CREAT, 0660);
+ 		(void) umask(save_umask);
+-		state_f = fdopen(state_fd, "r+");
+-		if (!state_f) {
+-			close(state_fd);
+-			state_fd = -1;
++		if (state_fd != -1) {
++			state_f = fdopen(state_fd, "r+");
++			if (!state_f) {
++				close(state_fd);
++				state_fd = -1;
++				ret = -1;
++			}
+ 		}
++		else
++			ret = -1;
+ 	}
+ 	if (state_fd >= 0) {
+ 		rewind(state_f);
+ 		while (flock(state_fd, LOCK_EX) < 0) {
+-			if (errno == EINTR)
++			if ((errno == EAGAIN) || (errno == EINTR))
+ 				continue;
+ 			fclose(state_f);
+ 			close(state_fd);
+ 			state_fd = -1;
++			ret = -1;
+ 			break;
+ 		}
+ 	}
+@@ -392,7 +405,7 @@ try_again:
+ 		last.tv_usec = last.tv_usec % 1000000;
+ 	}
+ 
+-	if (state_fd > 0) {
++	if (state_fd >= 0) {
+ 		rewind(state_f);
+ 		len = fprintf(state_f,
+ 			      "clock: %04x tv: %016lu %08lu adj: %08d\n",
+@@ -409,7 +422,7 @@ try_again:
+ 	*clock_high = clock_reg >> 32;
+ 	*clock_low = clock_reg;
+ 	*ret_clock_seq = clock_seq;
+-	return 0;
++	return ret;
+ }
+ 
+ #if defined(HAVE_UUIDD) && defined(HAVE_SYS_UN_H)
+@@ -553,12 +566,13 @@ static int get_uuid_via_daemon(int op, uuid_t out, int *num)
+ }
+ #endif
+ 
+-void uuid__generate_time(uuid_t out, int *num)
++int __uuid_generate_time(uuid_t out, int *num)
+ {
+ 	static unsigned char node_id[6];
+ 	static int has_init = 0;
+ 	struct uuid uu;
+ 	uint32_t	clock_mid;
++	int ret;
+ 
+ 	if (!has_init) {
+ 		if (get_node_id(node_id) <= 0) {
+@@ -572,16 +586,24 @@ void uuid__generate_time(uuid_t out, int *num)
+ 		}
+ 		has_init = 1;
+ 	}
+-	get_clock(&clock_mid, &uu.time_low, &uu.clock_seq, num);
++	ret = get_clock(&clock_mid, &uu.time_low, &uu.clock_seq, num);
+ 	uu.clock_seq |= 0x8000;
+ 	uu.time_mid = (uint16_t) clock_mid;
+ 	uu.time_hi_and_version = ((clock_mid >> 16) & 0x0FFF) | 0x1000;
+ 	memcpy(uu.node, node_id, 6);
+ 	uuid_pack(&uu, out);
++	return ret;
+ }
+ 
+-void uuid_generate_time(uuid_t out)
+-{
++/*
++ * Generate time-based UUID and store it to @out
++ *
++ * Tries to guarantee uniqueness of the generated UUIDs by obtaining them from the uuidd daemon,
++ * or, if uuidd is not usable, by using the global clock state counter (see get_clock()).
++ * If neither of these is possible (e.g. because of insufficient permissions), it generates
++ * the UUID anyway, but returns -1. Otherwise, returns 0.
++ */
++static int uuid_generate_time_generic(uuid_t out) {
+ #ifdef HAVE_TLS
+ 	THREAD_LOCAL int		num = 0;
+ 	THREAD_LOCAL struct uuid	uu;
+@@ -600,7 +622,7 @@ void uuid_generate_time(uuid_t out)
+ 			last_time = time(0);
+ 			uuid_unpack(out, &uu);
+ 			num--;
+-			return;
++			return 0;
+ 		}
+ 		num = 0;
+ 	}
+@@ -613,18 +635,34 @@ void uuid_generate_time(uuid_t out)
+ 		}
+ 		num--;
+ 		uuid_pack(&uu, out);
+-		return;
++		return 0;
+ 	}
+ #else
+ 	if (get_uuid_via_daemon(UUIDD_OP_TIME_UUID, out, 0) == 0)
+-		return;
++		return 0;
+ #endif
+ 
+-	uuid__generate_time(out, 0);
++	return __uuid_generate_time(out, 0);
++}
++
++/*
++ * Generate time-based UUID and store it to @out.
++ *
++ * Discards return value from uuid_generate_time_generic()
++ */
++void uuid_generate_time(uuid_t out)
++{
++	(void)uuid_generate_time_generic(out);
++}
++
++
++int uuid_generate_time_safe(uuid_t out)
++{
++	return uuid_generate_time_generic(out);
+ }
+ 
+ 
+-void uuid__generate_random(uuid_t out, int *num)
++void __uuid_generate_random(uuid_t out, int *num)
+ {
+ 	uuid_t	buf;
+ 	struct uuid uu;
+@@ -652,7 +690,7 @@ void uuid_generate_random(uuid_t out)
+ 	int	num = 1;
+ 	/* No real reason to use the daemon for random uuid's -- yet */
+ 
+-	uuid__generate_random(out, &num);
++	__uuid_generate_random(out, &num);
+ }
+ 
+ 
+diff --git a/shlibs/uuid/src/uuid.h b/shlibs/uuid/src/uuid.h
+index e329bf7..874d65a 100644
+--- a/shlibs/uuid/src/uuid.h
++++ b/shlibs/uuid/src/uuid.h
+@@ -79,6 +79,7 @@ void uuid_copy(uuid_t dst, const uuid_t src);
+ void uuid_generate(uuid_t out);
+ void uuid_generate_random(uuid_t out);
+ void uuid_generate_time(uuid_t out);
++int uuid_generate_time_safe(uuid_t out);
+ 
+ /* isnull.c */
+ int uuid_is_null(const uuid_t uu);
+diff --git a/shlibs/uuid/src/uuid.sym b/shlibs/uuid/src/uuid.sym
+index 05d9f39..2cad51b 100644
+--- a/shlibs/uuid/src/uuid.sym
++++ b/shlibs/uuid/src/uuid.sym
+@@ -1,6 +1,6 @@
+ /*
+  * The symbol versioning ensures that a new application requiring symbol foo()
+- * can't run with old libblkid.so not providing foo() - the global SONAME
++ * can't run with old libuuid.so not providing foo() - the global SONAME
+  * version info can't enforce this since we never change the SONAME.
+  *
+  * The original libuuid from e2fsprogs (<=1.41.5) does not to use
+@@ -22,12 +22,25 @@ global:
+ 	uuid_time;
+ 	uuid_type;
+ 	uuid_variant;
++};
++
++/*
++ * version(s) since util-linux 2.20
++ */
++UUID_2.20 {
++global:
++	uuid_generate_time_safe;
++} UUID_1.0;
+ 
+-	/* uuid__* this is not part of the official API, this is
+-	 * uuidd (uuid daemon) specific stuff. Hell.
+-	 */
+-	uuid__generate_time;
+-	uuid__generate_random;
++
++/*
++ * __uuid_* this is not part of the official API, this is
++ * uuidd (uuid daemon) specific stuff. Hell.
++ */
++UUIDD_PRIVATE {
++global:
++	__uuid_generate_time;
++	__uuid_generate_random;
+ local:
+ 	*;
+ };
+diff --git a/shlibs/uuid/src/uuidd.h b/shlibs/uuid/src/uuidd.h
+index 68ee0e5..27b79c2 100644
+--- a/shlibs/uuid/src/uuidd.h
++++ b/shlibs/uuid/src/uuidd.h
+@@ -48,7 +48,7 @@
+ #define UUIDD_OP_BULK_RANDOM_UUID	5
+ #define UUIDD_MAX_OP			UUIDD_OP_BULK_RANDOM_UUID
+ 
+-extern void uuid__generate_time(uuid_t out, int *num);
+-extern void uuid__generate_random(uuid_t out, int *num);
++extern int __uuid_generate_time(uuid_t out, int *num);
++extern void __uuid_generate_random(uuid_t out, int *num);
+ 
+ #endif /* _UUID_UUID_H */
+diff --git a/sys-utils/ctrlaltdel.c b/sys-utils/ctrlaltdel.c
+index cfab79a..d6c83b4 100644
+--- a/sys-utils/ctrlaltdel.c
++++ b/sys-utils/ctrlaltdel.c
+@@ -5,13 +5,13 @@
+  * - added Native Language Support
+  */
+ 
+-#include <err.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <errno.h>
+ #include "linux_reboot.h"
+ #include "nls.h"
++#include "c.h"
+ 
+ int main(int argc, char *argv[])
+ {
+diff --git a/sys-utils/fallocate.c b/sys-utils/fallocate.c
+index e9d7c07..74e9435 100644
+--- a/sys-utils/fallocate.c
++++ b/sys-utils/fallocate.c
+@@ -30,7 +30,6 @@
+ #include <stdlib.h>
+ #include <unistd.h>
+ #include <getopt.h>
+-#include <err.h>
+ #include <limits.h>
+ 
+ #ifndef HAVE_FALLOCATE
+@@ -45,6 +44,7 @@
+ 
+ #include "nls.h"
+ #include "strutils.h"
++#include "c.h"
+ 
+ 
+ static void __attribute__((__noreturn__)) usage(FILE *out)
+diff --git a/sys-utils/fsfreeze.c b/sys-utils/fsfreeze.c
+index 4ca6e5e..2dab23f 100644
+--- a/sys-utils/fsfreeze.c
++++ b/sys-utils/fsfreeze.c
+@@ -20,7 +20,6 @@
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <getopt.h>
+-#include <err.h>
+ 
+ #include "blkdev.h"
+ #include "nls.h"
+diff --git a/sys-utils/fstrim.8 b/sys-utils/fstrim.8
+index 952f88f..1bca53b 100644
+--- a/sys-utils/fstrim.8
++++ b/sys-utils/fstrim.8
+@@ -9,7 +9,7 @@ fstrim \- discard unused blocks on a mounted filesystem
+ .RB [ \-l
+ .IR length ]
+ .RB [ \-m
+-.IR minimum-extent ]
++.IR minimum-free-extent ]
+ .RB [ \-v ]
+ .I mountpoint
+ 
+diff --git a/sys-utils/fstrim.c b/sys-utils/fstrim.c
+index 808ff03..c7043a7 100644
+--- a/sys-utils/fstrim.c
++++ b/sys-utils/fstrim.c
+@@ -32,7 +32,6 @@
+ #include <fcntl.h>
+ #include <limits.h>
+ #include <getopt.h>
+-#include <err.h>
+ #include <error.h>
+ #include <errno.h>
+ 
+@@ -42,6 +41,7 @@
+ 
+ #include "nls.h"
+ #include "strutils.h"
++#include "c.h"
+ 
+ #ifndef FITRIM
+ struct fstrim_range {
+@@ -110,7 +110,7 @@ int main(int argc, char **argv)
+ 		case 'm':
+ 			if (strtosize(optarg, &range.minlen))
+ 				errx(EXIT_FAILURE,
+-				     _("failed to parse minimal extend length: %s"),
++				     _("failed to parse minimum extent length: %s"),
+ 				     optarg);
+ 			break;
+ 		case 'v':
+diff --git a/sys-utils/ipcmk.c b/sys-utils/ipcmk.c
+index 2e663bf..26bf8f6 100644
+--- a/sys-utils/ipcmk.c
++++ b/sys-utils/ipcmk.c
+@@ -23,7 +23,6 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <errno.h>
+-#include <err.h>
+ #include <time.h>
+ 
+ #include <unistd.h>
+@@ -34,6 +33,7 @@
+ #include <sys/msg.h>
+ 
+ #include "nls.h"
++#include "c.h"
+ 
+ static const char *progname;
+ 
+diff --git a/sys-utils/ipcs.c b/sys-utils/ipcs.c
+index 2ef5788..d7c8ee8 100644
+--- a/sys-utils/ipcs.c
++++ b/sys-utils/ipcs.c
+@@ -26,7 +26,6 @@
+ #include <pwd.h>
+ #include <grp.h>
+ #include <unistd.h>
+-#include <err.h>
+ #include <sys/types.h>
+ #include <sys/ipc.h>
+ #include <sys/sem.h>
+@@ -34,6 +33,7 @@
+ #include <sys/shm.h>
+ 
+ #include "nls.h"
++#include "c.h"
+ 
+ /*-------------------------------------------------------------------*/
+ /* SHM_DEST and SHM_LOCKED are defined in kernel headers,
+@@ -196,14 +196,15 @@ main (int argc, char **argv) {
+ 		}
+ 	}
+ 
++
+ 	if  (print) {
+-		if (shm)
++	        if (shm)
+ 			print_shm (id);
+-		else if (sem)
++		if (sem)
+ 			print_sem (id);
+-		else if (msg)
++		if (msg)
+ 			print_msg (id);
+-		else
++		if (!shm && !sem && !msg )
+ 			usage (EXIT_FAILURE);
+ 	} else {
+ 		if ( !shm && !msg && !sem)
+diff --git a/sys-utils/ldattach.c b/sys-utils/ldattach.c
+index 4fe5a7b..5d83819 100644
+--- a/sys-utils/ldattach.c
++++ b/sys-utils/ldattach.c
+@@ -23,7 +23,6 @@
+ #include <errno.h>
+ #include <termios.h>
+ #include <unistd.h>
+-#include <err.h>
+ 
+ #include "c.h"
+ #include "nls.h"
+diff --git a/sys-utils/lscpu.c b/sys-utils/lscpu.c
+index d59d2e2..66c527d 100644
+--- a/sys-utils/lscpu.c
++++ b/sys-utils/lscpu.c
+@@ -21,7 +21,6 @@
+ 
+ #include <ctype.h>
+ #include <dirent.h>
+-#include <err.h>
+ #include <errno.h>
+ #include <fcntl.h>
+ #include <getopt.h>
+@@ -37,6 +36,8 @@
+ 
+ #include "cpuset.h"
+ #include "nls.h"
++#include "xalloc.h"
++#include "c.h"
+ 
+ #define CACHE_MAX 100
+ 
+@@ -234,15 +235,6 @@ path_exist(const char *path, ...)
+ 	return access(p, F_OK) == 0;
+ }
+ 
+-static char *
+-xstrdup(const char *str)
+-{
+-	char *s = strdup(str);
+-	if (!s)
+-		err(EXIT_FAILURE, _("error: strdup failed"));
+-	return s;
+-}
+-
+ static cpu_set_t *
+ path_cpuparse(int islist, const char *path, va_list ap)
+ {
+@@ -915,14 +907,15 @@ print_readable(struct lscpu_desc *desc, int hex)
+ 
+ static void __attribute__((__noreturn__)) usage(FILE *out)
+ {
+-	fprintf(out, _("Usage: %s [option]\n"),
+-			program_invocation_short_name);
+-
+-	fprintf(out,_("CPU architecture information helper\n\n"
+-		"  -h, --help     usage information\n"
+-		"  -p, --parse    print out in parsable instead of printable format.\n"
+-		"  -s, --sysroot  use the directory as a new system root.\n"
+-		"  -x, --hex      print haxadecimal masks rather than lists of CPU(s)\n"));
++	fprintf(out, _(
++		"\nUsage:\n"
++		" %s [options]\n"), program_invocation_short_name);
++
++	puts(_(	"\nOptions:\n"
++		"  -h, --help         print this help\n"
++		"  -p, --parse        print out a parsable instead of a readable format\n"
++		"  -s, --sysroot DIR  use directory DIR as system root\n"
++		"  -x, --hex          print hexadecimal masks rather than lists of CPUs\n"));
+ 
+ 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
+ }
+diff --git a/sys-utils/renice.c b/sys-utils/renice.c
+index 6b1a972..b4d96e0 100644
+--- a/sys-utils/renice.c
++++ b/sys-utils/renice.c
+@@ -44,8 +44,8 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <errno.h>
+-#include <err.h>
+ #include "nls.h"
++#include "c.h"
+ 
+ static int donice(int,int,int);
+ 
+diff --git a/sys-utils/rtcwake.c b/sys-utils/rtcwake.c
+index 06f5c38..da8c085 100644
+--- a/sys-utils/rtcwake.c
++++ b/sys-utils/rtcwake.c
+@@ -28,7 +28,6 @@
+ #include <unistd.h>
+ #include <errno.h>
+ #include <time.h>
+-#include <err.h>
+ 
+ #include <sys/ioctl.h>
+ #include <sys/time.h>
+@@ -41,6 +40,7 @@
+ #include "pathnames.h"
+ #include "usleep.h"
+ #include "strutils.h"
++#include "c.h"
+ 
+ /* constants from legacy PC/AT hardware */
+ #define	RTC_PF	0x40
+diff --git a/sys-utils/switch_root.c b/sys-utils/switch_root.c
+index c43225d..2dfed71 100644
+--- a/sys-utils/switch_root.c
++++ b/sys-utils/switch_root.c
+@@ -32,7 +32,7 @@
+ #include <errno.h>
+ #include <ctype.h>
+ #include <dirent.h>
+-#include <err.h>
++#include "c.h"
+ 
+ #ifndef MS_MOVE
+ #define MS_MOVE 8192
+diff --git a/sys-utils/unshare.c b/sys-utils/unshare.c
+index 12a725e..343a86e 100644
+--- a/sys-utils/unshare.c
++++ b/sys-utils/unshare.c
+@@ -18,7 +18,6 @@
+  * 675 Mass Ave, Cambridge, MA 02139, USA.
+  */
+ 
+-#include <err.h>
+ #include <errno.h>
+ #include <getopt.h>
+ #include <sched.h>
+@@ -27,6 +26,7 @@
+ #include <unistd.h>
+ 
+ #include "nls.h"
++#include "c.h"
+ 
+ #ifndef CLONE_NEWSNS
+ # define CLONE_NEWNS 0x00020000
+diff --git a/tests/expected/misc/strtosize b/tests/expected/misc/strtosize
+index d1c039d..0dd5e3e 100644
+--- a/tests/expected/misc/strtosize
++++ b/tests/expected/misc/strtosize
+@@ -1,30 +1,30 @@
+ test_strutils: invalid size '-1' value
+-                        0 :                    0
+-                        1 :                    1
+-                      123 :                  123
+-     18446744073709551615 : 18446744073709551615
+-                       1K :                 1024
+-                     1KiB :                 1024
+-                       1M :              1048576
+-                     1MiB :              1048576
+-                       1G :           1073741824
+-                     1GiB :           1073741824
+-                       1T :        1099511627776
+-                     1TiB :        1099511627776
+-                       1P :     1125899906842624
+-                     1PiB :     1125899906842624
+-                       1E :  1152921504606846976
+-                     1EiB :  1152921504606846976
+-                      1KB :                 1000
+-                      1MB :              1000000
+-                      1GB :           1000000000
+-                      1TB :        1000000000000
+-                      1PB :     1000000000000000
+-                      1EB :  1000000000000000000
++                        0 :                    0 :       0B
++                        1 :                    1 :       1B
++                      123 :                  123 :     123B
++     18446744073709551615 : 18446744073709551615 :      16E
++                       1K :                 1024 :       1K
++                     1KiB :                 1024 :       1K
++                       1M :              1048576 :       1M
++                     1MiB :              1048576 :       1M
++                       1G :           1073741824 :       1G
++                     1GiB :           1073741824 :       1G
++                       1T :        1099511627776 :       1T
++                     1TiB :        1099511627776 :       1T
++                       1P :     1125899906842624 :       1P
++                     1PiB :     1125899906842624 :       1P
++                       1E :  1152921504606846976 :       1E
++                     1EiB :  1152921504606846976 :       1E
++                      1KB :                 1000 :    1000B
++                      1MB :              1000000 :   976.6K
++                      1GB :           1000000000 :   953.7M
++                      1TB :        1000000000000 :   931.3G
++                      1PB :     1000000000000000 :   909.5T
++                      1EB :  1000000000000000000 :   888.2P
+ test_strutils: invalid size '' value
+ test_strutils: invalid size ' ' value
+-                        1 :                    1
++                        1 :                    1 :       1B
+ test_strutils: invalid size '1 ' value
+-                     0x0a :                   10
+-                   0xff00 :                65280
+-               0x80000000 :           2147483648
++                     0x0a :                   10 :      10B
++                   0xff00 :                65280 :    63.8K
++               0x80000000 :           2147483648 :       2G
+diff --git a/tests/expected/mount/regfile b/tests/expected/mount/regfile
+new file mode 100644
+index 0000000..3582111
+--- /dev/null
++++ b/tests/expected/mount/regfile
+@@ -0,0 +1 @@
++Success
+diff --git a/tests/ts/mount/regfile b/tests/ts/mount/regfile
+new file mode 100755
+index 0000000..270bebd
+--- /dev/null
++++ b/tests/ts/mount/regfile
+@@ -0,0 +1,30 @@
++#!/bin/bash
++
++# Copyright (C) 2011 Karel Zak <kzak@redhat.com>
++# This file is part of util-linux.
++
++TS_TOPDIR="$(dirname $0)/../.."
++TS_DESC="regular file"
++
++. $TS_TOPDIR/functions.sh
++ts_init "$*"
++ts_skip_nonroot
++
++set -o pipefail
++
++IMAGE=$(ts_image_init)
++mkfs.ext3 -F $IMAGE &> /dev/null || ts_die "Cannot make ext3 on $IMAGE"
++
++[ -d "$TS_MOUNTPOINT" ] || mkdir -p $TS_MOUNTPOINT
++
++$TS_CMD_MOUNT $IMAGE $TS_MOUNTPOINT 2>&1 >> $TS_OUTPUT
++
++grep -q "$TS_MOUNTPOINT" /proc/mounts || ts_die "Cannot found $TS_MOUNTPOINT in /proc/mounts"
++
++$TS_CMD_UMOUNT $IMAGE || ts_die "Cannot umount $IMAGE"
++
++grep -q "$TS_MOUNTPOINT" /proc/mounts && ts_die "$TS_MOUNTPOINT still in /proc/mounts"
++
++ts_log "Success"
++ts_finalize
++
+diff --git a/text-utils/Makefile.am b/text-utils/Makefile.am
+index eee00c3..5a098b9 100644
+--- a/text-utils/Makefile.am
++++ b/text-utils/Makefile.am
+@@ -5,7 +5,7 @@ EXTRA_DIST = README.clear README.col
+ usrbin_exec_PROGRAMS = col colcrt colrm column hexdump rev line tailf
+ 
+ hexdump_SOURCES = hexdump.c conv.c display.c hexsyntax.c parse.c \
+-		  hexdump.h
++		  hexdump.h $(top_srcdir)/lib/strutils.c
+ 
+ dist_man_MANS = col.1 colcrt.1 colrm.1 column.1 hexdump.1 rev.1 line.1 tailf.1
+ 
+diff --git a/text-utils/column.c b/text-utils/column.c
+index 156de70..5c6db25 100644
+--- a/text-utils/column.c
++++ b/text-utils/column.c
+@@ -47,12 +47,12 @@
+ #include <unistd.h>
+ #include <stdlib.h>
+ #include <string.h>
+-#include <err.h>
+ #include <errno.h>
+ #include <getopt.h>
+ #include "nls.h"
+ 
+ #include "widechar.h"
++#include "c.h"
+ 
+ #ifdef HAVE_WIDECHAR
+ #define wcs_width(s) wcswidth(s,wcslen(s))
+diff --git a/text-utils/display.c b/text-utils/display.c
+index 7a35e46..01805a2 100644
+--- a/text-utils/display.c
++++ b/text-utils/display.c
+@@ -40,6 +40,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include "hexdump.h"
++#include "xalloc.h"
+ 
+ static void doskip(const char *, int);
+ static u_char *get(void);
+@@ -227,13 +228,13 @@ get(void)
+ {
+ 	static int ateof = 1;
+ 	static u_char *curp, *savp;
+-	int n;
++	ssize_t n;
+ 	int need, nread;
+ 	u_char *tmpp;
+ 
+ 	if (!curp) {
+-		curp = emalloc(blocksize);
+-		savp = emalloc(blocksize);
++		curp = xmalloc(blocksize);
++		savp = xmalloc(blocksize);
+ 	} else {
+ 		tmpp = curp;
+ 		curp = savp;
+@@ -264,8 +265,7 @@ get(void)
+ 		    length == -1 ? need : MIN(length, need), stdin);
+ 		if (!n) {
+ 			if (ferror(stdin))
+-				(void)fprintf(stderr, "hexdump: %s: %s\n",
+-				    _argv[-1], strerror(errno));
++				warn("%s", _argv[-1]);
+ 			ateof = 1;
+ 			continue;
+ 		}
+@@ -303,9 +303,8 @@ int next(char **argv)
+ 	for (;;) {
+ 		if (*_argv) {
+ 			if (!(freopen(*_argv, "r", stdin))) {
+-				(void)fprintf(stderr, "hexdump: %s: %s\n",
+-				    *_argv, strerror(errno));
+-				exitval = 1;
++				warn("%s", *_argv);
++				exitval = EXIT_FAILURE;
+ 				++_argv;
+ 				continue;
+ 			}
+@@ -331,11 +330,8 @@ doskip(const char *fname, int statok)
+ 	struct stat sbuf;
+ 
+ 	if (statok) {
+-		if (fstat(fileno(stdin), &sbuf)) {
+-			(void)fprintf(stderr, "hexdump: %s: %s.\n",
+-			    fname, strerror(errno));
+-			exit(1);
+-		}
++		if (fstat(fileno(stdin), &sbuf))
++		        err(EXIT_FAILURE, "%s", fname);
+ 		if (S_ISREG(sbuf.st_mode) && skip > sbuf.st_size) {
+ 		  /* If size valid and skip >= size */
+ 			skip -= sbuf.st_size;
+@@ -344,26 +340,8 @@ doskip(const char *fname, int statok)
+ 		}
+ 	}
+ 	/* sbuf may be undefined here - do not test it */
+-	if (fseek(stdin, skip, SEEK_SET)) {
+-		(void)fprintf(stderr, "hexdump: %s: %s.\n",
+-		    fname, strerror(errno));
+-		exit(1);
+-	}
++	if (fseek(stdin, skip, SEEK_SET))
++	        err(EXIT_FAILURE, "%s", fname);
+ 	address += skip;
+ 	skip = 0;
+ }
+-
+-void *
+-emalloc(int sz) {
+-	void *p;
+-
+-	if (!(p = malloc((u_int)sz)))
+-		nomem();
+-	memset(p, 0, sz);
+-	return(p);
+-}
+-
+-void nomem() {
+-	(void)fprintf(stderr, "hexdump: %s.\n", strerror(errno));
+-	exit(1);
+-}
+diff --git a/text-utils/hexdump.c b/text-utils/hexdump.c
+index 6132bf1..fd4b37d 100644
+--- a/text-utils/hexdump.c
++++ b/text-utils/hexdump.c
+@@ -38,6 +38,8 @@
+ #include <sys/types.h>
+ #include <stdio.h>
+ #include <string.h>
++#include <err.h>
++#include <stdlib.h>
+ #include "hexdump.h"
+ #include "nls.h"
+ 
+@@ -57,11 +59,9 @@ int main(int argc, char **argv)
+ 
+ 	if (!(p = strrchr(argv[0], 'o')) || strcmp(p, "od")) {
+ 		newsyntax(argc, &argv);
+-	} else {
+-		fprintf(stderr,
+-			_("Calling hexdump as od has been deprecated in favour to GNU coreutils od.\n"));
+-		return(1);
+-	}
++	} else
++		errx(EXIT_FAILURE, _("calling hexdump as od has been deprecated "
++				     "in favour to GNU coreutils od."));
+ 
+ 	/* figure out the data block size */
+ 	for (blocksize = 0, tfs = fshead; tfs; tfs = tfs->nextfs) {
+diff --git a/text-utils/hexdump.h b/text-utils/hexdump.h
+index 1653991..3df8629 100644
+--- a/text-utils/hexdump.h
++++ b/text-utils/hexdump.h
+@@ -81,14 +81,12 @@ extern off_t skip;                      /* bytes to skip */
+ enum _vflag { ALL, DUP, FIRST, WAIT };	/* -v values */
+ extern enum _vflag vflag;
+ 
+-void *emalloc(int);
+ int size(FS *);
+ void add(const char *);
+ void rewrite(FS *);
+ void addfile(char *);
+ void display(void);
+-void nomem(void);
+-void usage(void);
++void __attribute__((__noreturn__)) usage(FILE *out);
+ void conv_c(PR *, u_char *);
+ void conv_u(PR *, u_char *);
+ int  next(char **);
+diff --git a/text-utils/hexsyntax.c b/text-utils/hexsyntax.c
+index 8fdde19..211e5d5 100644
+--- a/text-utils/hexsyntax.c
++++ b/text-utils/hexsyntax.c
+@@ -39,11 +39,16 @@
+ #include <unistd.h>
+ #include <stdlib.h>
+ #include <stdio.h>
++#include <errno.h>
++#include <err.h>
++#include <limits.h>
+ #include "hexdump.h"
+ #include "nls.h"
++#include "strutils.h"
+ 
+ off_t skip;				/* bytes to skip */
+ 
++
+ void
+ newsyntax(int argc, char ***argvp)
+ {
+@@ -51,7 +56,7 @@ newsyntax(int argc, char ***argvp)
+ 	char *p, **argv;
+ 
+ 	argv = *argvp;
+-	while ((ch = getopt(argc, argv, "bcCde:f:n:os:vx")) != -1)
++	while ((ch = getopt(argc, argv, "bcCde:f:n:os:vxV")) != -1) {
+ 		switch (ch) {
+ 		case 'b':
+ 			add("\"%07.7_Ax\n\"");
+@@ -77,22 +82,15 @@ newsyntax(int argc, char ***argvp)
+ 			addfile(optarg);
+ 			break;
+ 		case 'n':
+-			if ((length = atoi(optarg)) < 0) {
+-				fprintf(stderr,
+-				    _("hexdump: bad length value.\n"));
+-				exit(1);
+-			}
++		        length = strtol_or_err(optarg, _("bad length value"));
+ 			break;
+ 		case 'o':
+ 			add("\"%07.7_Ax\n\"");
+ 			add("\"%07.7_ax \" 8/2 \" %06o \" \"\\n\"");
+ 			break;
+ 		case 's':
+-			if ((skip = strtol(optarg, &p, 0)) < 0) {
+-				fprintf(stderr,
+-				    _("hexdump: bad skip value.\n"));
+-				exit(1);
+-			}
++			if ((skip = strtol(optarg, &p, 0)) < 0)
++				err(EXIT_FAILURE, _("bad skip value"));
+ 			switch(*p) {
+ 			case 'b':
+ 				skip *= 512;
+@@ -112,9 +110,16 @@ newsyntax(int argc, char ***argvp)
+ 			add("\"%07.7_Ax\n\"");
+ 			add("\"%07.7_ax \" 8/2 \"   %04x \" \"\\n\"");
+ 			break;
+-		case '?':
+-			usage();
++		case 'V':
++			printf(_("%s from %s\n"),
++					program_invocation_short_name,
++					PACKAGE_STRING);
++			exit(EXIT_SUCCESS);
++			break;
++		default:
++			usage(stderr);
+ 		}
++	}
+ 
+ 	if (!fshead) {
+ 		add("\"%07.7_Ax\n\"");
+@@ -124,10 +129,25 @@ newsyntax(int argc, char ***argvp)
+ 	*argvp += optind;
+ }
+ 
+-void
+-usage(void)
++void __attribute__((__noreturn__)) usage(FILE *out)
+ {
+-	fprintf(stderr,
+-_("hexdump: [-bcCdovx] [-e fmt] [-f fmt_file] [-n length] [-s skip] [file ...]\n"));
+-	exit(1);
++	fprintf(out, _("\nUsage:\n"
++		       " %s [options] file...\n"),
++		       program_invocation_short_name);
++	fprintf(out, _(
++		       "\nOptions:\n"
++		       " -b              one-byte octal display\n"
++		       " -c              one-byte character display\n"
++		       " -C              canonical hex+ASCII display\n"
++		       " -d              two-byte decimal display\n"
++		       " -o              two-byte octal display\n"
++		       " -x              two-byte hexadecimal display\n"
++		       " -e format       format string to be used for displaying data\n"
++		       " -f format_file  file that contains format strings\n"
++		       " -n length       interpret only length bytes of input\n"
++		       " -s offset       skip offset bytes from the beginnin\n"
++		       " -v              display without squeezing similar lines\n"
++		       " -V              output version information and exit\n\n"));
++
++	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
+ }
+diff --git a/text-utils/more.1 b/text-utils/more.1
+index 02353aa..aa2d155 100644
+--- a/text-utils/more.1
++++ b/text-utils/more.1
+@@ -87,6 +87,8 @@ to count logical, rather than screen lines (i.e., long lines are not
+ folded).
+ .It Fl p
+ Do not scroll.  Instead, clear the whole screen and then display the text.
++
++Notice that this option is switched automatically on if executable is named to `page'.
+ .It Fl c
+ Do not scroll.  Instead, paint each screen from the top, clearing the
+ remainder of each line as it is displayed.
+diff --git a/text-utils/more.c b/text-utils/more.c
+index 929e4a0..a2ade68 100644
+--- a/text-utils/more.c
++++ b/text-utils/more.c
+@@ -68,7 +68,7 @@
+ 
+ #ifndef XTABS
+ #define XTABS TAB3
+-#endif
++#endif /* XTABS */
+ 
+ #define VI		"vi"	/* found on the user's path */
+ 
+@@ -94,7 +94,7 @@ void error (char *mess);
+ void do_shell (char *filename);
+ int  colon (char *filename, int cmd, int nlines);
+ int  expand (char **outbuf, char *inbuf);
+-void argscan(char *s,char *argv0);
++void argscan(char *s);
+ void rdline (register FILE *f);
+ void copy_file(register FILE *f);
+ void search(char buf[], FILE *file, register int n);
+@@ -113,7 +113,7 @@ int  get_line(register FILE *f, int *length);
+ void prbuf (register char *s, register int n);
+ void execute (char *filename, char *cmd, ...);
+ FILE *checkf (char *, int *);
+-int prepare_line_buffer(void);
++void prepare_line_buffer(void);
+ 
+ #define TBUFSIZ	1024
+ #define LINSIZ	256	/* minimal Line buffer size */
+@@ -121,53 +121,61 @@ int prepare_line_buffer(void);
+ #define RUBOUT	'\177'
+ #define ESC	'\033'
+ #define QUIT	'\034'
++#define SCROLL_LEN	11
++#define LINES_PER_PAGE	24
++#define NUM_COLUMNS	80
++#define TERMINAL_BUF	4096
++#define INIT_BUF	80
++#define SHELL_LINE	1000
++#define COMMAND_BUF	200
+ 
+ struct termios	otty, savetty0;
+ long		file_pos, file_size;
+ int		fnum, no_intty, no_tty, slow_tty;
+ int		dum_opt, dlines;
+ void		onquit(int), onsusp(int), chgwinsz(int), end_it(int);
+-int		nscroll = 11;	/* Number of lines scrolled by 'd' */
+-int		fold_opt = 1;	/* Fold long lines */
+-int		stop_opt = 1;	/* Stop after form feeds */
+-int		ssp_opt = 0;	/* Suppress white space */
+-int		ul_opt = 1;	/* Underline as best we can */
++int		nscroll = SCROLL_LEN;	/* Number of lines scrolled by 'd' */
++int		fold_opt = 1;		/* Fold long lines */
++int		stop_opt = 1;		/* Stop after form feeds */
++int		ssp_opt = 0;		/* Suppress white space */
++int		ul_opt = 1;		/* Underline as best we can */
+ int		promptlen;
+-int		Currline;	/* Line we are currently at */
++int		Currline;		/* Line we are currently at */
+ int		startup = 1;
+ int		firstf = 1;
+ int		notell = 1;
+ int		docrterase = 0;
+ int		docrtkill = 0;
+-int		bad_so;	/* True if overwriting does not turn off standout */
++int		bad_so;			/* True if overwriting does not turn
++					   off standout */
+ int		inwait, Pause, errors;
+-int		within;	/* true if we are within a file,
+-			false if we are between files */
++int		within;			/* true if we are within a file,
++					   false if we are between files */
+ int		hard, dumb, noscroll, hardtabs, clreol, eatnl;
+-int		catch_susp;	/* We should catch the SIGTSTP signal */
+-char		**fnames;	/* The list of file names */
+-int		nfiles;		/* Number of files left to process */
+-char		*shell;		/* The name of the shell to use */
+-int		shellp;		/* A previous shell command exists */
++int		catch_susp;		/* We should catch the SIGTSTP signal */
++char		**fnames;		/* The list of file names */
++int		nfiles;			/* Number of files left to process */
++char		*shell;			/* The name of the shell to use */
++int		shellp;			/* A previous shell command exists */
+ sigjmp_buf	restore;
+-char		*Line;		/* Line buffer */
+-size_t		LineLen;	/* size of Line buffer */
+-int		Lpp = 24;	/* lines per page */
+-char		*Clear;		/* clear screen */
+-char		*eraseln;	/* erase line */
+-char		*Senter, *Sexit;/* enter and exit standout mode */
++char		*Line;			/* Line buffer */
++size_t		LineLen;		/* size of Line buffer */
++int		Lpp = LINES_PER_PAGE;	/* lines per page */
++char		*Clear;			/* clear screen */
++char		*eraseln;		/* erase line */
++char		*Senter, *Sexit;	/* enter and exit standout mode */
+ char		*ULenter, *ULexit;	/* enter and exit underline mode */
+-char		*chUL;		/* underline character */
+-char		*chBS;		/* backspace character */
+-char		*Home;		/* go to home */
+-char		*cursorm;	/* cursor movement */
+-char		cursorhome[40];	/* contains cursor movement to home */
+-char		*EodClr;	/* clear rest of screen */
+-int		Mcol = 80;	/* number of columns */
+-int		Wrap = 1;	/* set if automargins */
+-int		soglitch;	/* terminal has standout mode glitch */
+-int		ulglitch;	/* terminal has underline mode glitch */
+-int		pstate = 0;	/* current UL state */
++char		*chUL;			/* underline character */
++char		*chBS;			/* backspace character */
++char		*Home;			/* go to home */
++char		*cursorm;		/* cursor movement */
++char		cursorhome[40];		/* contains cursor movement to home */
++char		*EodClr;		/* clear rest of screen */
++int		Mcol = NUM_COLUMNS;	/* number of columns */
++int		Wrap = 1;		/* set if automargins */
++int		soglitch;		/* terminal has standout mode glitch */
++int		ulglitch;		/* terminal has underline mode glitch */
++int		pstate = 0;		/* current UL state */
+ static int	magic(FILE *, char *);
+ struct {
+     long chrctr, line;
+@@ -178,38 +186,54 @@ extern char	PC;		/* pad character */
+ # include <ncurses.h>
+ #elif defined(HAVE_NCURSES_NCURSES_H)
+ # include <ncurses/ncurses.h>
+-#endif
++#endif /* HAVE_NCURSES_H */
+ 
+ #if defined(HAVE_NCURSES_H) || defined(HAVE_NCURSES_NCURSES_H)
+ # include <term.h>			/* include after <curses.h> */
+ 
+-static void
+-my_putstring(char *s) {
+-	tputs (s, 1, putchar);		/* putp(s); */
++#define TERM_AUTO_RIGHT_MARGIN    "am"
++#define TERM_CEOL                 "xhp"
++#define TERM_CLEAR                "clear"
++#define TERM_CLEAR_TO_LINE_END    "el"
++#define TERM_CLEAR_TO_SCREEN_END  "ed"
++#define TERM_COLS                 "cols"
++#define TERM_CURSOR_ADDRESS       "cup"
++#define TERM_EAT_NEW_LINE         "xenl"
++#define TERM_ENTER_UNDERLINE      "smul"
++#define TERM_EXIT_STANDARD_MODE   "rmso"
++#define TERM_EXIT_UNDERLINE       "rmul"
++#define TERM_HARD_COPY            "hc"
++#define TERM_HOME                 "home"
++#define TERM_LINE_DOWN            "cud1"
++#define TERM_LINES                "lines"
++#define TERM_OVER_STRIKE          "os"
++#define TERM_PAD_CHAR             "pad"
++#define TERM_STANDARD_MODE        "smso"
++#define TERM_STD_MODE_GLITCH      "xmc"
++#define TERM_UNDERLINE_CHAR       "uc"
++#define TERM_UNDERLINE            "ul"
++
++static void my_putstring(char *s) {
++	tputs (s, fileno(stdout), putchar);		/* putp(s); */
+ }
+ 
+-static void
+-my_setupterm(char *term, int fildes, int *errret) {
++static void my_setupterm(char *term, int fildes, int *errret) {
+      setupterm(term, fildes, errret);
+ }
+ 
+-static int
+-my_tgetnum(char *s, char *ss) {
+-     return tigetnum(ss);
++static int my_tgetnum(char *s) {
++     return tigetnum(s);
+ }
+ 
+-static int
+-my_tgetflag(char *s, char *ss) {
+-     return tigetflag(ss);
++static int my_tgetflag(char *s) {
++     return tigetflag(s);
+ }
+ 
+-static char *
+-my_tgetstr(char *s, char *ss) {
+-     return tigetstr(ss);
++static char *my_tgetstr(char *s) {
++     return tigetstr(s);
+ }
+ 
+-static char *
+-my_tgoto(char *cap, int col, int row) {
++static char *my_tgoto(char *cap, int col, int row) {
+      return tparm(cap, col, row);
+ }
+ 
+@@ -217,54 +241,77 @@ my_tgoto(char *cap, int col, int row) {
+ 
+ #include <termcap.h>
+ 
+-char termbuffer[4096];
+-char tcbuffer[4096];
++#define TERM_AUTO_RIGHT_MARGIN    "am"
++#define TERM_CEOL                 "xs"
++#define TERM_CLEAR                "cl"
++#define TERM_CLEAR_TO_LINE_END    "ce"
++#define TERM_CLEAR_TO_SCREEN_END  "cd"
++#define TERM_COLS                 "co"
++#define TERM_CURSOR_ADDRESS       "cm"
++#define TERM_EAT_NEW_LINE         "xn"
++#define TERM_ENTER_UNDERLINE      "us"
++#define TERM_EXIT_STANDARD_MODE   "se"
++#define TERM_EXIT_UNDERLINE       "ue"
++#define TERM_HARD_COPY            "hc"
++#define TERM_HOME                 "ho"
++#define TERM_LINE_DOWN            "le"
++#define TERM_LINES                "li"
++#define TERM_OVER_STRIKE          "os"
++#define TERM_PAD_CHAR             "pc"
++#define TERM_STANDARD_MODE        "so"
++#define TERM_STD_MODE_GLITCH      "sg"
++#define TERM_UNDERLINE_CHAR       "uc"
++#define TERM_UNDERLINE            "ul"
++
++char termbuffer[TERMINAL_BUF];
++char tcbuffer[TERMINAL_BUF];
+ char *strbuf = termbuffer;
+ 
+-static void
+-my_putstring(char *s) {
+-     tputs (s, 1, putchar);
++static void my_putstring(char *s) {
++     tputs (s, fileno(stdout), putchar);
+ }
+ 
+-static void
+-my_setupterm(char *term, int fildes, int *errret) {
++static void my_setupterm(char *term, int fildes, int *errret) {
+      *errret = tgetent(tcbuffer, term);
+ }
+ 
+-static int
+-my_tgetnum(char *s, char *ss) {
++static int my_tgetnum(char *s) {
+      return tgetnum(s);
+ }
+ 
+-static int
+-my_tgetflag(char *s, char *ss) {
++static int my_tgetflag(char *s) {
+      return tgetflag(s);
+ }
+ 
+-static char *
+-my_tgetstr(char *s, char *ss) {
++static char *my_tgetstr(char *s) {
+      return tgetstr(s, &strbuf);
+ }
+ 
+-static char *
+-my_tgoto(char *cap, int col, int row) {
++static char *my_tgoto(char *cap, int col, int row) {
+      return tgoto(cap, col, row);
+ }
+ 
+ #endif /* HAVE_LIBTERMCAP */
+ 
+-static void
+-idummy(int *kk) {}
+-
+-static void
+-Fdummy(FILE **ff) {}
+-
+-static void
+-usage(char *s) {
+-	char *p = strrchr(s, '/');
+-	fprintf(stderr,
+-		_("usage: %s [-dflpcsu] [+linenum | +/pattern] name1 name2 ...\n"),
+-		p ? p + 1 : s);
++static void __attribute__ ((__noreturn__)) usage(FILE *out)
++{
++     fprintf(out,
++            _("Usage: %s [options] file...\n\n"),
++	       program_invocation_short_name);
++     fprintf(out,
++	    _("Options:\n"
++	      "  -d        display help instead of ring bell\n"
++              "  -f        count logical, rather than screen lines\n"
++              "  -l        suppress pause after form feed\n"
++              "  -p        suppress scroll, clean screen and disblay text\n"
++              "  -c        suppress scroll, display text and clean line ends\n"
++              "  -u        suppress underlining\n"
++              "  -s        squeeze multiple blank lines into one\n"
++              "  -NUM      specify the number of lines per screenful\n"
++              "  +NUM      display file beginning from line number NUM\n"
++              "  +/STRING  display file beginning from search string match\n"
++              "  -V        output version information and exit\n"));
++       exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
+ }
+ 
+ int main(int argc, char **argv) {
+@@ -278,39 +325,39 @@ int main(int argc, char **argv) {
+     int		srchopt = 0;
+     int		clearit = 0;
+     int		initline = 0;
+-    char	initbuf[80];
++    char	initbuf[INIT_BUF];
+ 
+     setlocale(LC_ALL, "");
+     bindtextdomain(PACKAGE, LOCALEDIR);
+     textdomain(PACKAGE);
+-    
+-    /* avoid gcc complaints about register variables that
+-       may be clobbered by a longjmp, by forcing our variables here
+-       to be non-register */
+-    Fdummy(&f); idummy(&left); idummy(&prnames);
+-    idummy(&initopt); idummy(&srchopt); idummy(&initline);
+ 
+     nfiles = argc;
+     fnames = argv;
+     setlocale(LC_ALL, "");
+     initterm ();
+-    if (prepare_line_buffer()) {
+-	fprintf(stderr, _("failed to initialize line buffer\n"));
+-	exit(1);
+-    }
++
++    /* Auto set no scroll on when binary is called page */
++    if (!(strcmp(program_invocation_short_name, "page")))
++       noscroll++;
++
++    prepare_line_buffer();
++
+     nscroll = Lpp/2 - 1;
+     if (nscroll <= 0)
+ 	nscroll = 1;
+-    if((s = getenv("MORE")) != NULL) argscan(s,argv[0]);
++
++    if ((s = getenv("MORE")) != NULL)
++	    argscan(s);
++
+     while (--nfiles > 0) {
+ 	if ((ch = (*++fnames)[0]) == '-') {
+-	    argscan(*fnames+1,argv[0]);
++	    argscan(*fnames+1);
+ 	}
+ 	else if (ch == '+') {
+ 	    s = *fnames;
+ 	    if (*++s == '/') {
+ 		srchopt++;
+-		for (++s, p = initbuf; p < initbuf + 79 && *s != '\0';)
++		for (++s, p = initbuf; p < initbuf + (INIT_BUF - 1) && *s != '\0';)
+ 		    *p++ = *s++;
+ 		*p = '\0';
+ 	    }
+@@ -339,10 +386,8 @@ int main(int argc, char **argv) {
+     left = dlines;
+     if (nfiles > 1)
+ 	prnames++;
+-    if (!no_intty && nfiles == 0) {
+-	usage(argv[0]);
+-	exit(1);
+-    }
++    if (!no_intty && nfiles == 0)
++	usage(stderr);
+     else
+ 	f = stdin;
+     if (!no_tty) {
+@@ -350,7 +395,7 @@ int main(int argc, char **argv) {
+ 	signal(SIGINT, end_it);
+ #ifdef SIGWINCH
+ 	signal(SIGWINCH, chgwinsz);
+-#endif
++#endif /* SIGWINCH */
+ 	if (signal (SIGTSTP, SIG_IGN) == SIG_DFL) {
+ 	    signal(SIGTSTP, onsusp);
+ 	    catch_susp++;
+@@ -447,10 +492,10 @@ int main(int argc, char **argv) {
+ 	firstf = 0;
+     }
+     reset_tty ();
+-    exit(0);
++    exit(EXIT_SUCCESS);
+ }
+ 
+-void argscan(char *s, char *argv0) {
++void argscan(char *s) {
+ 	int seen_num = 0;
+ 
+ 	while (*s != '\0') {
+@@ -488,11 +533,13 @@ void argscan(char *s, char *argv0) {
+ 			break;
+ 		  case '-': case ' ': case '\t':
+ 			break;
++                  case 'V':
++                        printf(_("more (%s)\n"), PACKAGE_STRING);
++                        exit(EXIT_SUCCESS);
++                        break;
+ 		  default:
+-			fprintf(stderr,
+-				_("%s: unknown option \"-%c\"\n"), argv0, *s);
+-			usage(argv0);
+-			exit(1);
++		        warnx(_("unknown option -%s"), s);
++			usage(stderr);
+ 			break;
+ 		}
+ 		s++;
+@@ -657,7 +704,8 @@ void screen (register FILE *f, register int num_lines)
+ ** Come here if a quit signal is received
+ */
+ 
+-void onquit(int dummy) {
++void onquit(int dummy __attribute__ ((__unused__)))
++{
+     signal(SIGQUIT, SIG_IGN);
+     if (!inwait) {
+ 	putchar ('\n');
+@@ -680,10 +728,11 @@ void onquit(int dummy) {
+ */
+ 
+ #ifdef SIGWINCH
+-void chgwinsz(int dummy) {
++void chgwinsz(int dummy __attribute__ ((__unused__)))
++{
+     struct winsize win;
+ 
+-    (void) signal(SIGWINCH, SIG_IGN);
++    signal(SIGWINCH, SIG_IGN);
+     if (ioctl(fileno(stdout), TIOCGWINSZ, &win) != -1) {
+ 	if (win.ws_row != 0) {
+ 	    Lpp = win.ws_row;
+@@ -697,13 +746,14 @@ void chgwinsz(int dummy) {
+     }
+     (void) signal(SIGWINCH, chgwinsz);
+ }
+-#endif
++#endif /* SIGWINCH */
+ 
+ /*
+ ** Clean up terminal state and exit. Also come here if interrupt signal received
+ */
+ 
+-void end_it (int dummy) {
++void end_it (int dummy __attribute__ ((__unused__)))
++{
+     reset_tty ();
+     if (clreol) {
+ 	putchar ('\r');
+@@ -716,7 +766,7 @@ void end_it (int dummy) {
+     }
+     else
+ 	putcerr('\n');
+-    _exit(0);
++    _exit(EXIT_SUCCESS);
+ }
+ 
+ void copy_file(register FILE *f) {
+@@ -728,25 +778,6 @@ void copy_file(register FILE *f) {
+ 
+ #define ringbell()	putcerr('\007')
+ 
+-/* See whether the last component of the path name "path" is equal to the
+-** string "string"
+-*/
+-
+-static int tailequ (char *path, register char *string)
+-{
+-	register char *tail;
+-
+-	tail = path + strlen(path);
+-	while (--tail >= path)
+-		if (*tail == '/')
+-			break;
+-	++tail;
+-	while (*tail++ == *string++)
+-		if (*tail == '\0')
+-			return(1);
+-	return(0);
+-}
+-
+ static void prompt (char *filename)
+ {
+     if (clreol)
+@@ -781,30 +812,20 @@ static void prompt (char *filename)
+     inwait++;
+ }
+ 
+-int prepare_line_buffer(void)
++void prepare_line_buffer(void)
+ {
+     char *nline;
+     size_t nsz = Mcol * 4;
+ 
+     if (LineLen >= nsz)
+-        return 0;
++        return;
+ 
+     if (nsz < LINSIZ)
+         nsz = LINSIZ;
+ 
+-    nline = realloc(Line, nsz);
+-    if (nline) {
+-        Line = nline;
+-        LineLen = nsz;
+-        return 0;
+-    }
+-
+-    /* error() uses siglongjmp(), we want to return from this
+-     * function when the Line buffer is initilized first time in main()
+-     */
+-    if (Line)
+-        error(_("out of memory"));
+-    return -1;
++    nline = xrealloc(Line, nsz);
++    Line = nline;
++    LineLen = nsz;
+ }
+ 
+ /*
+@@ -819,7 +840,7 @@ int get_line(register FILE *f, int *length)
+     static int colflg;
+ 
+ #ifdef HAVE_WIDECHAR
+-    int i;
++    size_t i;
+     wchar_t wc;
+     int wc_width;
+     mbstate_t state, state_bak;		/* Current status of the stream. */
+@@ -831,7 +852,7 @@ int get_line(register FILE *f, int *length)
+     long file_pos_bak = Ftell (f);
+ 
+     memset (&state, '\0', sizeof (mbstate_t));
+-#endif
++#endif /* HAVE_WIDECHAR */
+ 
+     prepare_line_buffer();
+ 
+@@ -894,7 +915,7 @@ process_mbc:
+ 	    c = Getc (f);
+ 	    continue;
+ 	}
+-#endif 
++#endif /* HAVE_WIDECHAR */
+ 	if (c == EOF) {
+ 	    if (p > Line) {
+ 		*p = '\0';
+@@ -923,7 +944,7 @@ process_mbc:
+ 			continue;
+ 		}
+ 	}
+-#endif
++#endif /* 0 */
+ 	if (c == '\t') {
+ 	    if (!hardtabs || (column < promptlen && !hard)) {
+ 		if (hardtabs && eraseln && !dumb) {
+@@ -990,7 +1011,7 @@ process_mbc:
+ 		      column += wc_width;
+ 		}
+ 	    } else
+-#endif
++#endif /* HAVE_WIDECHAR */
+ 	      {
+ 		if (isprint(c))
+ 		   column++;
+@@ -1145,7 +1166,7 @@ home()
+ 
+ static int lastcmd, lastarg, lastp;
+ static int lastcolon;
+-char shell_line[1000];
++char shell_line[SHELL_LINE];
+ 
+ /*
+ ** Read a command and do it. A command consists of an optional integer
+@@ -1161,7 +1182,7 @@ int command (char *filename, register FILE *f)
+     register int c;
+     char colonch;
+     int done;
+-    char comchar, cmdbuf[80];
++    char comchar, cmdbuf[INIT_BUF];
+ 
+ #define ret(val) retval=val;done++;break
+ 
+@@ -1512,7 +1533,7 @@ int number(char *cmd)
+ 
+ void do_shell (char *filename)
+ {
+-	char cmdbuf[200];
++	char cmdbuf[COMMAND_BUF];
+ 	int rc;
+ 	char *expanded;
+ 
+@@ -1669,7 +1690,7 @@ void execute (char *filename, char *cmd, ...)
+ 	
+ 	    execvp (cmd, args);
+ 	    putserr(_("exec failed\n"));
+-	    exit (1);
++	    exit (EXIT_FAILURE);
+ 	}
+ 	if (id > 0) {
+ 	    signal (SIGINT, SIG_IGN);
+@@ -1746,7 +1767,7 @@ void initterm()
+ 
+ #ifdef do_SIGTTOU
+ retry:
+-#endif
++#endif /* do_SIGTTOU */
+     no_tty = tcgetattr(fileno(stdout), &otty);
+     if (!no_tty) {	
+ 	docrterase = (otty.c_cc[VERASE] != 255);
+@@ -1760,14 +1781,14 @@ retry:
+ 	     */
+ 	    if ((tgrp = tcgetpgrp(fileno(stdout))) < 0) {
+ 		perror("tcgetpgrp");
+-		exit(1);
++		exit(EXIT_FAILURE);
+ 	    }
+ 	    if (tgrp != getpgrp(0)) {
+ 		kill(0, SIGTTOU);
+ 		goto retry;
+ 	    }
+ 	}
+-#endif
++#endif /* do_SIGTTOU */
+ 	if ((term = getenv("TERM")) == 0) {
+ 	    dumb++; ul_opt = 0;
+ 	}
+@@ -1778,36 +1799,34 @@ retry:
+ 	else {
+ #ifdef TIOCGWINSZ
+ 	    if (ioctl(fileno(stdout), TIOCGWINSZ, &win) < 0) {
+-#endif
+-		Lpp = my_tgetnum("li","lines");
+-		Mcol = my_tgetnum("co","cols");
++#endif /* TIOCGWINSZ */
++		Lpp = my_tgetnum(TERM_LINES);
++		Mcol = my_tgetnum(TERM_COLS);
+ #ifdef TIOCGWINSZ
+ 	    } else {
+ 		if ((Lpp = win.ws_row) == 0)
+-		    Lpp = my_tgetnum("li","lines");
++		    Lpp = my_tgetnum(TERM_LINES);
+ 		if ((Mcol = win.ws_col) == 0)
+-		    Mcol = my_tgetnum("co","cols");
++		    Mcol = my_tgetnum(TERM_COLS);
+ 	    }
+-#endif
+-	    if ((Lpp <= 0) || my_tgetflag("hc","hc")) {
++#endif /* TIOCGWINSZ */
++	    if ((Lpp <= 0) || my_tgetflag(TERM_HARD_COPY)) {
+ 		hard++;	/* Hard copy terminal */
+-		Lpp = 24;
++		Lpp = LINES_PER_PAGE;
+ 	    }
+ 
+-	    if (my_tgetflag("xn","xenl"))
++	    if (my_tgetflag(TERM_EAT_NEW_LINE))
+ 		eatnl++; /* Eat newline at last column + 1; dec, concept */
+ 	    if (Mcol <= 0)
+-		Mcol = 80;
+-
+-	    if (tailequ (fnames[0], "page"))
+-		noscroll++;
+-	    Wrap = my_tgetflag("am","am");
+-	    bad_so = my_tgetflag ("xs","xhp");
+-	    eraseln = my_tgetstr("ce","el");
+-	    Clear = my_tgetstr("cl","clear");
+-	    Senter = my_tgetstr("so","smso");
+-	    Sexit = my_tgetstr("se","rmso");
+-	    if ((soglitch = my_tgetnum("sg","xmc")) < 0)
++		Mcol = NUM_COLUMNS;
++
++	    Wrap = my_tgetflag(TERM_AUTO_RIGHT_MARGIN);
++	    bad_so = my_tgetflag (TERM_CEOL);
++	    eraseln = my_tgetstr(TERM_CLEAR_TO_LINE_END);
++	    Clear = my_tgetstr(TERM_CLEAR);
++	    Senter = my_tgetstr(TERM_STANDARD_MODE);
++	    Sexit = my_tgetstr(TERM_EXIT_STANDARD_MODE);
++	    if ((soglitch = my_tgetnum(TERM_STD_MODE_GLITCH)) < 0)
+ 		soglitch = 0;
+ 
+ 	    /*
+@@ -1818,12 +1837,12 @@ retry:
+ 	     *  isn't available, settle for standout sequence.
+ 	     */
+ 
+-	    if (my_tgetflag("ul","ul") || my_tgetflag("os","os"))
++	    if (my_tgetflag(TERM_UNDERLINE) || my_tgetflag(TERM_OVER_STRIKE))
+ 		ul_opt = 0;
+-	    if ((chUL = my_tgetstr("uc","uc")) == NULL )
++	    if ((chUL = my_tgetstr(TERM_UNDERLINE_CHAR)) == NULL )
+ 		chUL = "";
+-	    if (((ULenter = my_tgetstr("us","smul")) == NULL ||
+-	         (ULexit = my_tgetstr("ue","rmul")) == NULL) && !*chUL) {
++	    if (((ULenter = my_tgetstr(TERM_ENTER_UNDERLINE)) == NULL ||
++	         (ULexit = my_tgetstr(TERM_EXIT_UNDERLINE)) == NULL) && !*chUL) {
+ 	        if ((ULenter = Senter) == NULL || (ULexit = Sexit) == NULL) {
+ 			ULenter = "";
+ 			ULexit = "";
+@@ -1833,18 +1852,18 @@ retry:
+ 		ulglitch = 0;
+ 	    }
+ 
+-	    if ((padstr = my_tgetstr("pc","pad")) != NULL)
++	    if ((padstr = my_tgetstr(TERM_PAD_CHAR)) != NULL)
+ 		PC = *padstr;
+-	    Home = my_tgetstr("ho","home");
++	    Home = my_tgetstr(TERM_HOME);
+ 	    if (Home == 0 || *Home == '\0') {
+-		if ((cursorm = my_tgetstr("cm","cup")) != NULL) {
++		if ((cursorm = my_tgetstr(TERM_CURSOR_ADDRESS)) != NULL) {
+ 		    const char *t = (const char *)my_tgoto(cursorm, 0, 0);
+ 		    xstrncpy(cursorhome, t, sizeof(cursorhome));
+ 		    Home = cursorhome;
+ 		}
+ 	    }
+-	    EodClr = my_tgetstr("cd","ed");
+-	    if ((chBS = my_tgetstr("le","cub1")) == NULL)
++	    EodClr = my_tgetstr(TERM_CLEAR_TO_SCREEN_END);
++	    if ((chBS = my_tgetstr(TERM_LINE_DOWN)) == NULL)
+ 		chBS = "\b";
+ 
+ 	}
+@@ -1944,7 +1963,7 @@ void ttyin (char buf[], register int nmax, char pchar) {
+ 		    }
+ 		  }
+ 		else
+-#endif
++#endif /* HAVE_WIDECHAR */
+ 		  {
+ 		    --promptlen;
+ 		    ERASEONECOLUMN
+@@ -2106,7 +2125,7 @@ reset_tty () {
+     if (no_tty)
+ 	return;
+     if (pstate) {
+-	tputs(ULexit, 1, ourputch);	/* putchar - if that isnt a macro */
++	tputs(ULexit, fileno(stdout), ourputch);	/* putchar - if that isnt a macro */
+ 	fflush(stdout);
+ 	pstate = 0;
+     }
+@@ -2124,7 +2143,7 @@ void rdline (register FILE *f)
+     prepare_line_buffer();
+ 
+     p = Line;
+-    while ((c = Getc (f)) != '\n' && c != EOF && p - Line < LineLen - 1)
++    while ((c = Getc (f)) != '\n' && c != EOF && (size_t) (p - Line) < LineLen - 1)
+ 	*p++ = c;
+     if (c == '\n')
+ 	Currline++;
+@@ -2133,7 +2152,8 @@ void rdline (register FILE *f)
+ 
+ /* Come here when we get a suspend signal from the terminal */
+ 
+-void onsusp (int dummy) {
++void onsusp (int dummy __attribute__ ((__unused__)))
++{
+     sigset_t signals, oldmask;
+ 
+     /* ignore SIGTTOU so we don't get stopped if csh grabs the tty */
+diff --git a/text-utils/parse.c b/text-utils/parse.c
+index 8164c60..7168aad 100644
+--- a/text-utils/parse.c
++++ b/text-utils/parse.c
+@@ -43,6 +43,7 @@
+ #include <string.h>
+ #include "hexdump.h"
+ #include "nls.h"
++#include "xalloc.h"
+ 
+ static void escape(char *p1);
+ static void badcnt(const char *s);
+@@ -59,13 +60,11 @@ void addfile(char *name)
+ 	int ch;
+ 	char buf[2048 + 1];
+ 
+-	if ((fp = fopen(name, "r")) == NULL) {
+-		(void)fprintf(stderr, _("hexdump: can't read %s.\n"), name);
+-		exit(1);
+-	}
++	if ((fp = fopen(name, "r")) == NULL)
++	        err(EXIT_FAILURE, _("can't read %s"), name);
+ 	while (fgets(buf, sizeof(buf), fp)) {
+ 		if ((p = strchr(buf, '\n')) == NULL) {
+-			(void)fprintf(stderr, _("hexdump: line too long.\n"));
++			warnx(_("line too long"));
+ 			while ((ch = getchar()) != '\n' && ch != EOF);
+ 			continue;
+ 		}
+@@ -87,7 +86,7 @@ void add(const char *fmt)
+ 	const char *savep;
+ 
+ 	/* Start new linked list of format units. */
+-	tfs = emalloc(sizeof(FS));
++	tfs = xmalloc(sizeof(FS));
+ 	if (!fshead)
+ 		fshead = tfs;
+ 	else
+@@ -103,7 +102,7 @@ void add(const char *fmt)
+ 			break;
+ 
+ 		/* Allocate a new format unit and link it in. */
+-		tfu = emalloc(sizeof(FU));
++		tfu = xmalloc(sizeof(FU));
+ 		*nextfu = tfu;
+ 		nextfu = &tfu->nextfu;
+ 		tfu->reps = 1;
+@@ -140,8 +139,7 @@ void add(const char *fmt)
+ 		for (savep = ++p; *p != '"';)
+ 			if (*p++ == 0)
+ 				badfmt(fmt);
+-		if (!(tfu->fmt = malloc(p - savep + 1)))
+-			nomem();
++		tfu->fmt = xmalloc(p - savep + 1);
+ 		(void) strncpy(tfu->fmt, savep, p - savep);
+ 		tfu->fmt[p - savep] = '\0';
+ 		escape(tfu->fmt);
+@@ -221,7 +219,7 @@ void rewrite(FS *fs)
+ 		 * conversion character gets its own.
+ 		 */
+ 		for (nconv = 0, fmtp = fu->fmt; *fmtp; nextpr = &pr->nextpr) {
+-			pr = emalloc(sizeof(PR));
++			pr = xmalloc(sizeof(PR));
+ 			if (!fu->nextpr)
+ 				fu->nextpr = pr;
+ 			else
+@@ -388,7 +386,7 @@ isint2:					switch(fu->bcnt) {
+ 			 */
+ 			savech = *p2;
+ 			p1[0] = '\0';
+-			pr->fmt = emalloc(strlen(fmtp) + strlen(cs) + 1);
++			pr->fmt = xmalloc(strlen(fmtp) + strlen(cs) + 1);
+ 			(void)strcpy(pr->fmt, fmtp);
+ 			(void)strcat(pr->fmt, cs);
+ 			*p2 = savech;
+@@ -396,11 +394,9 @@ isint2:					switch(fu->bcnt) {
+ 			fmtp = p2;
+ 
+ 			/* Only one conversion character if byte count */
+-			if (!(pr->flags&F_ADDRESS) && fu->bcnt && nconv++) {
+-				(void)fprintf(stderr,
+-				    _("hexdump: byte count with multiple conversion characters.\n"));
+-				exit(1);
+-			}
++			if (!(pr->flags&F_ADDRESS) && fu->bcnt && nconv++)
++				errx(EXIT_FAILURE,
++				    _("byte count with multiple conversion characters"));
+ 		}
+ 		/*
+ 		 * If format unit byte count not specified, figure it out
+@@ -479,26 +475,20 @@ static void escape(char *p1)
+ 
+ static void badcnt(const char *s)
+ {
+-	(void)fprintf(stderr,
+-	    _("hexdump: bad byte count for conversion character %s.\n"), s);
+-	exit(1);
++        errx(EXIT_FAILURE, _("bad byte count for conversion character %s"), s);
+ }
+ 
+ static void badsfmt(void)
+ {
+-	(void)fprintf(stderr,
+-	    _("hexdump: %%s requires a precision or a byte count.\n"));
+-	exit(1);
++        errx(EXIT_FAILURE, _("%%s requires a precision or a byte count"));
+ }
+ 
+ static void badfmt(const char *fmt)
+ {
+-	(void)fprintf(stderr, _("hexdump: bad format {%s}\n"), fmt);
+-	exit(1);
++        errx(EXIT_FAILURE, _("bad format {%s}"), fmt);
+ }
+ 
+ static void badconv(const char *ch)
+ {
+-	(void)fprintf(stderr, _("hexdump: bad conversion character %%%s.\n"), ch);
+-	exit(1);
++        errx(EXIT_FAILURE, _("bad conversion character %%%s"), ch);
+ }
+diff --git a/text-utils/rev.c b/text-utils/rev.c
+index b692449..89e5e58 100644
+--- a/text-utils/rev.c
++++ b/text-utils/rev.c
+@@ -55,12 +55,12 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+-#include <err.h>
+ #include <signal.h>
+ 
+ #include "nls.h"
+ #include "xalloc.h"
+ #include "widechar.h"
++#include "c.h"
+ 
+ wchar_t *buf;
+ 
+diff --git a/text-utils/tailf.c b/text-utils/tailf.c
+index 2dcdba3..c995d97 100644
+--- a/text-utils/tailf.c
++++ b/text-utils/tailf.c
+@@ -35,7 +35,6 @@
+ #include <fcntl.h>
+ #include <ctype.h>
+ #include <errno.h>
+-#include <err.h>
+ #ifdef HAVE_INOTIFY_INIT
+ #include <sys/inotify.h>
+ #endif
+@@ -43,6 +42,7 @@
+ #include "nls.h"
+ #include "xalloc.h"
+ #include "usleep.h"
++#include "c.h"
+ 
+ #define DEFAULT_LINES  10
+ 
+diff --git a/text-utils/ul.c b/text-utils/ul.c
+index 30f24e9..dc0550c 100644
+--- a/text-utils/ul.c
++++ b/text-utils/ul.c
+@@ -47,12 +47,12 @@
+ #include <stdlib.h>		/* for getenv() */
+ #include <limits.h>		/* for INT_MAX */
+ #include <signal.h>		/* for signal() */
+-#include <err.h>
+ #include <errno.h>
+ 
+ #include "nls.h"
+ #include "xalloc.h"
+ #include "widechar.h"
++#include "c.h"
+ 
+ #ifdef HAVE_WIDECHAR
+ static int put1wc(int c) /* Output an ASCII character as a wide character */

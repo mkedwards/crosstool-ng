@@ -1,0 +1,28 @@
+From d178ea9b435ffa50049d57596600455ec1dac1e5 Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Tue, 8 Feb 2011 15:41:17 -0800
+Subject: [PATCH] Don't disable printk to serial console when klogd starts
+
+---
+ sysklogd/klogd.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
+
+diff --git a/sysklogd/klogd.c b/sysklogd/klogd.c
+index 0d4c257..a770808 100644
+--- a/sysklogd/klogd.c
++++ b/sysklogd/klogd.c
+@@ -39,7 +39,11 @@ static void klogd_setloglevel(int lvl)
+ {
+ 	/* "printk() prints a message on the console only if it has a loglevel
+ 	 * less than console_loglevel". Here we set console_loglevel = lvl. */
++#ifdef DISABLE_PRINTK_TO_SERIAL_CONSOLE_WHEN_KLOGD_STARTS
+ 	klogctl(8, NULL, lvl);
++#else
++    (void)(lvl);
++#endif
+ }
+ 
+ static int klogd_read(char *bufp, int len)
+-- 
+1.7.1.rc2
+

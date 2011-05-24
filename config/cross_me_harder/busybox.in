@@ -1,0 +1,21 @@
+# busybox
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "busybox version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config BUSYBOX_V_1_18_4
+    bool
+    prompt "1.18.4 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config BUSYBOX_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.18.4" if BUSYBOX_V_1_18_4

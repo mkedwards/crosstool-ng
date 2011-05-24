@@ -1,0 +1,48 @@
+From 7ca857ed2542884582b0e41d8c20f94bb3162c0e Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Fri, 10 Sep 2010 21:26:03 -0700
+Subject: [PATCH] close-on-exec
+
+---
+ xmlrpc++/src/XmlRpcSocket.cpp |    5 ++++-
+ xmlrpc++/src/XmlRpcSocket.h   |    2 +-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/xmlrpc++/src/XmlRpcSocket.cpp b/xmlrpc++/src/XmlRpcSocket.cpp
+index caf8adc..d4642e5 100644
+--- a/xmlrpc++/src/XmlRpcSocket.cpp
++++ b/xmlrpc++/src/XmlRpcSocket.cpp
+@@ -120,13 +120,16 @@ XmlRpcSocket::setReuseAddr(XmlRpcSocket::Socket fd)
+ 
+ // Bind to a specified port
+ bool 
+-XmlRpcSocket::bind(XmlRpcSocket::Socket fd, int port)
++XmlRpcSocket::bind(XmlRpcSocket::Socket fd, int port, bool closeOnExec)
+ {
+   struct sockaddr_in saddr;
+   memset(&saddr, 0, sizeof(saddr));
+   saddr.sin_family = AF_INET;
+   saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+   saddr.sin_port = htons((u_short) port);
++  if (closeOnExec) {
++    fcntl(fd, F_SETFD, FD_CLOEXEC);
++  }
+   return (::bind(fd, (struct sockaddr *)&saddr, sizeof(saddr)) == 0);
+ }
+ 
+diff --git a/xmlrpc++/src/XmlRpcSocket.h b/xmlrpc++/src/XmlRpcSocket.h
+index b5d451a..dcdfe6a 100644
+--- a/xmlrpc++/src/XmlRpcSocket.h
++++ b/xmlrpc++/src/XmlRpcSocket.h
+@@ -49,7 +49,7 @@ namespace XmlRpc {
+     static bool setReuseAddr(Socket socket);
+ 
+     //! Bind to a specified port
+-    static bool bind(Socket socket, int port);
++    static bool bind(Socket socket, int port, bool closeOnExec = true);
+ 
+     //! Set socket in listen mode
+     static bool listen(Socket socket, int backlog);
+-- 
+1.7.1.rc2
+

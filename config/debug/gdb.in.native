@@ -27,3 +27,4 @@ config GDB_NATIVE_STATIC
       you will find that a static gdb comes in handy.
 
 endif # GDB_NATIVE
+

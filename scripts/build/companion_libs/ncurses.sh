@@ -86,7 +86,7 @@ do_ncurses_target() {
     cp ../../config.cache .
     CT_DoExecLog CFG                                            \
     CC="${CT_TARGET}-gcc"                                       \
-    CFLAGS="-g -Os -fPIC"                                       \
+    CFLAGS="-g -Os -fPIC -DPIC"                                 \
     "${CT_SRC_DIR}/ncurses-${CT_NCURSES_VERSION}/configure"     \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \

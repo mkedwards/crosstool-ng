@@ -1,0 +1,23 @@
+# dbus-glib
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "dbus-glib version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config DBUS_GLIB_V_0_92
+    bool
+    prompt "0.92 (EXPERIMENTAL)"
+    select CROSS_ME_HARDER_dbus
+    select CROSS_ME_HARDER_glib
+    depends on EXPERIMENTAL
+
+endchoice
+
+config DBUS_GLIB_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "0.92" if DBUS_GLIB_V_0_92

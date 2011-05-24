@@ -1,0 +1,39 @@
+From 14b35439ddf07419444788e43055869198959d77 Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Thu, 24 Jun 2010 15:07:40 -0700
+Subject: [PATCH] Install using DESTDIR
+
+---
+ include/builddefs.in |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/include/builddefs.in b/include/builddefs.in
+index 6df0f5a..5cf21b3 100644
+--- a/include/builddefs.in
++++ b/include/builddefs.in
+@@ -40,14 +40,14 @@ PKG_RELEASE	= @pkg_release@
+ PKG_VERSION	= @pkg_version@
+ PKG_PLATFORM	= @pkg_platform@
+ PKG_DISTRIBUTION= @pkg_distribution@
+-PKG_BIN_DIR	= @bindir@
+-PKG_SBIN_DIR	= @sbindir@
+-PKG_LIB_DIR	= @libdir@@libdirsuffix@
+-PKG_DEVLIB_DIR	= @libexecdir@@libdirsuffix@
+-PKG_INC_DIR	= @includedir@/attr
+-PKG_MAN_DIR	= @mandir@
+-PKG_DOC_DIR	= @datadir@/doc/@pkg_name@
+-PKG_LOCALE_DIR	= @datadir@/locale
++PKG_BIN_DIR	= $(DESTDIR)@bindir@
++PKG_SBIN_DIR	= $(DESTDIR)@sbindir@
++PKG_LIB_DIR	= $(DESTDIR)@libdir@@libdirsuffix@
++PKG_DEVLIB_DIR	= $(DESTDIR)@libexecdir@@libdirsuffix@
++PKG_INC_DIR	= $(DESTDIR)@includedir@/attr
++PKG_MAN_DIR	= $(DESTDIR)@mandir@
++PKG_DOC_DIR	= $(DESTDIR)@datadir@/doc/@pkg_name@
++PKG_LOCALE_DIR	= $(DESTDIR)@datadir@/locale
+ 
+ CC		= @cc@
+ AWK		= @awk@
+-- 
+1.7.0
+

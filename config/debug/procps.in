@@ -1,0 +1,24 @@
+# procps
+# depends on ! BACKEND
+
+config DEBUG_procps
+    bool
+
+choice
+    bool
+    prompt "procps version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config PROCPS_V_3_2_8
+    bool
+    prompt "3.2.8 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config PROCPS_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "3.2.8" if PROCPS_V_3_2_8

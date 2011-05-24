@@ -1,0 +1,21 @@
+# protobuf
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "protobuf version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config PROTOBUF_V_2_4_1
+    bool
+    prompt "2.4.1 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config PROTOBUF_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "2.4.1" if PROTOBUF_V_2_4_1

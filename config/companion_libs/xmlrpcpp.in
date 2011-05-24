@@ -1,0 +1,19 @@
+# xmlrpcpp config file
+
+choice
+    bool
+    prompt "xmlrpcpp version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config XMLRPCPP_V_20100717
+    bool
+    prompt "20100717"
+
+endchoice
+
+config XMLRPCPP_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "20100717" if XMLRPCPP_V_20100717

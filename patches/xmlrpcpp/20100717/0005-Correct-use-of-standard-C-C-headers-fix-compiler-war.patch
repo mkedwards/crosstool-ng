@@ -1,0 +1,370 @@
+From 05f978bd85a85c002c90b923fd0581451e2366c9 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Fri, 6 Aug 2010 14:47:17 +0000
+Subject: [PATCH] Correct use of standard C/C++ headers, fix compiler warnings
+
+---
+ xmlrpc++/src/XmlRpcClient.cpp             |    4 ++--
+ xmlrpc++/src/XmlRpcClient.h               |    4 ++--
+ xmlrpc++/src/XmlRpcServer.cpp             |    3 +++
+ xmlrpc++/src/XmlRpcServerConnection.cpp   |    4 ++--
+ xmlrpc++/src/XmlRpcUtil.cpp               |    6 +++---
+ xmlrpc++/src/XmlRpcValue.cpp              |    4 ++--
+ xmlrpc++/src/base64.h                     |    2 ++
+ xmlrpc++/test/FileClient.cpp              |    5 +++--
+ xmlrpc++/test/HelloClient.cpp             |    4 ++--
+ xmlrpc++/test/HelloServer.cpp             |    5 +++--
+ xmlrpc++/test/TestBase64Client.cpp        |    4 ++--
+ xmlrpc++/test/TestBase64Server.cpp        |    5 +++--
+ xmlrpc++/test/TestEGroupwareSSLClient.cpp |    1 +
+ xmlrpc++/test/TestValues.cpp              |    6 +++++-
+ xmlrpc++/test/TestValuesWin32.cpp         |    2 +-
+ xmlrpc++/test/TestXml.cpp                 |    4 +++-
+ xmlrpc++/test/Validator.cpp               |    3 ++-
+ 17 files changed, 41 insertions(+), 25 deletions(-)
+
+diff --git a/xmlrpc++/src/XmlRpcClient.cpp b/xmlrpc++/src/XmlRpcClient.cpp
+index 442ac5f..c70c8f5 100644
+--- a/xmlrpc++/src/XmlRpcClient.cpp
++++ b/xmlrpc++/src/XmlRpcClient.cpp
+@@ -9,8 +9,8 @@
+ 
+ #include "base64.h"   // For HTTP authentication encoding
+ 
+-#include <stdio.h>
+-#include <stdlib.h>
++#include <cstdio>
++#include <cstdlib>
+ #include <string>
+ 
+ using namespace XmlRpc;
+diff --git a/xmlrpc++/src/XmlRpcClient.h b/xmlrpc++/src/XmlRpcClient.h
+index 5954003..704fa07 100644
+--- a/xmlrpc++/src/XmlRpcClient.h
++++ b/xmlrpc++/src/XmlRpcClient.h
+@@ -58,13 +58,13 @@ namespace XmlRpc {
+     bool isFault() const { return _isFault; }
+ 
+     //! Return the host name of the server
+-    const char* const host() const { return _host.c_str(); }
++    const char* host() const { return _host.c_str(); }
+ 
+     //! Return the port
+     int port() const { return _port; }
+ 
+     //! Return the URI
+-    const char* const uri() const { return _uri.c_str(); }
++    const char* uri() const { return _uri.c_str(); }
+ 
+     // XmlRpcSource interface implementation
+     //! Close the connection
+diff --git a/xmlrpc++/src/XmlRpcServer.cpp b/xmlrpc++/src/XmlRpcServer.cpp
+index 0982069..fb53b55 100644
+--- a/xmlrpc++/src/XmlRpcServer.cpp
++++ b/xmlrpc++/src/XmlRpcServer.cpp
+@@ -11,6 +11,7 @@
+ #include "XmlRpcException.h"
+ #include "XmlRpc.h"
+ 
++#include <cstdio>
+ 
+ using namespace XmlRpc;
+ 
+@@ -161,6 +162,7 @@ XmlRpcServer::work(double timeSeconds)
+ unsigned
+ XmlRpcServer::handleEvent(unsigned mask)
+ {
++  (void)(mask);
+   acceptConnection();
+   return XmlRpcDispatch::ReadableEvent;		// Continue to monitor this fd
+ }
+@@ -248,6 +250,7 @@ public:
+ 
+   void execute(XmlRpcValue& params, XmlRpcValue& result)
+   {
++    (void)(params);
+     _server->listMethods(result);
+   }
+ 
+diff --git a/xmlrpc++/src/XmlRpcServerConnection.cpp b/xmlrpc++/src/XmlRpcServerConnection.cpp
+index a37ff72..3f096e8 100644
+--- a/xmlrpc++/src/XmlRpcServerConnection.cpp
++++ b/xmlrpc++/src/XmlRpcServerConnection.cpp
+@@ -9,8 +9,8 @@
+ #include "XmlRpcSocket.h"
+ #include "XmlRpcUtil.h"
+ 
+-#include <stdio.h>
+-#include <stdlib.h>
++#include <cstdio>
++#include <cstdlib>
+ 
+ using namespace XmlRpc;
+ 
+diff --git a/xmlrpc++/src/XmlRpcUtil.cpp b/xmlrpc++/src/XmlRpcUtil.cpp
+index 3ff36da..40e0ef8 100644
+--- a/xmlrpc++/src/XmlRpcUtil.cpp
++++ b/xmlrpc++/src/XmlRpcUtil.cpp
+@@ -6,9 +6,9 @@
+ 
+ #include <ctype.h>
+ #include <iostream>
+-#include <stdarg.h>
+-#include <stdio.h>
+-#include <string.h>
++#include <cstdarg>
++#include <cstdio>
++#include <cstring>
+ 
+ #include "XmlRpc.h"
+ 
+diff --git a/xmlrpc++/src/XmlRpcValue.cpp b/xmlrpc++/src/XmlRpcValue.cpp
+index 7d23216..8875cc8 100644
+--- a/xmlrpc++/src/XmlRpcValue.cpp
++++ b/xmlrpc++/src/XmlRpcValue.cpp
+@@ -9,8 +9,8 @@
+ 
+ #include <iostream>
+ #include <ostream>
+-#include <stdlib.h>
+-#include <stdio.h>
++#include <cstdlib>
++#include <cstdio>
+ 
+ 
+ namespace XmlRpc {
+diff --git a/xmlrpc++/src/base64.h b/xmlrpc++/src/base64.h
+index f13c6cd..98fb209 100644
+--- a/xmlrpc++/src/base64.h
++++ b/xmlrpc++/src/base64.h
+@@ -152,6 +152,8 @@ public:
+ 	template<class _II, class _OI, class _State, class _Endline>
+ 		_II put(_II _First, _II _Last, _OI _To, _State& _St, _Endline _Endl)  const
+ 	{
++		(void)(_St);
++		(void)(_Endl);
+ 		three2four _3to4;
+ 		int line_octets = 0;
+ 
+diff --git a/xmlrpc++/test/FileClient.cpp b/xmlrpc++/test/FileClient.cpp
+index d97bc6a..101079b 100644
+--- a/xmlrpc++/test/FileClient.cpp
++++ b/xmlrpc++/test/FileClient.cpp
+@@ -6,9 +6,10 @@
+ #include "XmlRpc.h"
+ #include <iostream>
+ #include <fstream>
+-#include <stdlib.h>
++#include <cstdlib>
+ 
+ using namespace XmlRpc;
++using namespace std;
+ 
+ std::string parseRequest(std::string const& xml, XmlRpcValue& params);
+ 
+@@ -73,7 +74,7 @@ int main(int argc, char* argv[])
+     std::cerr << "Usage: FileClient serverHost serverPort requestXmlFile\n";
+     return -1;
+   }
+-  int port = atoi(argv[2]);
++  int port = std::atoi(argv[2]);
+ 
+   XmlRpc::setVerbosity(5);
+   XmlRpcClient c(argv[1], port);
+diff --git a/xmlrpc++/test/HelloClient.cpp b/xmlrpc++/test/HelloClient.cpp
+index feca7c5..e607d6f 100644
+--- a/xmlrpc++/test/HelloClient.cpp
++++ b/xmlrpc++/test/HelloClient.cpp
+@@ -3,7 +3,7 @@
+ // on windows)
+ #include "XmlRpc.h"
+ #include <iostream>
+-#include <stdlib.h>
++#include <cstdlib>
+ using namespace XmlRpc;
+ 
+ int main(int argc, char* argv[])
+@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
+     std::cerr << "Usage: HelloClient serverHost serverPort\n";
+     return -1;
+   }
+-  int port = atoi(argv[2]);
++  int port = std::atoi(argv[2]);
+   //XmlRpc::setVerbosity(5);
+ 
+   // Use introspection API to look up the supported methods
+diff --git a/xmlrpc++/test/HelloServer.cpp b/xmlrpc++/test/HelloServer.cpp
+index ff81ad8..42b4232 100644
+--- a/xmlrpc++/test/HelloServer.cpp
++++ b/xmlrpc++/test/HelloServer.cpp
+@@ -3,7 +3,7 @@
+ #include "XmlRpc.h"
+ 
+ #include <iostream>
+-#include <stdlib.h>
++#include <cstdlib>
+ 
+ using namespace XmlRpc;
+ 
+@@ -18,6 +18,7 @@ public:
+ 
+   void execute(XmlRpcValue& params, XmlRpcValue& result)
+   {
++    (void)(params);
+     result = "Hello";
+   }
+ 
+@@ -64,7 +65,7 @@ int main(int argc, char* argv[])
+     std::cerr << "Usage: HelloServer serverPort\n";
+     return -1;
+   }
+-  int port = atoi(argv[1]);
++  int port = std::atoi(argv[1]);
+ 
+   XmlRpc::setVerbosity(5);
+ 
+diff --git a/xmlrpc++/test/TestBase64Client.cpp b/xmlrpc++/test/TestBase64Client.cpp
+index 64bb3e8..acff8fa 100644
+--- a/xmlrpc++/test/TestBase64Client.cpp
++++ b/xmlrpc++/test/TestBase64Client.cpp
+@@ -8,7 +8,7 @@
+ #include "XmlRpc.h"
+ #include <iostream>
+ #include <fstream>
+-#include <stdlib.h>
++#include <cstdlib>
+ 
+ using namespace XmlRpc;
+ 
+@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
+     std::cerr << "Usage: TestBase64Client serverHost serverPort outputFile\n";
+     return -1;
+   }
+-  int port = atoi(argv[2]);
++  int port = std::atoi(argv[2]);
+ 
+   //XmlRpc::setVerbosity(5);
+   XmlRpcClient c(argv[1], port);
+diff --git a/xmlrpc++/test/TestBase64Server.cpp b/xmlrpc++/test/TestBase64Server.cpp
+index 0cd76fd..75f4572 100644
+--- a/xmlrpc++/test/TestBase64Server.cpp
++++ b/xmlrpc++/test/TestBase64Server.cpp
+@@ -8,7 +8,7 @@
+ #include <iostream>
+ #include <fstream>
+ #include <algorithm>
+-#include <stdlib.h>
++#include <cstdlib>
+ #include <unistd.h>
+ 
+ #if defined(_MSC_VER)
+@@ -31,6 +31,7 @@ public:
+ 
+   void execute(XmlRpcValue& params, XmlRpcValue& result)
+   {
++    (void)(params);
+     //std::cout << "Attempting to open pngnow.png" << std::endl;
+     std::ifstream infile("pngnow.png", std::ios::binary);
+     if (infile.fail())
+@@ -75,7 +76,7 @@ int main(int argc, char* argv[])
+     std::cerr << "Usage: TestBase64Server serverPort\n";
+     return -1;
+   }
+-  int port = atoi(argv[1]);
++  int port = std::atoi(argv[1]);
+ 
+   //XmlRpc::setVerbosity(5);
+ 
+diff --git a/xmlrpc++/test/TestEGroupwareSSLClient.cpp b/xmlrpc++/test/TestEGroupwareSSLClient.cpp
+index a22b356..fe98e75 100644
+--- a/xmlrpc++/test/TestEGroupwareSSLClient.cpp
++++ b/xmlrpc++/test/TestEGroupwareSSLClient.cpp
+@@ -1,5 +1,6 @@
+ #include "XmlRpc.h"
+ #include <iostream>
++#include <cstdlib>
+ 
+ using namespace XmlRpc;
+ using namespace std;
+diff --git a/xmlrpc++/test/TestValues.cpp b/xmlrpc++/test/TestValues.cpp
+index e770e51..e241e29 100644
+--- a/xmlrpc++/test/TestValues.cpp
++++ b/xmlrpc++/test/TestValues.cpp
+@@ -1,6 +1,7 @@
+ // TestValues.cpp : Test XML encoding and decoding of XmlRpcValues.
+ 
+-#include <stdlib.h>
++#include <cstdlib>
++#include <cstdio>
+ 
+ #include "XmlRpcValue.h"
+ 
+@@ -210,6 +211,9 @@ void testStruct()
+ 
+ int main(int argc, char* argv[])
+ {
++  (void)(argc);
++  (void)(argv);
++
+   testBoolean();
+ 
+   testInt();
+diff --git a/xmlrpc++/test/TestValuesWin32.cpp b/xmlrpc++/test/TestValuesWin32.cpp
+index 79f48f2..cc58a15 100644
+--- a/xmlrpc++/test/TestValuesWin32.cpp
++++ b/xmlrpc++/test/TestValuesWin32.cpp
+@@ -1,7 +1,7 @@
+ // TestValues.cpp : Test XML encoding and decoding of XmlRpcValues.
+ 
+ #define _CRTDBG_MAP_ALLOC
+-#include <stdlib.h>
++#include <cstdlib>
+ #include <crtdbg.h>
+ 
+ #include "XmlRpcValue.h"
+diff --git a/xmlrpc++/test/TestXml.cpp b/xmlrpc++/test/TestXml.cpp
+index 73c15de..36167e7 100644
+--- a/xmlrpc++/test/TestXml.cpp
++++ b/xmlrpc++/test/TestXml.cpp
+@@ -9,7 +9,7 @@
+ // BUG: getline Template Function Reads Extra Character
+ #include <string>
+ #include <assert.h>
+-#include <stdlib.h>
++#include <cstdlib>
+ 
+ #include "XmlRpcUtil.h"
+ 
+@@ -18,6 +18,8 @@ using namespace XmlRpc;
+ 
+ int main(int argc, char* argv[])
+ {
++  (void)(argc);
++  (void)(argv);
+   // Basic tests
+   std::string empty;
+   assert(empty == XmlRpcUtil::xmlEncode(empty));
+diff --git a/xmlrpc++/test/Validator.cpp b/xmlrpc++/test/Validator.cpp
+index 64a264c..0642eda 100644
+--- a/xmlrpc++/test/Validator.cpp
++++ b/xmlrpc++/test/Validator.cpp
+@@ -4,6 +4,7 @@
+ using namespace XmlRpc;
+ 
+ #include <iostream>
++#include <cstdlib>
+ 
+ 
+ XmlRpcServer s;
+@@ -193,7 +194,7 @@ int main(int argc, char* argv[])
+     std::cerr << "Usage: Validator port\n";
+     return -1;
+   }
+-  int port = atoi(argv[1]);
++  int port = std::atoi(argv[1]);
+ 
+   XmlRpc::setVerbosity(5);
+ 
+-- 
+1.7.0.4
+

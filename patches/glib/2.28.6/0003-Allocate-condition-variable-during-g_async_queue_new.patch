@@ -1,0 +1,35 @@
+From 33bd4ae7d865aed5dfb0370c28de604df2853546 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Tue, 22 Mar 2011 19:44:04 +0000
+Subject: [PATCH] Allocate condition variable during g_async_queue_new() to close race
+
+---
+ glib/gasyncqueue.c |    5 +----
+ 1 files changed, 1 insertions(+), 4 deletions(-)
+
+diff --git a/glib/gasyncqueue.c b/glib/gasyncqueue.c
+index ff4ad09..dbd930f 100644
+--- a/glib/gasyncqueue.c
++++ b/glib/gasyncqueue.c
+@@ -115,7 +115,7 @@ g_async_queue_new (void)
+ {
+   GAsyncQueue* retval = g_new (GAsyncQueue, 1);
+   retval->mutex = g_mutex_new ();
+-  retval->cond = NULL;
++  retval->cond = g_cond_new ();
+   g_queue_init (&retval->queue);
+   retval->waiting_threads = 0;
+   retval->ref_count = 1;
+@@ -406,9 +406,6 @@ g_async_queue_pop_intern_unlocked (GAsyncQueue *queue,
+       if (try)
+ 	return NULL;
+       
+-      if (!queue->cond)
+-	queue->cond = g_cond_new ();
+-
+       if (!end_time)
+         {
+           queue->waiting_threads++;
+-- 
+1.7.0.4
+

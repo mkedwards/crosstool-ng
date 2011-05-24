@@ -1,0 +1,26 @@
+From b278ca1030d4c0bbfd9a5883a2eb5ad029812ee4 Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Thu, 24 Jun 2010 16:57:03 -0700
+Subject: [PATCH 4/5] fix libudev.pc to use the "prefix" variable consistently
+
+---
+ libudev/libudev.pc.in |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/libudev/libudev.pc.in b/libudev/libudev.pc.in
+index 677d53a..dce028b 100644
+--- a/libudev/libudev.pc.in
++++ b/libudev/libudev.pc.in
+@@ -1,7 +1,7 @@
+ prefix=@prefix@
+-exec_prefix=@prefix@
++exec_prefix=@exec_prefix@
+ libdir=@libdir@
+-includedir=@prefix@/include
++includedir=@includedir@
+ 
+ Name: libudev
+ Description: Library to access udev device information
+-- 
+1.7.0
+

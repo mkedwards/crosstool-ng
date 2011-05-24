@@ -1,0 +1,47 @@
+From ad0c6cb5817247f9e77e676764634ee138715f5d Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Fri, 6 Aug 2010 16:36:39 +0000
+Subject: [PATCH] Fix build failures with gcc-4.3 in lib/argp{-fmstream}.h
+
+---
+ lib/argp-fmtstream.h |    6 +++++-
+ lib/argp.h           |    6 +++++-
+ 2 files changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/lib/argp-fmtstream.h b/lib/argp-fmtstream.h
+index e045a72..9e48b83 100644
+--- a/lib/argp-fmtstream.h
++++ b/lib/argp-fmtstream.h
+@@ -198,7 +198,11 @@ extern int __argp_fmtstream_ensure (argp_fmtstream_t __fs, size_t __amount);
+ #endif
+ 
+ #ifndef ARGP_FS_EI
+-#define ARGP_FS_EI extern inline
++ #if defined __GNUC_STDC_INLINE__
++   #define ARGP_FS_EI extern inline __attribute__((__gnu_inline__))
++ #else 
++   #define ARGP_FS_EI extern inline 
++ #endif
+ #endif
+ 
+ ARGP_FS_EI size_t
+diff --git a/lib/argp.h b/lib/argp.h
+index 1c4e06f..d5a0154 100644
+--- a/lib/argp.h
++++ b/lib/argp.h
+@@ -580,7 +580,11 @@ extern void *__argp_input (const struct argp *__restrict __argp,
+ # endif
+ 
+ # ifndef ARGP_EI
+-#  define ARGP_EI extern __inline__
++#  if defined __GNUC_STDC_INLINE__
++#    define ARGP_EI extern __inline__ __attribute__((__gnu_inline__))
++#  else
++#    define ARGP_EI extern __inline__
++#  endif 
+ # endif
+ 
+ ARGP_EI void
+-- 
+1.7.0.4
+

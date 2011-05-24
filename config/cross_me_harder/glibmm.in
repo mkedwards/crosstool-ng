@@ -1,0 +1,24 @@
+# glibmm
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "glibmm version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config GLIBMM_V_2_28_1
+    bool
+    prompt "2.28.1 (EXPERIMENTAL)"
+    select CROSS_ME_HARDER_glib
+    select CROSS_ME_HARDER_mm_common
+    select CROSS_ME_HARDER_libsigcpp
+    depends on EXPERIMENTAL
+
+endchoice
+
+config GLIBMM_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "2.28.1" if GLIBMM_V_2_28_1

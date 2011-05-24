@@ -1,0 +1,23 @@
+# cgreen
+# depends on ! BACKEND
+
+config DEBUG_cgreen
+    bool
+
+choice
+    bool
+    prompt "cgreen version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config CGREEN_V_1_0_0_beta2
+    bool
+    prompt "1.0.0-beta2"
+
+endchoice
+
+config CGREEN_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.0.0-beta2" if CGREEN_V_1_0_0_beta2

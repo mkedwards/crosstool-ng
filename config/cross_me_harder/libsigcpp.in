@@ -1,0 +1,21 @@
+# libsigc++
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "libsigc++ version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LIBSIGCPP_V_2_2_9
+    bool
+    prompt "2.2.9 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config LIBSIGCPP_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "2.2.9" if LIBSIGCPP_V_2_2_9

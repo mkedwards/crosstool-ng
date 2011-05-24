@@ -1,0 +1,25 @@
+From 5293cab78f8b4293b999a0089ac3908a40c4f97a Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Thu, 18 Mar 2010 11:55:52 -0700
+Subject: [PATCH] Linux-PAM depends on -ldl
+
+---
+ Makefile.flags |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/Makefile.flags b/Makefile.flags
+index 032f6c1..36aed51 100644
+--- a/Makefile.flags
++++ b/Makefile.flags
+@@ -99,7 +99,7 @@ endif
+ LDLIBS += m crypt
+ 
+ ifeq ($(CONFIG_PAM),y)
+-LDLIBS += pam pam_misc
++LDLIBS += pam pam_misc dl
+ endif
+ 
+ ifeq ($(CONFIG_SELINUX),y)
+-- 
+1.7.0
+

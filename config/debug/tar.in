@@ -1,0 +1,24 @@
+# tar
+# depends on ! BACKEND
+
+config DEBUG_tar
+    bool
+
+choice
+    bool
+    prompt "tar version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config TAR_V_1_17
+    bool
+    prompt "1.17 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config TAR_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.17" if TAR_V_1_17

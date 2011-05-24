@@ -12,6 +12,19 @@ do_cross_me_harder_pkg_config_extract() {
 }
 
 do_cross_me_harder_pkg_config_build() {
+    CT_DoStep EXTRA "Installing host pkg-config"
+    mkdir -p "${CT_BUILD_DIR}/build-pkg-config-host"
+    CT_Pushd "${CT_BUILD_DIR}/build-pkg-config-host"
+    
+    CT_DoExecLog CFG \
+    "${CT_SRC_DIR}/pkg-config-${CT_PKG_CONFIG_VERSION}/configure" \
+            --prefix="${CT_PREFIX_DIR}"                           \
+            --with-pc-path="${CT_PREFIX_DIR}"/lib/pkgconfig
+    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make install
+    CT_Popd
+    CT_EndStep
+
     CT_DoStep EXTRA "Installing cross pkg-config"
     mkdir -p "${CT_BUILD_DIR}/build-pkg-config-cross"
     CT_Pushd "${CT_BUILD_DIR}/build-pkg-config-cross"

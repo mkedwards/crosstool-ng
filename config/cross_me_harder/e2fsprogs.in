@@ -1,0 +1,22 @@
+# e2fsprogs
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "e2fsprogs version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config E2FSPROGS_V_1_41_14
+    bool
+    prompt "1.41.14 (EXPERIMENTAL)"
+    select CROSS_ME_HARDER_util_linux
+    depends on EXPERIMENTAL
+
+endchoice
+
+config E2FSPROGS_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.41.14" if E2FSPROGS_V_1_41_14

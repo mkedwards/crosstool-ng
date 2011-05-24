@@ -1,3 +1,10 @@
 menu "Debug facilities"
 source "config.gen/debug.in"
+
+config DEBUG_xmlrpcpp
+    bool
+    prompt "XmlRpc++ client/server library for host and target"
+    select XMLRPCPP_NEEDED
+    select XMLRPCPP_TARGET
+
 endmenu

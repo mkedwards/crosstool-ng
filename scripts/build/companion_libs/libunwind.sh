@@ -27,7 +27,6 @@ do_libunwind() {
 
     CT_DoExecLog CFG                                            \
     CC="${CT_HOST}-gcc"                                         \
-    CFLAGS="-fPIC"                                              \
     "${CT_SRC_DIR}/libunwind-${CT_LIBUNWIND_VERSION}/configure" \
         --build=${CT_BUILD}                                     \
         --host=${CT_HOST}                                       \
@@ -59,7 +58,7 @@ do_libunwind_target() {
     cp ../../config.cache .
     CT_DoExecLog CFG                                            \
     CC="${CT_TARGET}-gcc"                                       \
-    CFLAGS="-g -Os -fPIC"                                       \
+    CFLAGS="-g -Os -fPIC -DPIC"                                 \
     "${CT_SRC_DIR}/libunwind-${CT_LIBUNWIND_VERSION}/configure" \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \

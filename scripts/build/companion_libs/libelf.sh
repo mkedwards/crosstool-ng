@@ -30,7 +30,7 @@ do_libelf() {
 
     CT_DoExecLog CFG                                        \
     CC="${CT_HOST}-gcc"                                     \
-    CFLAGS="-g -Os -fPIC"                                   \
+    CFLAGS="-g -Os"                                         \
     "${CT_SRC_DIR}/libelf-${CT_LIBELF_VERSION}/configure"   \
         --build=${CT_BUILD}                                 \
         --host=${CT_HOST}                                   \
@@ -65,7 +65,7 @@ do_libelf_target() {
     cp ../../config.cache .
     CT_DoExecLog CFG                                        \
     CC="${CT_TARGET}-gcc"                                   \
-    CFLAGS="-fPIC"                                          \
+    CFLAGS="-g -Os"                                         \
     "${CT_SRC_DIR}/libelf-${CT_LIBELF_VERSION}/configure"   \
         --build=${CT_BUILD}                                 \
         --host=${CT_TARGET}                                 \

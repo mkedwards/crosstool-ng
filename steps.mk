@@ -31,6 +31,9 @@ CT_STEPS := libc_check_config   \
             ncurses             \
             pcre                \
             sqlite              \
+            attr                \
+            acl                 \
+            xmlrpcpp            \
             binutils            \
             elf2flt             \
             sstrip              \
@@ -50,6 +53,9 @@ CT_STEPS := libc_check_config   \
             ncurses_target      \
             pcre_target         \
             sqlite_target       \
+            attr_target         \
+            acl_target          \
+            xmlrpcpp_target     \
             binutils_target     \
             cross_me_harder     \
             debug               \

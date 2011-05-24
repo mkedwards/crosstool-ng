@@ -1,0 +1,53 @@
+From b6cace4f91f05874d2f33ca7e5cf2157b443c82d Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Mon, 23 May 2011 16:16:12 +0000
+Subject: [PATCH] Re-enable 'make install'
+
+---
+ Makefile.am       |   12 ------------
+ gtest/Makefile.am |   12 ------------
+ 2 files changed, 0 insertions(+), 24 deletions(-)
+
+diff --git a/Makefile.am b/Makefile.am
+index adc21d7..8ba4609 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -195,15 +195,3 @@ maintainer-clean-local:
+ # Death tests may produce core dumps in the build directory. In case
+ # this happens, clean them to keep distcleancheck happy.
+ CLEANFILES = core
+-
+-# Disables 'make install' as installing a compiled version of Google
+-# Mock can lead to undefined behavior due to violation of the
+-# One-Definition Rule.
+-
+-install-exec-local:
+-	echo "'make install' is dangerous and not supported. Instead, see README for how to integrate Google Mock into your build system."
+-	false
+-
+-install-data-local:
+-	echo "'make install' is dangerous and not supported. Instead, see README for how to integrate Google Mock into your build system."
+-	false
+diff --git a/gtest/Makefile.am b/gtest/Makefile.am
+index cb350b7..1277512 100644
+--- a/gtest/Makefile.am
++++ b/gtest/Makefile.am
+@@ -288,15 +288,3 @@ maintainer-clean-local:
+ # Death tests may produce core dumps in the build directory. In case
+ # this happens, clean them to keep distcleancheck happy.
+ CLEANFILES = core
+-
+-# Disables 'make install' as installing a compiled version of Google
+-# Test can lead to undefined behavior due to violation of the
+-# One-Definition Rule.
+-
+-install-exec-local:
+-	echo "'make install' is dangerous and not supported. Instead, see README for how to integrate Google Test into your build system."
+-	false
+-
+-install-data-local:
+-	echo "'make install' is dangerous and not supported. Instead, see README for how to integrate Google Test into your build system."
+-	false
+-- 
+1.7.0.4
+

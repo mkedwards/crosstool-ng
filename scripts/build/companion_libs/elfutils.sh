@@ -27,7 +27,6 @@ do_elfutils() {
 
     CT_DoExecLog CFG                                            \
     CC="${CT_HOST}-gcc"                                         \
-    CFLAGS="-fPIC"                                              \
     "${CT_SRC_DIR}/elfutils-${CT_ELFUTILS_VERSION}/configure"   \
         --build=${CT_BUILD}                                     \
         --host=${CT_HOST}                                       \
@@ -59,7 +58,7 @@ do_elfutils_target() {
     cp ../../config.cache .
     CT_DoExecLog CFG                                            \
     CC="${CT_TARGET}-gcc"                                       \
-    CFLAGS="-g -Os -fPIC"                                       \
+    CFLAGS="-g -Os"                                             \
     "${CT_SRC_DIR}/elfutils-${CT_ELFUTILS_VERSION}/configure"   \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \

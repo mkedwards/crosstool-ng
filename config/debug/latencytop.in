@@ -1,0 +1,26 @@
+# latencytop
+# depends on ! BACKEND
+
+config DEBUG_latencytop
+    bool
+    select CROSS_ME_HARDER_glib
+    select NCURSES_TARGET
+
+choice
+    bool
+    prompt "latencytop version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LATENCYTOP_V_0_5
+    bool
+    prompt "0.5 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config LATENCYTOP_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "0.5" if LATENCYTOP_V_0_5

@@ -1,0 +1,19 @@
+# acl config file
+
+choice
+    bool
+    prompt "acl version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config ACL_V_2_2_49
+    bool
+    prompt "2.2.49"
+
+endchoice
+
+config ACL_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "2.2.49" if ACL_V_2_2_49

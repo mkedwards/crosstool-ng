@@ -16,10 +16,11 @@ doHelp() {
     cat <<-EOF
 		Usage: ${myname} <--tool> <[options] version [...]> ...
 		  'tool' may be one of:
-		    gcc, binutils, glibc, eglibc, uClibc, newlib, linux, gdb, dmalloc,
-		    duma, oprofile, strace, ltrace, valgrind,
+		    gcc, binutils, glibc, eglibc, uClibc, newlib, linux,
+		    gdb, dmalloc, duma, tcpdump, oprofile, strace, ltrace, valgrind,
+		    latencytop, bash, gawk, tar, procps, cgreen, gmock,
 		    libunwind, elfutils, libelf, zlib, popt, expat, ncurses, pcre, sqlite,
-                    gmp, mpfr, ppl, cloog, mpc
+                    attr, acl, xmlrpcpp, gmp, mpfr, ppl, cloog, mpc
 		
 		  Valid options for all tools:
 		    --stable, -s, +x   (default)
@@ -165,10 +166,18 @@ while [ $# -gt 0 ]; do
         --gdb)      EXP=; OBS=; cat=GDB;            tool=gdb;       tool_prefix=debug;;
         --dmalloc)  EXP=; OBS=; cat=DMALLOC;        tool=dmalloc;   tool_prefix=debug;;
         --duma)     EXP=; OBS=; cat=DUMA;           tool=duma;      tool_prefix=debug;;
+        --latencytop) EXP=; OBS=; cat=LATENCYTOP;   tool=latencytop; tool_prefix=debug;;
         --valgrind) EXP=; OBS=; cat=VALGRIND;       tool=valgrind;  tool_prefix=debug;;
         --oprofile) EXP=; OBS=; cat=OPROFILE;       tool=oprofile;  tool_prefix=debug;;
         --strace)   EXP=; OBS=; cat=STRACE;         tool=strace;    tool_prefix=debug;;
         --ltrace)   EXP=; OBS=; cat=LTRACE;         tool=ltrace;    tool_prefix=debug;;
+        --tcpdump)  EXP=; OBS=; cat=TCPDUMP;        tool=tcpdump;   tool_prefix=debug;;
+        --bash)     EXP=; OBS=; cat=BASH;           tool=bash;      tool_prefix=debug;;
+        --gawk)     EXP=; OBS=; cat=GAWK;           tool=gawk;      tool_prefix=debug;;
+        --tar)      EXP=; OBS=; cat=TAR;            tool=tar;       tool_prefix=debug;;
+        --procps)   EXP=; OBS=; cat=PROCPS;         tool=procps;    tool_prefix=debug;;
+        --cgreen)   EXP=; OBS=; cat=CGREEN;         tool=cgreen;    tool_prefix=debug;;
+        --gmock)    EXP=; OBS=; cat=GMOCK;          tool=gmock;     tool_prefix=debug;;
         --gmp)      EXP=; OBS=; cat=GMP;            tool=gmp;       tool_prefix=companion_libs;;
         --mpfr)     EXP=; OBS=; cat=MPFR;           tool=mpfr;      tool_prefix=companion_libs;;
         --ppl)      EXP=; OBS=; cat=PPL;            tool=ppl;       tool_prefix=companion_libs;;
@@ -183,6 +192,9 @@ while [ $# -gt 0 ]; do
         --ncurses)  EXP=; OBS=; cat=NCURSES;        tool=ncurses;   tool_prefix=companion_libs;;
         --pcre)     EXP=; OBS=; cat=PCRE;           tool=pcre;      tool_prefix=companion_libs;;
         --sqlite)   EXP=; OBS=; cat=SQLITE;         tool=sqlite;    tool_prefix=companion_libs;;
+        --attr)     EXP=; OBS=; cat=ATTR;           tool=attr;      tool_prefix=companion_libs;;
+        --acl)      EXP=; OBS=; cat=ACL;            tool=acl;       tool_prefix=companion_libs;;
+        --xmlrpcpp) EXP=; OBS=; cat=XMLRPCPP;       tool=xmlrpcpp;  tool_prefix=companion_libs;;
 
         # Tools options:
         -x|--experimental|+s)   EXP=1;;

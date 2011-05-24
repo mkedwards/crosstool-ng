@@ -1,0 +1,21 @@
+# util-linux
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "util-linux version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config UTIL_LINUX_V_2_19_1
+    bool
+    prompt "2.19.1 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config UTIL_LINUX_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "2.19.1" if UTIL_LINUX_V_2_19_1

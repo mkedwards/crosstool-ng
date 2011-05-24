@@ -1,0 +1,19 @@
+# attr config file
+
+choice
+    bool
+    prompt "attr version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config ATTR_V_2_4_44
+    bool
+    prompt "2.4.44"
+
+endchoice
+
+config ATTR_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "2.4.44" if ATTR_V_2_4_44

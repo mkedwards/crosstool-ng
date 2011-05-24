@@ -28,13 +28,13 @@ do_cross_me_harder_nspr_build() {
     CT_DoLog DEBUG "Extra config passed: '${host_extra_config[*]}'"
 
     CC="${CT_HOST}-gcc"                                         \
-    CFLAGS="-fPIC"                                              \
     CT_DoExecLog CFG                                            \
     ./configure                                                 \
             --prefix="${CT_PREFIX_DIR}"                         \
             --enable-optimize=-Os                               \
             --enable-debug=-g                                   \
             --with-pthreads                                     \
+            --enable-ipv6                                       \
             "${host_extra_config[@]}"
     CT_DoExecLog ALL make
     CT_DoExecLog ALL make install
@@ -57,18 +57,19 @@ do_cross_me_harder_nspr_build() {
     cp ../../../../config.cache .
     CT_DoExecLog CFG                                            \
     ./configure                                                 \
-        --host=${CT_BUILD}                                      \
-        --target=${CT_TARGET}                                   \
-        --cache-file="$(pwd)/config.cache"                      \
-        --sysconfdir=/etc                                       \
-        --localstatedir=/var                                    \
-        --mandir=/usr/share/man                                 \
-        --infodir=/usr/share/info                               \
-        --prefix=/usr                                           \
-        --enable-optimize=-Os                                   \
-        --enable-debug=-g                                       \
-        --with-pthreads                                         \
-        "${target_extra_config[@]}"
+            --host=${CT_BUILD}                                  \
+            --target=${CT_TARGET}                               \
+            --cache-file="$(pwd)/config.cache"                  \
+            --sysconfdir=/etc                                   \
+            --localstatedir=/var                                \
+            --mandir=/usr/share/man                             \
+            --infodir=/usr/share/info                           \
+            --prefix=/usr                                       \
+            --enable-optimize=-Os                               \
+            --enable-debug=-g                                   \
+            --with-pthreads                                     \
+            --enable-ipv6                                       \
+            "${target_extra_config[@]}"
     CT_DoExecLog ALL make
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
     CT_Popd

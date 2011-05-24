@@ -1,0 +1,45 @@
+From c8fd915b37f2b920089fa53ab82766f30ef3f47c Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Sun, 18 Jul 2010 08:02:22 -0700
+Subject: [PATCH 2/4] Finish MAKEDEPEND cleanup
+
+---
+ xmlrpc++/src/XmlRpcException.h      |    4 +---
+ xmlrpc++/src/XmlRpcThreadedServer.h |    6 ++----
+ 2 files changed, 3 insertions(+), 7 deletions(-)
+
+diff --git a/xmlrpc++/src/XmlRpcException.h b/xmlrpc++/src/XmlRpcException.h
+index 7024311..e13f5c6 100644
+--- a/xmlrpc++/src/XmlRpcException.h
++++ b/xmlrpc++/src/XmlRpcException.h
+@@ -8,9 +8,7 @@
+ # pragma warning(disable:4786)    // identifier was truncated in debug info
+ #endif
+ 
+-#ifndef MAKEDEPEND
+-# include <string>
+-#endif
++#include <string>
+ 
+ 
+ namespace XmlRpc {
+diff --git a/xmlrpc++/src/XmlRpcThreadedServer.h b/xmlrpc++/src/XmlRpcThreadedServer.h
+index bedbeec..df20f56 100644
+--- a/xmlrpc++/src/XmlRpcThreadedServer.h
++++ b/xmlrpc++/src/XmlRpcThreadedServer.h
+@@ -8,10 +8,8 @@
+ # pragma warning(disable:4786)    // identifier was truncated in debug info
+ #endif
+ 
+-#ifndef MAKEDEPEND
+-# include <map>
+-# include <vector>
+-#endif
++#include <map>
++#include <vector>
+ 
+ 
+ #include "XmlRpcMutex.h"
+-- 
+1.7.0
+

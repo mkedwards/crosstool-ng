@@ -1,0 +1,25 @@
+# tcpdump
+# depends on ! BACKEND
+
+config DEBUG_tcpdump
+    bool
+    select CROSS_ME_HARDER_libpcap
+
+choice
+    bool
+    prompt "tcpdump version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config TCPDUMP_V_4_1_1
+    bool
+    prompt "4.1.1 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config TCPDUMP_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "4.1.1" if TCPDUMP_V_4_1_1

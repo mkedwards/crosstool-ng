@@ -1,0 +1,26 @@
+From 9db663e6ab58a019ad7ec53b527cb8955986d8be Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Fri, 16 Jul 2010 14:20:19 -0700
+Subject: [PATCH] fix pkgconfig prefix handling
+
+---
+ libnl-1.pc |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/libnl-1.pc b/libnl-1.pc
+index 24f8c02..282d4c5 100644
+--- a/libnl-1.pc
++++ b/libnl-1.pc
+@@ -1,7 +1,7 @@
+ prefix=/usr
+-exec_prefix=/usr
++exec_prefix=${prefix}
+ libdir=${exec_prefix}/lib
+-includedir=/usr/include
++includedir=${prefix}/include
+ 
+ Name: libnl
+ Description: Convenience library for netlink sockets
+-- 
+1.7.0
+

@@ -1,0 +1,26 @@
+# glib
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "glib version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config GLIB_V_2_28_6
+    bool
+    prompt "2.28.6 (EXPERIMENTAL)"
+    select ATTR_NEEDED
+    select ACL_NEEDED
+    select ATTR_TARGET
+    select ACL_TARGET
+    select CROSS_ME_HARDER_dbus
+    depends on EXPERIMENTAL
+
+endchoice
+
+config GLIB_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "2.28.6" if GLIB_V_2_28_6

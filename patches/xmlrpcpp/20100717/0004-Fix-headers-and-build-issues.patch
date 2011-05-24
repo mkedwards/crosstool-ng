@@ -1,0 +1,163 @@
+From 14f0357f4a99108dd3d61404bda2bf73e85ef83a Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Sun, 18 Jul 2010 09:31:52 -0700
+Subject: [PATCH 4/4] Fix headers and build issues
+
+---
+ xmlrpc++/src/XmlRpc.h                     |    4 ++++
+ xmlrpc++/src/XmlRpcSocket.cpp             |    1 +
+ xmlrpc++/src/XmlRpcSource.cpp             |    2 +-
+ xmlrpc++/src/XmlRpcUtil.h                 |    2 ++
+ xmlrpc++/test/HelloClient.cpp             |    1 +
+ xmlrpc++/test/Makefile                    |    4 ++--
+ xmlrpc++/test/TestBase64Server.cpp        |    3 ++-
+ xmlrpc++/test/TestEGroupwareSSLClient.cpp |    9 ++++++---
+ 8 files changed, 19 insertions(+), 7 deletions(-)
+
+diff --git a/xmlrpc++/src/XmlRpc.h b/xmlrpc++/src/XmlRpc.h
+index 8ffcba7..a31ee59 100644
+--- a/xmlrpc++/src/XmlRpc.h
++++ b/xmlrpc++/src/XmlRpc.h
+@@ -39,6 +39,8 @@ namespace XmlRpc {
+   //! An interface allowing custom handling of error message reporting.
+   class XmlRpcErrorHandler {
+   public:
++    virtual ~XmlRpcErrorHandler() {}
++
+     //! Returns a pointer to the currently installed error handling object.
+     static XmlRpcErrorHandler* getErrorHandler() 
+     { return _errorHandler; }
+@@ -57,6 +59,8 @@ namespace XmlRpc {
+   //! An interface allowing custom handling of informational message reporting.
+   class XmlRpcLogHandler {
+   public:
++    virtual ~XmlRpcLogHandler() {}
++
+     //! Returns a pointer to the currently installed message reporting object.
+     static XmlRpcLogHandler* getLogHandler() 
+     { return _logHandler; }
+diff --git a/xmlrpc++/src/XmlRpcSocket.cpp b/xmlrpc++/src/XmlRpcSocket.cpp
+index 2a4dad8..caf8adc 100644
+--- a/xmlrpc++/src/XmlRpcSocket.cpp
++++ b/xmlrpc++/src/XmlRpcSocket.cpp
+@@ -27,6 +27,7 @@ extern "C" {
+ # include <netdb.h>
+ # include <errno.h>
+ # include <fcntl.h>
++# include <signal.h>
+ }
+ #endif  // _WINDOWS
+ 
+diff --git a/xmlrpc++/src/XmlRpcSource.cpp b/xmlrpc++/src/XmlRpcSource.cpp
+index 7f5bc0a..6b5e4e6 100644
+--- a/xmlrpc++/src/XmlRpcSource.cpp
++++ b/xmlrpc++/src/XmlRpcSource.cpp
+@@ -29,7 +29,7 @@ namespace XmlRpc {
+   {
+ #if USE_OPENSSL
+     SSL_CTX* _ssl_ctx;
+-    SSL_METHOD* _ssl_meth;
++    const SSL_METHOD* _ssl_meth;
+     SSL* _ssl_ssl;
+ #endif
+   };
+diff --git a/xmlrpc++/src/XmlRpcUtil.h b/xmlrpc++/src/XmlRpcUtil.h
+index 96b110c..b464ea1 100644
+--- a/xmlrpc++/src/XmlRpcUtil.h
++++ b/xmlrpc++/src/XmlRpcUtil.h
+@@ -8,6 +8,8 @@
+ #endif
+ 
+ #include <string>
++#include <string.h>
++#include <strings.h>
+ 
+ #if defined(_MSC_VER)
+ # define snprintf	    _snprintf
+diff --git a/xmlrpc++/test/HelloClient.cpp b/xmlrpc++/test/HelloClient.cpp
+index 91c5724..feca7c5 100644
+--- a/xmlrpc++/test/HelloClient.cpp
++++ b/xmlrpc++/test/HelloClient.cpp
+@@ -3,6 +3,7 @@
+ // on windows)
+ #include "XmlRpc.h"
+ #include <iostream>
++#include <stdlib.h>
+ using namespace XmlRpc;
+ 
+ int main(int argc, char* argv[])
+diff --git a/xmlrpc++/test/Makefile b/xmlrpc++/test/Makefile
+index 8067ee3..0dca1f2 100644
+--- a/xmlrpc++/test/Makefile
++++ b/xmlrpc++/test/Makefile
+@@ -7,7 +7,7 @@ DEBUG		= -g
+ GCCWARN		= -Wall -Wstrict-prototypes
+ CXXFLAGS	= $(DEBUG) $(GCCWARN) $(OPTIMIZE) $(INCLUDES)
+ 
+-LIB		= ../libXmlRpc.a -lssl
++LIB		= -L.. -lXmlRpc -lssl
+ 
+ # Add your system-dependent network libs here
+ # Solaris: -lsocket -lnsl
+@@ -19,7 +19,7 @@ TESTS		= HelloClient HelloServer TestBase64Client TestBase64Server TestValues Te
+ 
+ all:		$(TESTS)
+ 
+-$(TESTS):	$(LIB)
++$(TESTS):
+ 
+ clean:
+ 		rm -f *.o
+diff --git a/xmlrpc++/test/TestBase64Server.cpp b/xmlrpc++/test/TestBase64Server.cpp
+index d15888e..0cd76fd 100644
+--- a/xmlrpc++/test/TestBase64Server.cpp
++++ b/xmlrpc++/test/TestBase64Server.cpp
+@@ -9,9 +9,10 @@
+ #include <fstream>
+ #include <algorithm>
+ #include <stdlib.h>
+-#include <direct.h> // getcwd
++#include <unistd.h>
+ 
+ #if defined(_MSC_VER)
++#include <direct.h> // getcwd
+ # define getcwd _getcwd
+ #endif
+ 
+diff --git a/xmlrpc++/test/TestEGroupwareSSLClient.cpp b/xmlrpc++/test/TestEGroupwareSSLClient.cpp
+index b80beba..a22b356 100644
+--- a/xmlrpc++/test/TestEGroupwareSSLClient.cpp
++++ b/xmlrpc++/test/TestEGroupwareSSLClient.cpp
+@@ -13,7 +13,8 @@ int main ( int argc, char *argv[]) {
+ 		cout << "example: " << argv[0] << " www.egroupware.org \"/egroupware/xmlrpc.php\" demo guest\n";
+ 		exit (0);
+ 	}
+-	XmlRpcClient client (argv[1], 443, argv[2], true);
++	XmlRpcClient client (argv[1], 443, argv[2]);
++	client.setSslEnabled(true);
+ 
+ 	XmlRpcValue result;
+ 	XmlRpcValue params;
+@@ -28,7 +29,8 @@ int main ( int argc, char *argv[]) {
+ 	string sessionid = string(result["sessionid"]);
+ 	string kp3 = string(result["kp3"]);
+ /*
+-	XmlRpcClient authClient (argv[1], 443, sessionid.c_str(), kp3.c_str(), argv[2], true);
++	XmlRpcClient authClient (argv[1], 443, sessionid.c_str(), kp3.c_str(), argv[2]);
++	authClient.setSslEnabled(true);
+ 	XmlRpcValue calParam;
+ 	XmlRpcValue calResult;
+ 
+@@ -48,7 +50,8 @@ int main ( int argc, char *argv[]) {
+ 
+ 	XmlRpcValue logoutParam;
+ 	XmlRpcValue logoutResult;
+-	XmlRpcClient client_logout (argv[1], 443, argv[2], true);
++	XmlRpcClient client_logout (argv[1], 443, argv[2]);
++	client_logout.setSslEnabled(true);
+ 
+ 	logoutParam["sessionid"] = sessionid;
+ 	logoutParam["kp3"] = kp3;
+-- 
+1.7.0
+

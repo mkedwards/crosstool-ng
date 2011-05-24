@@ -1,0 +1,86 @@
+From 6c8895e95865fcf876c4da67ee4c9c3b9f1494a1 Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Sat, 17 Apr 2010 16:10:55 -0700
+Subject: [PATCH] implement nanoseconds in strftime
+
+---
+ builtin.c |   31 +++++++++++++++++++++++++++++--
+ 1 files changed, 29 insertions(+), 2 deletions(-)
+
+diff --git a/builtin.c b/builtin.c
+index d0c6429..90bb14f 100644
+--- a/builtin.c
++++ b/builtin.c
+@@ -23,7 +23,6 @@
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+  */
+ 
+-
+ #include "awk.h"
+ #if defined(HAVE_FCNTL_H)
+ #include <fcntl.h>
+@@ -1457,18 +1456,23 @@ do_strftime(NODE *tree)
+ 	NODE *t1, *t2, *ret;
+ 	struct tm *tm;
+ 	time_t fclock;
++	struct timespec ts;
++	unsigned int ns;
+ 	char *bufp;
+ 	size_t buflen, bufsize;
+ 	char buf[BUFSIZ];
+ 	/* FIXME: One day make %d be %e, after C 99 is common. */
+ 	static const char def_format[] = "%a %b %d %H:%M:%S %Z %Y";
+ 	const char *format;
++	char *new_format;
+ 	int formatlen;
+ 
+ 	/* set defaults first */
+ 	format = def_format;	/* traditional date format */
+ 	formatlen = strlen(format);
+-	(void) time(&fclock);	/* current time of day */
++	clock_gettime(CLOCK_MONOTONIC, &ts);
++	fclock = ts.tv_sec;
++	ns = ts.tv_nsec;
+ 
+ 	t1 = t2 = NULL;
+ 	if (tree != NULL) {	/* have args */
+@@ -1492,6 +1496,7 @@ do_strftime(NODE *tree)
+ 			if (do_lint && (t2->flags & (NUMCUR|NUMBER)) == 0)
+ 				lintwarn(_("strftime: received non-numeric second argument"));
+ 			fclock = (time_t) force_number(t2);
++			ns = 0;
+ 			free_temp(t2);
+ 		}
+ 	}
+@@ -1501,6 +1506,28 @@ do_strftime(NODE *tree)
+ 	bufp = buf;
+ 	bufsize = sizeof(buf);
+ 	for (;;) {
++		for (;;) {
++			int pos, len;
++			const char *where = format;
++			for (;;) {
++				where = strstr(where, "%N");
++				if (!where)
++					break;
++				// This doesn't handle "%%%N" properly.
++				if (where == format || where[-1] != '%')
++					break;
++				where += 2;
++			}
++			if (!where)
++				break;
++			pos = where - format;
++			len = strlen(format) + 1;
++			emalloc(new_format, char *, len + 7, "do_strftime");
++			memcpy(new_format, format, pos);
++			sprintf(new_format + pos, "%09d", ns);
++			memcpy(new_format + pos + 9, format + pos + 2, len - pos - 2);
++			format = new_format;
++		}
+ 		*bufp = '\0';
+ 		buflen = strftime(bufp, bufsize, format, tm);
+ 		/*
+-- 
+1.7.0
+

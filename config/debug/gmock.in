@@ -1,0 +1,23 @@
+# gmock
+# depends on ! BACKEND
+
+config DEBUG_gmock
+    bool
+
+choice
+    bool
+    prompt "gmock version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config GMOCK_V_1_6_0
+    bool
+    prompt "1.6.0"
+
+endchoice
+
+config GMOCK_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.6.0" if GMOCK_V_1_6_0

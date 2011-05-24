@@ -1,0 +1,45 @@
+From b504282a59d2aad8c37aab267698e82a3748c50d Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Mon, 21 Mar 2011 23:31:16 +0000
+Subject: [PATCH] Enable implementation of _g_dbus_shared_thread_ref()
+
+---
+ gio/gdbusprivate.c |   11 ++---------
+ 1 files changed, 2 insertions(+), 9 deletions(-)
+
+diff --git a/gio/gdbusprivate.c b/gio/gdbusprivate.c
+index 5f8f1f4..a83535c 100644
+--- a/gio/gdbusprivate.c
++++ b/gio/gdbusprivate.c
+@@ -364,26 +364,19 @@ _g_dbus_shared_thread_ref (GDBusSharedThreadFunc func,
+ static void
+ _g_dbus_shared_thread_unref (void)
+ {
+-  /* TODO: actually destroy the shared thread here */
+-#if 0
+   G_LOCK (shared_thread_lock);
+   g_assert (shared_thread_data != NULL);
+   shared_thread_data->num_users -= 1;
+   if (shared_thread_data->num_users == 0)
+     {
+       g_main_loop_quit (shared_thread_data->loop);
+-      //g_thread_join (shared_thread_data->thread);
++      g_thread_join (shared_thread_data->thread);
+       g_main_loop_unref (shared_thread_data->loop);
+       g_main_context_unref (shared_thread_data->context);
+       g_free (shared_thread_data);
+       shared_thread_data = NULL;
+-      G_UNLOCK (shared_thread_lock);
+-    }
+-  else
+-    {
+-      G_UNLOCK (shared_thread_lock);
+     }
+-#endif
++  G_UNLOCK (shared_thread_lock);
+ }
+ 
+ /* ---------------------------------------------------------------------------------------------------- */
+-- 
+1.7.0.4
+

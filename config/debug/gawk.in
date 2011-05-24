@@ -1,0 +1,24 @@
+# gawk
+# depends on ! BACKEND
+
+config DEBUG_gawk
+    bool
+
+choice
+    bool
+    prompt "gawk version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config GAWK_V_3_1_5
+    bool
+    prompt "3.1.5 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config GAWK_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "3.1.5" if GAWK_V_3_1_5

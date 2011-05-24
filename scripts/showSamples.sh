@@ -66,6 +66,9 @@ dump_single_sample() {
                  -o -n "${CT_NCURSES}"          \
                  -o -n "${CT_PCRE}"             \
                  -o -n "${CT_SQLITE}"           \
+                 -o -n "${CT_ATTR}"             \
+                 -o -n "${CT_ACL}"              \
+                 -o -n "${CT_XMLRPCPP}"         \
                  -o -n "${CT_GMP_TARGET}"       \
                  -o -n "${CT_MPFR_TARGET}"      \
                  -o -n "${CT_PPL_TARGET}"       \
@@ -80,6 +83,9 @@ dump_single_sample() {
                  -o -n "${CT_NCURSES_TARGET}"   \
                  -o -n "${CT_PCRE_TARGET}"      \
                  -o -n "${CT_SQLITE_TARGET}"    \
+                 -o -n "${CT_ATTR_TARGET}"      \
+                 -o -n "${CT_ACL_TARGET}"       \
+                 -o -n "${CT_XMLRPCPP_TARGET}"  \
                ]; then
                 printf "    %-*s :" ${t_width} "Companion libs"
                 complibs=1
@@ -90,7 +96,7 @@ dump_single_sample() {
             [ -z "${CT_CLOOG}"  -a -z "${CT_CLOOG_TARGET}"  ] || printf " cloog-ppl-%s" "${CT_CLOOG_VERSION}"
             [ -z "${CT_MPC}"    -a -z "${CT_MPC_TARGET}"    ] || printf " mpc-%s"       "${CT_MPC_VERSION}"
             [ -z "${CT_LIBELF}" -a -z "${CT_LIBELF_TARGET}" ] || printf " libelf-%s"    "${CT_LIBELF_VERSION}"
-            [ -z "${CT_ELFUTILS}" -a -z "${CT_ELFUTILS_TARGET}" ] || printf " elfutils-%s"  "${CT_ELFUTILS_VERSION}"
+            [ -z "${CT_ELFUTILS}" -a -z "${CT_ELFUTILS_TARGET}" ] || printf " elfutils-%s" "${CT_ELFUTILS_VERSION}"
             [ -z "${CT_LIBUNWIND}" -a -z "${CT_LIBUNWIND_TARGET}" ] || printf " libunwind-%s" "${CT_LIBUNWIND_VERSION}"
             [ -z "${CT_ZLIB}"   -a -z "${CT_ZLIB_TARGET}"   ] || printf " zlib-%s"      "${CT_ZLIB_VERSION}"
             [ -z "${CT_POPT}"   -a -z "${CT_POPT_TARGET}"   ] || printf " popt-%s"      "${CT_POPT_VERSION}"
@@ -98,6 +104,9 @@ dump_single_sample() {
             [ -z "${CT_NCURSES}" -a -z "${CT_NCURSES_TARGET}" ] || printf " ncurses-%s" "${CT_NCURSES_VERSION}"
             [ -z "${CT_PCRE}"   -a -z "${CT_PCRE_TARGET}"   ] || printf " pcre-%s"      "${CT_PCRE_VERSION}"
             [ -z "${CT_SQLITE}" -a -z "${CT_SQLITE_TARGET}" ] || printf " sqlite-%s"    "${CT_SQLITE_VERSION}"
+            [ -z "${CT_ATTR}"   -a -z "${CT_ATTR_TARGET}"   ] || printf " attr-%s"      "${CT_ATTR_VERSION}"
+            [ -z "${CT_ACL}"    -a -z "${CT_ACL_TARGET}"    ] || printf " acl-%s"       "${CT_ACL_VERSION}"
+            [ -z "${CT_XMLRPCPP}" -a -z "${CT_XMLRPCPP_TARGET}" ] || printf " xmlrpcpp-%s" "${CT_XMLRPCPP_VERSION}"
             [ -z "${complibs}"  ] || printf "\n"
             printf  "    %-*s : %s\n" ${t_width} "binutils" "binutils-${CT_BINUTILS_VERSION}"
             printf  "    %-*s : %s" ${t_width} "C compiler" "${CT_CC}-${CT_CC_VERSION} (C"
@@ -117,8 +126,16 @@ dump_single_sample() {
             [ "${CT_DEBUG_gdb}"     ] && printf " gdb-${CT_GDB_VERSION}"
             [ "${CT_DEBUG_ltrace}"  ] && printf " ltrace-${CT_LTRACE_VERSION}"
             [ "${CT_DEBUG_strace}"  ] && printf " strace-${CT_STRACE_VERSION}"
+            [ "${CT_DEBUG_tcpdump}" ] && printf " tcpdump-${CT_TCPDUMP_VERSION}"
             [ "${CT_DEBUG_oprofile}"] && printf " oprofile-${CT_OPROFILE_VERSION}"
+            [ "${CT_DEBUG_latencytop}"] && printf " latencytop-${CT_LATENCYTOP_VERSION}"
             [ "${CT_DEBUG_valgrind}"] && printf " valgrind-${CT_VALGRIND_VERSION}"
+            [ "${CT_DEBUG_bash}"    ] && printf " bash-${CT_BASH_VERSION}"
+            [ "${CT_DEBUG_gawk}"    ] && printf " gawk-${CT_GAWK_VERSION}"
+            [ "${CT_DEBUG_tar}"     ] && printf " tar-${CT_TAR_VERSION}"
+            [ "${CT_DEBUG_procps}"  ] && printf " procps-${CT_PROCPS_VERSION}"
+            [ "${CT_DEBUG_cgreen}"  ] && printf " cgreen-${CT_CGREEN_VERSION}"
+            [ "${CT_DEBUG_gmock}"   ] && printf " gmock-${CT_GMOCK_VERSION}"
             printf "\n"
         fi
     else

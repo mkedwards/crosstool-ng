@@ -1,0 +1,39 @@
+From 4710e67d5feac7fbcb0fb6f9c1f213cd1f1d87e0 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Fri, 6 Aug 2010 16:40:02 +0000
+Subject: [PATCH] fix missed include for ULONG_MAX
+
+---
+ include/netlink-local.h |    1 +
+ libnl-1.pc              |    4 ++--
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/include/netlink-local.h b/include/netlink-local.h
+index 3c50ea0..d946934 100644
+--- a/include/netlink-local.h
++++ b/include/netlink-local.h
+@@ -26,6 +26,7 @@
+ #include <sys/socket.h>
+ #include <inttypes.h>
+ #include <assert.h>
++#include <limits.h>
+ 
+ #include <arpa/inet.h>
+ #include <netdb.h>
+diff --git a/libnl-1.pc b/libnl-1.pc
+index 282d4c5..24f8c02 100644
+--- a/libnl-1.pc
++++ b/libnl-1.pc
+@@ -1,7 +1,7 @@
+ prefix=/usr
+-exec_prefix=${prefix}
++exec_prefix=/usr
+ libdir=${exec_prefix}/lib
+-includedir=${prefix}/include
++includedir=/usr/include
+ 
+ Name: libnl
+ Description: Convenience library for netlink sockets
+-- 
+1.7.0.4
+
