@@ -12,6 +12,13 @@ do_debug_tcpdump_extract() {
 
 do_debug_tcpdump_build() {
     CT_DoStep EXTRA "Installing cross tcpdump"
+
+    CT_Pushd "${CT_SRC_DIR}/tcpdump-${CT_TCPDUMP_VERSION}"
+    CT_DoExecLog CFG                                            \
+    ACLOCAL="aclocal -I ${CT_SYSROOT_DIR}/usr/share/aclocal -I ${CT_PREFIX_DIR}/share/aclocal" \
+    autoreconf -fiv
+    CT_Popd
+
     mkdir -p "${CT_BUILD_DIR}/build-tcpdump-cross"
     CT_Pushd "${CT_BUILD_DIR}/build-tcpdump-cross"
     
@@ -39,7 +46,6 @@ do_debug_tcpdump_build() {
     cp ../../config.cache .
     CT_DoExecLog CFG \
     PKG_CONFIG="${CT_TARGET}-pkg-config --define-variable=prefix=${CT_SYSROOT_DIR}/usr" \
-    PCAP_CONFIG="${CT_SYSROOT_DIR}/usr/bin/pcap-config"         \
     CFLAGS="-g -Os -fPIC -DPIC"                                 \
     CXXFLAGS="-g -Os -fPIC -DPIC"                               \
     "${CT_SRC_DIR}/tcpdump-${CT_TCPDUMP_VERSION}/configure"     \

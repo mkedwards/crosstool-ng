@@ -1,0 +1,25 @@
+From 5c3e6b8493f60e9ded63af29ce5cb9b35aec5a52 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Wed, 25 May 2011 04:00:59 +0000
+Subject: [PATCH] fix typo in CPPFLAGS in configure.in
+
+---
+ configure.in |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/configure.in b/configure.in
+index eb3e5e8..144c0d9 100644
+--- a/configure.in
++++ b/configure.in
+@@ -731,7 +731,7 @@ if test $ac_cv_func_pcap_findalldevs = "yes" ; then
+ dnl Check for Mac OS X, which may ship pcap.h from 0.6 but libpcap may
+ dnl be 0.8; this means that lib has pcap_findalldevs but header doesn't
+ dnl have pcap_if_t.
+-    savedppflags="$CPPLAGS"
++    savedcppflags="$CPPFLAGS"
+     CPPFLAGS="$CPPFLAGS $V_INCLS"
+     AC_CHECK_TYPES(pcap_if_t, , , [#include <pcap.h>])
+     CPPFLAGS="$savedcppflags"
+-- 
+1.7.0.4
+

@@ -35,6 +35,7 @@ do_cross_me_harder_libpcap_build() {
     make                                                        \
             INCLS="-I. -I${CT_PREFIX_DIR}/include"              \
             install
+    rm -f "${CT_PREFIX_DIR}/bin/pcap-config"
     CT_Popd
     CT_EndStep
 
@@ -62,6 +63,7 @@ do_cross_me_harder_libpcap_build() {
             --with-libnl
     CT_DoExecLog ALL make
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
+    rm -f "${CT_SYSROOT_DIR}/usr/bin/pcap-config"
     CT_Popd
     CT_EndStep
 }

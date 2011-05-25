@@ -29,7 +29,7 @@ do_debug_tar_build() {
         --localstatedir=/var                                    \
         --mandir=/usr/share/man                                 \
         --infodir=/usr/share/info                               \
-        --prefix=/usr                                           \
+        --prefix=                                               \
         --disable-largefile
 
     CT_DoLog EXTRA "Building tar"
