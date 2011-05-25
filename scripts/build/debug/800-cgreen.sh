@@ -39,7 +39,7 @@ do_debug_cgreen_build() {
         --localstatedir=/var                                    \
         --mandir=/usr/share/man                                 \
         --infodir=/usr/share/info                               \
-        --prefix=/usr
+        --prefix=/usr/preen
 
     CT_DoLog EXTRA "Building cgreen"
     CT_DoExecLog ALL make

@@ -34,7 +34,7 @@ do_debug_gmock_build() {
         --localstatedir=/var                                    \
         --mandir=/usr/share/man                                 \
         --infodir=/usr/share/info                               \
-        --prefix=/usr                                           \
+        --prefix=/usr/preen                                     \
         --enable-tls
 
     CT_DoLog EXTRA "Building gmock"

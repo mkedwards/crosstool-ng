@@ -29,7 +29,7 @@ do_debug_tar_build() {
         --localstatedir=/var                                    \
         --mandir=/usr/share/man                                 \
         --infodir=/usr/share/info                               \
-        --prefix=                                               \
+        --prefix=/usr                                           \
         --disable-largefile
 
     CT_DoLog EXTRA "Building tar"
@@ -37,6 +37,9 @@ do_debug_tar_build() {
 
     CT_DoLog EXTRA "Installing tar"
     CT_DoExecLog ALL make DESTDIR="${CT_DEBUGROOT_DIR}" install
+    # move tar to /bin to match where busybox puts its link
+    mkdir -p "${CT_DEBUGROOT_DIR}/bin"
+    mv "${CT_DEBUGROOT_DIR}/usr/bin/tar" "${CT_DEBUGROOT_DIR}/bin/tar"
 
     CT_Popd
     CT_EndStep
