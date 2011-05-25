@@ -39,6 +39,7 @@ do_debug_tcpdump_build() {
     cp ../../config.cache .
     CT_DoExecLog CFG \
     PKG_CONFIG="${CT_TARGET}-pkg-config --define-variable=prefix=${CT_SYSROOT_DIR}/usr" \
+    PCAP_CONFIG="${CT_SYSROOT_DIR}/usr/bin/pcap-config"         \
     CFLAGS="-g -Os -fPIC -DPIC"                                 \
     CXXFLAGS="-g -Os -fPIC -DPIC"                               \
     "${CT_SRC_DIR}/tcpdump-${CT_TCPDUMP_VERSION}/configure"     \
