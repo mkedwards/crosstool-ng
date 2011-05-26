@@ -1,0 +1,21 @@
+# libusb
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "libusb version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LIBUSB_V_1_0_8
+    bool
+    prompt "1.0.8 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config LIBUSB_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.0.8" if LIBUSB_V_1_0_8

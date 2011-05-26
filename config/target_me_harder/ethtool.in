@@ -1,0 +1,21 @@
+# ethtool
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "ethtool version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config ETHTOOL_V_2_6_36
+    bool
+    prompt "2.6.36 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config ETHTOOL_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "2.6.36" if ETHTOOL_V_2_6_36

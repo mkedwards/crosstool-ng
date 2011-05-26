@@ -1,0 +1,21 @@
+# usbutils
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "usbutils version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config USBUTILS_V_002
+    bool
+    prompt "002 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config USBUTILS_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "002" if USBUTILS_V_002

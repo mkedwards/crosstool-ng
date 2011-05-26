@@ -55,13 +55,13 @@ do_xmlrpcpp_target() {
 
     CT_DoLog EXTRA "Building xmlrpcpp"
     CT_DoExecLog ALL make                                       \
-    CXX="${CT_HOST}-g++"                                        \
+    CXX="${CT_TARGET}-g++"                                      \
     prefix=/usr                                                 \
     all
 
     CT_DoLog EXTRA "Installing xmlrpcpp"
     CT_DoExecLog ALL make                                       \
-    CXX="${CT_HOST}-g++"                                        \
+    CXX="${CT_TARGET}-g++"                                      \
     prefix=/usr                                                 \
     DESTDIR="${CT_SYSROOT_DIR}"                                 \
     install

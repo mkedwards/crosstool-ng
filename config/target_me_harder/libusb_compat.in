@@ -1,0 +1,21 @@
+# libusb-compat
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "libusb-compat version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LIBUSB_COMPAT_V_0_1_3
+    bool
+    prompt "0.1.3 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config LIBUSB_COMPAT_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "0.1.3" if LIBUSB_COMPAT_V_0_1_3
