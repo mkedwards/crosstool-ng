@@ -29,7 +29,11 @@ do_target_me_harder_usbutils_build() {
         --infodir=/usr/share/info                               \
         --prefix=/usr
     CT_DoExecLog ALL make
-    CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
+    CT_DoExecLog ALL make \
+        DESTDIR="${CT_SYSROOT_DIR}"                             \
+        pkgconfigdir=/usr/lib/pkgconfig                         \
+        shared_pkgconfigdir=/usr/lib/pkgconfig                  \
+        install
     CT_Popd
     CT_EndStep
 }

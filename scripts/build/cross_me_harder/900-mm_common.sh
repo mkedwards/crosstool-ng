@@ -21,7 +21,11 @@ do_cross_me_harder_mm_common_build() {
             --target=${CT_TARGET}                               \
             --prefix="${CT_PREFIX_DIR}"
     CT_DoExecLog ALL make
-    CT_DoExecLog ALL make install
+    CT_DoExecLog ALL make \
+        DESTDIR="${CT_SYSROOT_DIR}"                             \
+        pkgconfigdir="${CT_PREFIX_DIR}"/lib/pkgconfig           \
+        shared_pkgconfigdir="${CT_PREFIX_DIR}"/lib/pkgconfig    \
+        install
     CT_Popd
     CT_EndStep
 
@@ -44,7 +48,11 @@ do_cross_me_harder_mm_common_build() {
         --infodir=/usr/share/info                               \
         --prefix=/usr
     CT_DoExecLog ALL make
-    CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
+    CT_DoExecLog ALL make \
+        DESTDIR="${CT_SYSROOT_DIR}"                             \
+        pkgconfigdir=/usr/lib/pkgconfig                         \
+        shared_pkgconfigdir=/usr/lib/pkgconfig                  \
+        install
     CT_Popd
     CT_EndStep
 }
