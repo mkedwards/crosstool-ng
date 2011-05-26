@@ -1,0 +1,21 @@
+# net-tools
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "net-tools version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config NET_TOOLS_V_1_60
+    bool
+    prompt "1.60 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config NET_TOOLS_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.60" if NET_TOOLS_V_1_60

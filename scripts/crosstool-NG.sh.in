@@ -151,6 +151,7 @@ CT_DoLog INFO "Building environment variables"
 . "${CT_LIB_DIR}/scripts/build/binutils/sstrip.sh"
 . "${CT_LIB_DIR}/scripts/build/libc/${CT_LIBC}.sh"
 . "${CT_LIB_DIR}/scripts/build/cc/${CT_CC}.sh"
+. "${CT_LIB_DIR}/scripts/build/target_me_harder.sh"
 . "${CT_LIB_DIR}/scripts/build/cross_me_harder.sh"
 . "${CT_LIB_DIR}/scripts/build/debug.sh"
 . "${CT_LIB_DIR}/scripts/build/test_suite.sh"
@@ -563,6 +564,7 @@ if [ -z "${CT_RESTART}" ]; then
         do_sstrip_get
         do_cc_get
         do_libc_get
+        do_target_me_harder_get
         do_cross_me_harder_get
         do_debug_get
         do_test_suite_get
@@ -606,6 +608,7 @@ if [ -z "${CT_RESTART}" ]; then
         do_sstrip_extract
         do_cc_extract
         do_libc_extract
+        do_target_me_harder_extract
         do_cross_me_harder_extract
         do_debug_extract
         do_test_suite_extract

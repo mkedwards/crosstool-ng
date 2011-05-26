@@ -57,6 +57,7 @@ CT_STEPS := libc_check_config   \
             acl_target          \
             xmlrpcpp_target     \
             binutils_target     \
+            target_me_harder    \
             cross_me_harder     \
             debug               \
             test_suite          \
