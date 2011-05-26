@@ -12,7 +12,8 @@ do_target_me_harder_pciutils_extract() {
 
 do_target_me_harder_pciutils_build() {
     CT_DoStep EXTRA "Installing target pciutils"
-    mkdir -p "${CT_BUILD_DIR}/build-pciutils-target"
+    rm -rf "${CT_BUILD_DIR}/build-pciutils-target"
+    cp -a "${CT_SRC_DIR}/pciutils-${CT_PCIUTILS_VERSION}" "${CT_BUILD_DIR}/build-pciutils-target"
     CT_Pushd "${CT_BUILD_DIR}/build-pciutils-target"
     
     CT_DoExecLog ALL make \
