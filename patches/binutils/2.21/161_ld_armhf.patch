@@ -1,0 +1,41 @@
+# DP: Add support for arm-*-gnueabihf targets.
+
+2011-04-08  Hector Oron  <hector.oron@gmail.com>
+
+	PR ld/12643
+	* configure.tgt: Add support for arm-*-gnueabihf targets.
+
+===================================================================
+RCS file: /cvs/src/src/ld/configure.tgt,v
+retrieving revision 1.244
+retrieving revision 1.245
+diff -u -r1.244 -r1.245
+--- src/ld/configure.tgt	2011/04/07 01:19:22	1.244
++++ src/ld/configure.tgt	2011/04/08 16:05:12	1.245
+@@ -71,7 +71,7 @@
+ arm*-*-symbianelf*)     targ_emul=armsymbian;;
+ arm-*-kaos*)		targ_emul=armelf ;;
+ arm9e-*-elf)		targ_emul=armelf ;;
+-arm*b-*-linux-*eabi)	targ_emul=armelfb_linux_eabi
++arm*b-*-linux-*eabi*)	targ_emul=armelfb_linux_eabi
+ 			targ_extra_emuls=armelf_linux_eabi
+ 			targ_extra_libpath=$targ_extra_emuls
+ 			;;
+@@ -79,7 +79,7 @@
+ 			targ_extra_emuls="armelfb armelf armelf_linux"
+ 			targ_extra_libpath="armelf_linux"
+ 			;;
+-arm*-*-linux-*eabi)	targ_emul=armelf_linux_eabi
++arm*-*-linux-*eabi*)	targ_emul=armelf_linux_eabi
+ 			targ_extra_emuls=armelfb_linux_eabi
+ 			targ_extra_libpath=$targ_extra_emuls
+ 			;;
+@@ -87,7 +87,7 @@
+ 			targ_extra_emuls="armelf armelfb armelfb_linux"
+ 			targ_extra_libpath="armelfb_linux"
+ 			;;
+-arm*-*-uclinux*eabi)	targ_emul=armelf_linux_eabi
++arm*-*-uclinux*eabi*)	targ_emul=armelf_linux_eabi
+ 			targ_extra_emuls=armelfb_linux_eabi
+ 			targ_extra_libpath=$targ_extra_emuls
+ 			;;

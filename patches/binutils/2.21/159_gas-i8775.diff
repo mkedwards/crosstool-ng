@@ -1,0 +1,91 @@
+# DP: Fix assembler bug blocking Thumb-2 kernel builds (CS issue #8775).
+
+2010-06-02  Paul Brook  <paul@codesourcery.com>
+
+	Issue #8775 - PC relative LDR from global symbol.
+	gas/
+	* config/tc-arm.c (arm_force_relocation): Resolve all pc-relative
+	loads.
+
+	gas/testsuite/
+	* gas/arm/ldr-global.d: New test.
+	* gas/arm/ldr-global.s: New test.
+
+Index: binutils-2.21.0.20110216/gas/testsuite/gas/arm/ldr-global.d
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ binutils-2.21.0.20110216/gas/testsuite/gas/arm/ldr-global.d	2011-02-16 18:25:14.528229049 +0000
+@@ -0,0 +1,14 @@
++#objdump: -dr --prefix-addresses --show-raw-insn
++#name: PC-relative LDR from global
++
++.*: +file format .*arm.*
++
++Disassembly of section .text:
++0+00 <[^>]*> e59f0010 ?	ldr	r0, \[pc, #16\]	; 0+18 <[^>]*>
++0+04 <[^>]*> e1df00fc ?	ldrsh	r0, \[pc, #12\]	; 0+18 <[^>]*>
++0+08 <[^>]*> ed9f0a02 ?	vldr	s0, \[pc, #8\]	; 0+18 <[^>]*>
++0+0c <[^>]*> 4802      ?	ldr	r0, \[pc, #8\]	; \(0+18 <[^>]*>\)
++0+0e <[^>]*> 4802      ?	ldr	r0, \[pc, #8\]	; \(0+18 <[^>]*>\)
++0+10 <[^>]*> ed9f 0a01 ?	vldr	s0, \[pc, #4\]	; 0+18 <[^>]*>
++0+14 <[^>]*> f8df 0000 ?	ldr\.w	r0, \[pc\]	; 0+18 <[^>]*>
++#...
+Index: binutils-2.21.0.20110216/gas/testsuite/gas/arm/ldr-global.s
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ binutils-2.21.0.20110216/gas/testsuite/gas/arm/ldr-global.s	2011-02-16 18:25:14.528229049 +0000
+@@ -0,0 +1,22 @@
++@ Test pc-relative loads from global objects defined in the same text segment.
++@ See tc-arm.c:arm_force_relocation.
++.arch armv7-a
++.fpu vfp
++.syntax unified
++.text
++foo_arm:
++  ldr r0, bar
++  ldrsh r0, bar
++  vldr s0, bar
++.thumb
++foo_thumb:
++  ldr r0, bar
++  ldr.n r0, bar
++  vldr s0, bar
++  ldr.w r0, bar
++  
++.align 2
++.globl bar
++bar:
++  .word 42
++
+Index: binutils-2.21.0.20110216/gas/config/tc-arm.c
+===================================================================
+--- binutils-2.21.0.20110216.orig/gas/config/tc-arm.c	2011-02-16 18:23:21.728228999 +0000
++++ binutils-2.21.0.20110216/gas/config/tc-arm.c	2011-02-16 18:25:14.538229024 +0000
+@@ -21675,14 +21675,25 @@
+     }
+ #endif
+ 
+-  /* Resolve these relocations even if the symbol is extern or weak.  */
++  /* Resolve these relocations even if the symbol is extern or weak.
++     Technically this is probably wrong due to symbol preemption.
++     In practice these relocations do not have enough range to be useful
++     at dynamic link time, and some code (e.g. in the Linux kernel)
++     expects these references to be resolved.  */
+   if (fixp->fx_r_type == BFD_RELOC_ARM_IMMEDIATE
+       || fixp->fx_r_type == BFD_RELOC_ARM_OFFSET_IMM
++      || fixp->fx_r_type == BFD_RELOC_ARM_OFFSET_IMM8
+       || fixp->fx_r_type == BFD_RELOC_ARM_ADRL_IMMEDIATE
++      || fixp->fx_r_type == BFD_RELOC_ARM_CP_OFF_IMM
++      || fixp->fx_r_type == BFD_RELOC_ARM_CP_OFF_IMM_S2
++      || fixp->fx_r_type == BFD_RELOC_ARM_THUMB_OFFSET
+       || fixp->fx_r_type == BFD_RELOC_ARM_T32_ADD_IMM
+       || fixp->fx_r_type == BFD_RELOC_ARM_T32_IMMEDIATE
+       || fixp->fx_r_type == BFD_RELOC_ARM_T32_IMM12
+-      || fixp->fx_r_type == BFD_RELOC_ARM_T32_ADD_PC12)
++      || fixp->fx_r_type == BFD_RELOC_ARM_T32_OFFSET_IMM
++      || fixp->fx_r_type == BFD_RELOC_ARM_T32_ADD_PC12
++      || fixp->fx_r_type == BFD_RELOC_ARM_T32_CP_OFF_IMM
++      || fixp->fx_r_type == BFD_RELOC_ARM_T32_CP_OFF_IMM_S2)
+     return 0;
+ 
+   /* Always leave these relocations for the linker.  */

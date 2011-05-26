@@ -1,0 +1,48 @@
+Description: elf.c (assign_section_numbers): Check if number of sections
+Description: >= SHN_LORESERVE.
+Description: elfcode.h (elf_object_p): Likewise.
+Author: H.J. Lu  <hongjiu.lu@intel.com>
+Upstream status: hjl 2.18.50.0.5
+Original patch: bfd-64k-2.patch
+
+2008-03-12  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* elf.c (assign_section_numbers): Check if number of sections
+	>= SHN_LORESERVE.
+	* elfcode.h (elf_object_p): Likewise.
+
+--- a/bfd/elf.c
++++ b/bfd/elf.c
+@@ -2919,6 +2919,13 @@
+       _bfd_elf_strtab_addref (elf_shstrtab (abfd), t->strtab_hdr.sh_name);
+     }
+ 
++  if (section_number >= SHN_LORESERVE)
++    {
++      _bfd_error_handler (_("%B: too many sections: %u"),
++			  abfd, section_number);
++      return FALSE;
++    }
++
+   _bfd_elf_strtab_finalize (elf_shstrtab (abfd));
+   t->shstrtab_hdr.sh_size = _bfd_elf_strtab_size (elf_shstrtab (abfd));
+ 
+--- a/bfd/elfcode.h
++++ b/bfd/elfcode.h
+@@ -692,8 +692,14 @@
+       if (i_ehdrp->e_shnum == SHN_UNDEF)
+ 	{
+ 	  i_ehdrp->e_shnum = i_shdr.sh_size;
+-	  if (i_ehdrp->e_shnum != i_shdr.sh_size
+-	      || i_ehdrp->e_shnum == 0)
++	  if (i_ehdrp->e_shnum >= SHN_LORESERVE)
++	    {
++	      _bfd_error_handler (_("%B: too many sections: %u"),
++				  abfd, i_ehdrp->e_shnum);
++	      abort ();
++	    }
++	  else if (i_ehdrp->e_shnum != i_shdr.sh_size
++		   || i_ehdrp->e_shnum  == 0)
+ 	    goto got_wrong_format_error;
+ 	}
+ 

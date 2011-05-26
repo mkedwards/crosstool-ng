@@ -1,0 +1,47 @@
+Author: 
+Description: Description: Fix bfd version handling for extra builds
+
+Index: binutils-2.21.0.20110216/bfd/Makefile.am
+===================================================================
+--- binutils-2.21.0.20110216.orig/bfd/Makefile.am	2011-02-01 12:25:32.000000000 +0000
++++ binutils-2.21.0.20110216/bfd/Makefile.am	2011-02-16 18:28:14.568229030 +0000
+@@ -948,14 +948,14 @@
+ 
+ bfdver.h: $(srcdir)/version.h $(srcdir)/Makefile.in
+ 	@echo "creating $@"
+-	@bfd_version=`echo "$(VERSION)" | sed -e 's/\([^\.]*\)\.*\([^\.]*\)\.*\([^\.]*\)\.*\([^\.]*\)\.*\([^\.]*\).*/\1.00\2.00\3.00\4.00\5/' -e 's/\([^\.]*\)\..*\(..\)\..*\(..\)\..*\(..\)\..*\(..\)$$/\1\2\3\4\5/'` ;\
+-	bfd_version_string="\"$(VERSION)\"" ;\
++	@bfd_version=`echo "$(VERSION)" | sed -e 's/-.*$$//' | sed -e 's/\([^\.]*\)\.*\([^\.]*\)\.*\([^\.]*\)\.*\([^\.]*\)\.*\([^\.]*\).*/\1.00\2.00\3.00\4.00\5/' -e 's/\([^\.]*\)\..*\(..\)\..*\(..\)\..*\(..\)\..*\(..\)$$/\1\2\3\4\5/'` ;\
++	bfd_version_string="\"`echo $(VERSION) | sed -e 's/-.*$$//'`\"" ;\
+ 	bfd_soversion="$(VERSION)" ;\
+ 	bfd_version_package="\"$(PKGVERSION)\"" ;\
+ 	report_bugs_to="\"$(REPORT_BUGS_TO)\"" ;\
+ 	if test "x$(RELEASE)" = x ; then \
+ 	  bfd_version_date=`sed -n -e 's/.*DATE //p' < $(srcdir)/version.h` ;\
+-	  bfd_version_string="\"$(VERSION).$${bfd_version_date}\"" ;\
++	  bfd_version_string="\"`echo $(VERSION) | sed -e 's/-.*$$//'`.$${bfd_version_date}\"" ;\
+ 	  bfd_soversion="$(VERSION).$${bfd_version_date}" ;\
+ 	fi ;\
+ 	sed -e "s,@bfd_version@,$$bfd_version," \
+Index: binutils-2.21.0.20110216/bfd/Makefile.in
+===================================================================
+--- binutils-2.21.0.20110216.orig/bfd/Makefile.in	2011-02-01 12:25:32.000000000 +0000
++++ binutils-2.21.0.20110216/bfd/Makefile.in	2011-02-16 18:28:34.248228995 +0000
+@@ -1980,14 +1980,14 @@
+ 
+ bfdver.h: $(srcdir)/version.h $(srcdir)/Makefile.in
+ 	@echo "creating $@"
+-	@bfd_version=`echo "$(VERSION)" | sed -e 's/\([^\.]*\)\.*\([^\.]*\)\.*\([^\.]*\)\.*\([^\.]*\)\.*\([^\.]*\).*/\1.00\2.00\3.00\4.00\5/' -e 's/\([^\.]*\)\..*\(..\)\..*\(..\)\..*\(..\)\..*\(..\)$$/\1\2\3\4\5/'` ;\
+-	bfd_version_string="\"$(VERSION)\"" ;\
++	@bfd_version=`echo "$(VERSION)" | sed -e 's/-.*$$//' | sed -e 's/\([^\.]*\)\.*\([^\.]*\)\.*\([^\.]*\)\.*\([^\.]*\)\.*\([^\.]*\).*/\1.00\2.00\3.00\4.00\5/' -e 's/\([^\.]*\)\..*\(..\)\..*\(..\)\..*\(..\)\..*\(..\)$$/\1\2\3\4\5/'` ;\
++	bfd_version_string="\"`echo $(VERSION) | sed -e 's/-.*$$//'`\"" ;\
+ 	bfd_soversion="$(VERSION)" ;\
+ 	bfd_version_package="\"$(PKGVERSION)\"" ;\
+ 	report_bugs_to="\"$(REPORT_BUGS_TO)\"" ;\
+ 	if test "x$(RELEASE)" = x ; then \
+ 	  bfd_version_date=`sed -n -e 's/.*DATE //p' < $(srcdir)/version.h` ;\
+-	  bfd_version_string="\"$(VERSION).$${bfd_version_date}\"" ;\
++	  bfd_version_string="\"`echo $(VERSION) | sed -e 's/-.*$$//'`.$${bfd_version_date}\"" ;\
+ 	  bfd_soversion="$(VERSION).$${bfd_version_date}" ;\
+ 	fi ;\
+ 	sed -e "s,@bfd_version@,$$bfd_version," \

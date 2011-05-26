@@ -1,0 +1,311 @@
+# DP: Cortex A8 workarounds for PLT tail calls
+
+bfd/
+	* elf32-arm.c (cortex_a8_erratum_scan): If the stub is a Thumb
+	branch to a PLT entry, redirect it to the PLT's Thumb entry point.
+
+ld/testsuite/
+	* ld-arm/cortex-a8-fix-b-plt.s, ld-arm/cortex-a8-fix-b-plt.d,
+	ld-arm/cortex-a8-fix-bcc-plt.s, ld-arm/cortex-a8-fix-bcc-plt.d,
+	ld-arm/cortex-a8-fix-bl-plt.s, ld-arm/cortex-a8-fix-bl-plt.d,
+	ld-arm/cortex-a8-fix-blx-plt.s, ld-arm/cortex-a8-fix-blx-plt.d,
+	ld-arm/cortex-a8-fix-plt.ld: New tests.
+	* ld-arm/arm-elf.exp: Run them.
+
+Index: bfd/elf32-arm.c
+===================================================================
+--- ./bfd/elf32-arm.c	2011-04-11 16:23:04.000000000 +0100
++++ ./bfd/elf32-arm.c	2011-04-12 09:22:06.000000000 +0100
+@@ -4556,6 +4556,7 @@ cortex_a8_erratum_scan (bfd *input_bfd,
+                   bfd_vma target;
+                   enum elf32_arm_stub_type stub_type = arm_stub_none;
+                   struct a8_erratum_reloc key, *found;
++                  bfd_boolean use_plt = FALSE;
+ 
+                   key.from = base_vma + i;
+                   found = (struct a8_erratum_reloc *)
+@@ -4567,7 +4568,6 @@ cortex_a8_erratum_scan (bfd *input_bfd,
+ 		    {
+ 		      char *error_message = NULL;
+ 		      struct elf_link_hash_entry *entry;
+-		      bfd_boolean use_plt = FALSE;
+ 
+ 		      /* We don't care about the error returned from this
+ 		         function, only if there is glue or not.  */
+@@ -4671,6 +4671,12 @@ cortex_a8_erratum_scan (bfd *input_bfd,
+                         offset =
+ 			  (bfd_signed_vma) (found->destination - pc_for_insn);
+ 
++                      /* If the stub will use a Thumb-mode branch to a
++                         PLT target, redirect it to the preceding Thumb
++                         entry point.  */
++                      if (stub_type != arm_stub_a8_veneer_blx && use_plt)
++                        offset -= PLT_THUMB_STUB_SIZE;
++
+                       target = pc_for_insn + offset;
+ 
+                       /* The BLX stub is ARM-mode code.  Adjust the offset to
+Index: ld/testsuite/ld-arm/cortex-a8-fix-b-plt.s
+===================================================================
+--- /dev/null	2011-03-23 08:42:11.268792848 +0000
++++ ./ld/testsuite/ld-arm/cortex-a8-fix-b-plt.s	2011-04-11 16:23:18.000000000 +0100
+@@ -0,0 +1,10 @@
++	.syntax	unified
++	.globl	foo
++	.type	foo,%function
++	.thumb_func
++foo:
++	nop			@ 0x00
++	movw	r0,#0		@ 0x02
++	movw	r0,#0		@ 0x06
++	movw	r0,#0		@ 0x0a
++	b.w	bar(PLT)	@ 0x0e
+Index: ld/testsuite/ld-arm/cortex-a8-fix-b-plt.d
+===================================================================
+--- /dev/null	2011-03-23 08:42:11.268792848 +0000
++++ ./ld/testsuite/ld-arm/cortex-a8-fix-b-plt.d	2011-04-11 16:23:18.000000000 +0100
+@@ -0,0 +1,30 @@
++
++.*
++
++
++Disassembly of section \.plt:
++
++00008000 <\.plt>:
++    8000:	e52de004 	push	{lr}		; \(str lr, \[sp, #-4\]!\)
++    8004:	e59fe004 	ldr	lr, \[pc, #4\]	; 8010 <foo-0xfe0>
++    8008:	e08fe00e 	add	lr, pc, lr
++    800c:	e5bef008 	ldr	pc, \[lr, #8\]!
++    8010:	00000ffc 	\.word	0x00000ffc
++    8014:	4778      	bx	pc
++    8016:	46c0      	nop			; \(mov r8, r8\)
++    8018:	e28fc600 	add	ip, pc, #0
++    801c:	e28cca00 	add	ip, ip, #0
++    8020:	e5bcfff8 	ldr	pc, \[ip, #4088\]!	; 0xff8
++
++Disassembly of section \.text:
++
++00008ff0 <foo>:
++    8ff0:	46c0      	nop			; \(mov r8, r8\)
++    8ff2:	f240 0000 	movw	r0, #0
++    8ff6:	f240 0000 	movw	r0, #0
++    8ffa:	f240 0000 	movw	r0, #0
++    8ffe:	f000 b803 	b\.w	9008 <foo\+0x18>
++    9002:	0000      	movs	r0, r0
++    9004:	0000      	movs	r0, r0
++    9006:	0000      	movs	r0, r0
++    9008:	f7ff b804 	b\.w	8014 <foo-0xfdc>
+Index: ld/testsuite/ld-arm/cortex-a8-fix-bcc-plt.s
+===================================================================
+--- /dev/null	2011-03-23 08:42:11.268792848 +0000
++++ ./ld/testsuite/ld-arm/cortex-a8-fix-bcc-plt.s	2011-04-11 16:23:18.000000000 +0100
+@@ -0,0 +1,10 @@
++	.syntax	unified
++	.globl	foo
++	.type	foo,%function
++	.thumb_func
++foo:
++	nop			@ 0x00
++	movw	r0,#0		@ 0x02
++	movw	r0,#0		@ 0x06
++	movw	r0,#0		@ 0x0a
++	beq.w	bar(PLT)	@ 0x0e
+Index: ld/testsuite/ld-arm/cortex-a8-fix-bcc-plt.d
+===================================================================
+--- /dev/null	2011-03-23 08:42:11.268792848 +0000
++++ ./ld/testsuite/ld-arm/cortex-a8-fix-bcc-plt.d	2011-04-11 16:23:18.000000000 +0100
+@@ -0,0 +1,32 @@
++
++.*
++
++
++Disassembly of section \.plt:
++
++00008000 <\.plt>:
++    8000:	e52de004 	push	{lr}		; \(str lr, \[sp, #-4\]!\)
++    8004:	e59fe004 	ldr	lr, \[pc, #4\]	; 8010 <foo-0xfe0>
++    8008:	e08fe00e 	add	lr, pc, lr
++    800c:	e5bef008 	ldr	pc, \[lr, #8\]!
++    8010:	00001004 	\.word	0x00001004
++    8014:	4778      	bx	pc
++    8016:	46c0      	nop			; \(mov r8, r8\)
++    8018:	e28fc600 	add	ip, pc, #0
++    801c:	e28cca01 	add	ip, ip, #4096	; 0x1000
++    8020:	e5bcf000 	ldr	pc, \[ip\]!
++
++Disassembly of section \.text:
++
++00008ff0 <foo>:
++    8ff0:	46c0      	nop			; \(mov r8, r8\)
++    8ff2:	f240 0000 	movw	r0, #0
++    8ff6:	f240 0000 	movw	r0, #0
++    8ffa:	f240 0000 	movw	r0, #0
++    8ffe:	f000 b803 	b\.w	9008 <foo\+0x18>
++    9002:	0000      	movs	r0, r0
++    9004:	0000      	movs	r0, r0
++    9006:	0000      	movs	r0, r0
++    9008:	d001      	beq\.n	900e <foo\+0x1e>
++    900a:	f7ff bffa 	b\.w	9002 <foo\+0x12>
++    900e:	f7ff b801 	b\.w	8014 <foo-0xfdc>
+Index: ld/testsuite/ld-arm/cortex-a8-fix-bl-plt.s
+===================================================================
+--- /dev/null	2011-03-23 08:42:11.268792848 +0000
++++ ./ld/testsuite/ld-arm/cortex-a8-fix-bl-plt.s	2011-04-11 16:23:18.000000000 +0100
+@@ -0,0 +1,10 @@
++	.syntax	unified
++	.globl	foo
++	.type	foo,%function
++	.thumb_func
++foo:
++	nop			@ 0x00
++	movw	r0,#0		@ 0x02
++	movw	r0,#0		@ 0x06
++	movw	r0,#0		@ 0x0a
++	bl	bar(PLT)	@ 0x0e
+Index: ld/testsuite/ld-arm/cortex-a8-fix-bl-plt.d
+===================================================================
+--- /dev/null	2011-03-23 08:42:11.268792848 +0000
++++ ./ld/testsuite/ld-arm/cortex-a8-fix-bl-plt.d	2011-04-11 16:23:18.000000000 +0100
+@@ -0,0 +1,28 @@
++
++.*
++
++
++Disassembly of section \.plt:
++
++00008000 <\.plt>:
++    8000:	e52de004 	push	{lr}		; \(str lr, \[sp, #-4\]!\)
++    8004:	e59fe004 	ldr	lr, \[pc, #4\]	; 8010 <foo-0xfe0>
++    8008:	e08fe00e 	add	lr, pc, lr
++    800c:	e5bef008 	ldr	pc, \[lr, #8\]!
++    8010:	00000ffc 	\.word	0x00000ffc
++    8014:	e28fc600 	add	ip, pc, #0
++    8018:	e28cca00 	add	ip, ip, #0
++    801c:	e5bcfffc 	ldr	pc, \[ip, #4092\]!	; 0xffc
++
++Disassembly of section \.text:
++
++00008ff0 <foo>:
++    8ff0:	46c0      	nop			; \(mov r8, r8\)
++    8ff2:	f240 0000 	movw	r0, #0
++    8ff6:	f240 0000 	movw	r0, #0
++    8ffa:	f240 0000 	movw	r0, #0
++    8ffe:	f000 e804 	blx	9008 <foo\+0x18>
++    9002:	0000      	movs	r0, r0
++    9004:	0000      	movs	r0, r0
++    9006:	0000      	movs	r0, r0
++    9008:	eafffc01 	b	8014 <foo-0xfdc>
+Index: ld/testsuite/ld-arm/cortex-a8-fix-blx-plt.s
+===================================================================
+--- /dev/null	2011-03-23 08:42:11.268792848 +0000
++++ ./ld/testsuite/ld-arm/cortex-a8-fix-blx-plt.s	2011-04-11 16:23:18.000000000 +0100
+@@ -0,0 +1,10 @@
++	.syntax	unified
++	.globl	foo
++	.type	foo,%function
++	.thumb_func
++foo:
++	nop			@ 0x00
++	movw	r0,#0		@ 0x02
++	movw	r0,#0		@ 0x06
++	movw	r0,#0		@ 0x0a
++	blx	bar		@ 0x0e
+Index: ld/testsuite/ld-arm/cortex-a8-fix-blx-plt.d
+===================================================================
+--- /dev/null	2011-03-23 08:42:11.268792848 +0000
++++ ./ld/testsuite/ld-arm/cortex-a8-fix-blx-plt.d	2011-04-11 16:23:18.000000000 +0100
+@@ -0,0 +1,28 @@
++
++.*
++
++
++Disassembly of section \.plt:
++
++00008000 <\.plt>:
++    8000:	e52de004 	push	{lr}		; \(str lr, \[sp, #-4\]!\)
++    8004:	e59fe004 	ldr	lr, \[pc, #4\]	; 8010 <foo-0xfe0>
++    8008:	e08fe00e 	add	lr, pc, lr
++    800c:	e5bef008 	ldr	pc, \[lr, #8\]!
++    8010:	00000ffc 	\.word	0x00000ffc
++    8014:	e28fc600 	add	ip, pc, #0
++    8018:	e28cca00 	add	ip, ip, #0
++    801c:	e5bcfffc 	ldr	pc, \[ip, #4092\]!	; 0xffc
++
++Disassembly of section \.text:
++
++00008ff0 <foo>:
++    8ff0:	46c0      	nop			; \(mov r8, r8\)
++    8ff2:	f240 0000 	movw	r0, #0
++    8ff6:	f240 0000 	movw	r0, #0
++    8ffa:	f240 0000 	movw	r0, #0
++    8ffe:	f000 e804 	blx	9008 <foo\+0x18>
++    9002:	0000      	movs	r0, r0
++    9004:	0000      	movs	r0, r0
++    9006:	0000      	movs	r0, r0
++    9008:	eafffc01 	b	8014 <foo-0xfdc>
+Index: ld/testsuite/ld-arm/cortex-a8-fix-plt.ld
+===================================================================
+--- /dev/null	2011-03-23 08:42:11.268792848 +0000
++++ ./ld/testsuite/ld-arm/cortex-a8-fix-plt.ld	2011-04-11 16:23:18.000000000 +0100
+@@ -0,0 +1,18 @@
++OUTPUT_ARCH(arm)
++ENTRY(_start)
++SECTIONS
++{
++  . = 0x07000;
++  .hash : { *(.hash) }
++  .gnu.hash : { *(.gnu.hash) }
++  .dynsym : { *(.dynsym) }
++  .dynstr : { *(.dynstr) }
++  .rel.dyn : { *(.rel.dyn) }
++  .rel.plt : { *(.rel.plt) }
++  . = 0x08000;
++  .plt : { *(.plt) }
++  . = 0x08ff0;
++  .text : { *(.text) }
++  . = 0x10000;
++  .dynamic : { *(.dynamic) }
++}
+Index: ld/testsuite/ld-arm/arm-elf.exp
+===================================================================
+--- ld/testsuite/ld-arm/arm-elf.exp	2011-04-11 16:23:04.000000000 +0100
++++ ./ld/testsuite/ld-arm/arm-elf.exp	2011-04-11 16:23:18.000000000 +0100
+@@ -210,18 +210,38 @@ set armelftests {
+      "-EL -Ttext=0x8f00 --fix-cortex-a8" "-EL" {cortex-a8-fix-b.s}
+      {{objdump -dr cortex-a8-fix-b.d}}
+      "cortex-a8-fix-b"}
++    {"Cortex-A8 erratum fix, b.w to PLT"
++     "-EL -Tcortex-a8-fix-plt.ld --fix-cortex-a8 -shared" "-EL"
++     {cortex-a8-fix-b-plt.s}
++     {{objdump -dr cortex-a8-fix-b-plt.d}}
++     "cortex-a8-fix-b-plt"}
+     {"Cortex-A8 erratum fix, bl.w"
+      "-EL -Ttext=0x8f00 --fix-cortex-a8" "-EL" {cortex-a8-fix-bl.s}
+      {{objdump -dr cortex-a8-fix-bl.d}}
+      "cortex-a8-fix-bl"}
++    {"Cortex-A8 erratum fix, bl.w to PLT"
++     "-EL -Tcortex-a8-fix-plt.ld --fix-cortex-a8 -shared" "-EL"
++     {cortex-a8-fix-bl-plt.s}
++     {{objdump -dr cortex-a8-fix-bl-plt.d}}
++     "cortex-a8-fix-bl-plt"}
+     {"Cortex-A8 erratum fix, bcc.w"
+      "-EL -Ttext=0x8f00 --fix-cortex-a8" "-EL" {cortex-a8-fix-bcc.s}
+      {{objdump -dr cortex-a8-fix-bcc.d}}
+      "cortex-a8-fix-bcc"}
++    {"Cortex-A8 erratum fix, bcc.w to PLT"
++     "-EL -Tcortex-a8-fix-plt.ld --fix-cortex-a8 -shared" "-EL"
++     {cortex-a8-fix-bcc-plt.s}
++     {{objdump -dr cortex-a8-fix-bcc-plt.d}}
++     "cortex-a8-fix-bcc-plt"}
+     {"Cortex-A8 erratum fix, blx.w"
+      "-EL -Ttext=0x8f00 --fix-cortex-a8" "-EL" {cortex-a8-fix-blx.s}
+      {{objdump -dr cortex-a8-fix-blx.d}}
+      "cortex-a8-fix-blx"}
++    {"Cortex-A8 erratum fix, blx.w to PLT"
++     "-EL -Tcortex-a8-fix-plt.ld --fix-cortex-a8 -shared" "-EL"
++     {cortex-a8-fix-blx-plt.s}
++     {{objdump -dr cortex-a8-fix-blx-plt.d}}
++     "cortex-a8-fix-blx-plt"}
+     {"Cortex-A8 erratum fix, relocate b.w to ARM"
+      "-EL -Ttext=0x8f00 --fix-cortex-a8" "-EL" {cortex-a8-arm-target.s cortex-a8-fix-b-rel.s}
+      {{objdump -dr cortex-a8-fix-b-rel-arm.d}}

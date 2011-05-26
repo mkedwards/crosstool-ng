@@ -1,0 +1,581 @@
+Description: PR ld/3351; avoid linker crash on ia64
+Author: H.J. Lu  <hongjiu.lu@intel.com>
+Upstream status: hjl 2.21.51.0.6
+Original patch: binutils-indirect-4.patch
+
+bfd/
+
+2006-10-17  H.J. Lu  <hongjiu.lu@intel.com>
+
+	PR ld/3351
+	* elflink.c (_bfd_elf_update_dynamic_flags): New.
+	(_bfd_elf_merge_symbol): Update both real and indirect symbol
+	dynamic flags.
+	(_bfd_elf_add_default_symbol): Make the real symbol dynamic if
+	the indirect symbol is defined in a shared library.
+	(elf_link_add_object_symbols): Likewise.  If the indirect
+	symbol has been forced local, don't make the real symbol
+	dynamic.
+	(elf_link_check_versioned_symbol): Check indirect symbol.
+	(elf_link_output_extsym): Use real symbol definition when
+	reporting indirect symbol error.  Check version info for
+	dynamic versioned symbol.
+
+ld/testsuite/
+
+2006-10-17  H.J. Lu  <hongjiu.lu@intel.com>
+
+	PR ld/3351
+	* ld-elf/indirect.exp: New file.
+	* ld-elf/indirect1a.c: Likewise.
+	* ld-elf/indirect1b.c: Likewise.
+	* ld-elf/indirect1c.c: Likewise.
+	* ld-elf/indirect2.c: Likewise.
+	* ld-elf/indirect3.out: Likewise.
+	* ld-elf/indirect3a.c: Likewise.
+	* ld-elf/indirect3b.c: Likewise.
+	* ld-elf/indirect3c.c: Likewise.
+	* ld-elf/indirect4.out: Likewise.
+	* ld-elf/indirect4a.c: Likewise.
+	* ld-elf/indirect4b.c: Likewise.
+	* ld-elf/indirect4c.c: Likewise.
+
+diff --git a/bfd/elflink.c b/bfd/elflink.c
+index 32575d9..f6f2740 100644
+--- a/bfd/elflink.c
++++ b/bfd/elflink.c
+@@ -899,6 +899,33 @@ elf_merge_st_other (bfd *abfd, struct elf_link_hash_entry *h,
+     }
+ }
+ 
++/* Mark if a symbol has a definition in a dynamic object or is
++   weak in all dynamic objects.  */
++
++static void
++_bfd_elf_mark_dynamic_def_weak (struct elf_link_hash_entry *h,
++				asection *sec, int bind)
++{
++  if (!h->dynamic_def)
++    {
++      if (!bfd_is_und_section (sec))
++	h->dynamic_def = 1;
++      else
++	{
++	  /* Check if this symbol is weak in all dynamic objects. If it
++	     is the first time we see it in a dynamic object, we mark
++	     if it is weak. Otherwise, we clear it.  */
++	  if (!h->ref_dynamic)
++	    {
++	      if (bind == STB_WEAK)
++		h->dynamic_weak = 1;
++	    }
++	  else if (bind != STB_WEAK)
++	    h->dynamic_weak = 0;
++	}
++    }
++}
++
+ /* This function is called when we want to define a new symbol.  It
+    handles the various cases which arise when we find a definition in
+    a dynamic object, or when there is already a definition in a
+@@ -927,6 +954,7 @@ _bfd_elf_merge_symbol (bfd *abfd,
+ {
+   asection *sec, *oldsec;
+   struct elf_link_hash_entry *h;
++  struct elf_link_hash_entry *hi;
+   struct elf_link_hash_entry *flip;
+   int bind;
+   bfd *oldbfd;
+@@ -965,8 +993,9 @@ _bfd_elf_merge_symbol (bfd *abfd,
+   if (!(*bed->relocs_compatible) (abfd->xvec, info->output_bfd->xvec))
+     return TRUE;
+ 
+-  /* For merging, we only care about real symbols.  */
+-
++  /* For merging, we only care about real symbols.  But we need to make
++     sure that indirect symbol dynamic flags are updated.  */
++  hi = h;
+   while (h->root.type == bfd_link_hash_indirect
+ 	 || h->root.type == bfd_link_hash_warning)
+     h = (struct elf_link_hash_entry *) h->root.u.i.link;
+@@ -1138,23 +1167,11 @@ _bfd_elf_merge_symbol (bfd *abfd,
+   /* We need to remember if a symbol has a definition in a dynamic
+      object or is weak in all dynamic objects. Internal and hidden
+      visibility will make it unavailable to dynamic objects.  */
+-  if (newdyn && !h->dynamic_def)
++  if (newdyn)
+     {
+-      if (!bfd_is_und_section (sec))
+-	h->dynamic_def = 1;
+-      else
+-	{
+-	  /* Check if this symbol is weak in all dynamic objects. If it
+-	     is the first time we see it in a dynamic object, we mark
+-	     if it is weak. Otherwise, we clear it.  */
+-	  if (!h->ref_dynamic)
+-	    {
+-	      if (bind == STB_WEAK)
+-		h->dynamic_weak = 1;
+-	    }
+-	  else if (bind != STB_WEAK)
+-	    h->dynamic_weak = 0;
+-	}
++      _bfd_elf_mark_dynamic_def_weak (h, sec, bind);
++      if (h != hi)
++	_bfd_elf_mark_dynamic_def_weak (hi, sec, bind);
+     }
+ 
+   /* If the old symbol has non-default visibility, we ignore the new
+@@ -1166,6 +1183,7 @@ _bfd_elf_merge_symbol (bfd *abfd,
+       *skip = TRUE;
+       /* Make sure this symbol is dynamic.  */
+       h->ref_dynamic = 1;
++      hi->ref_dynamic = 1;
+       /* A protected symbol has external availability. Make sure it is
+ 	 recorded as dynamic.
+ 
+@@ -1718,6 +1736,7 @@ _bfd_elf_add_default_symbol (bfd *abfd,
+ 	  if (! dynamic)
+ 	    {
+ 	      if (! info->executable
++		  || hi->def_dynamic
+ 		  || hi->ref_dynamic)
+ 		*dynsym = TRUE;
+ 	    }
+@@ -3860,6 +3879,7 @@ error_free_dyn:
+       flagword flags;
+       const char *name;
+       struct elf_link_hash_entry *h;
++      struct elf_link_hash_entry *hi;
+       bfd_boolean definition;
+       bfd_boolean size_change_ok;
+       bfd_boolean type_change_ok;
+@@ -4179,6 +4199,9 @@ error_free_dyn:
+ 	goto error_free_vers;
+ 
+       h = *sym_hash;
++      /* We need to make sure that indirect symbol dynamic flags are
++	 updated.  */
++      hi = h;
+       while (h->root.type == bfd_link_hash_indirect
+ 	     || h->root.type == bfd_link_hash_warning)
+ 	h = (struct elf_link_hash_entry *) h->root.u.i.link;
+@@ -4371,22 +4394,36 @@ error_free_dyn:
+ 		      h->dynamic_def = 1;
+ 		    }
+ 		}
+-	      if (! info->executable
+-		  || h->def_dynamic
+-		  || h->ref_dynamic)
++
++	      /* If the indirect symbol has been forced local, don't
++		 make the real symbol dynamic.  */
++	      if ((h == hi || !hi->forced_local)
++		  && (! info->executable
++		      || h->def_dynamic
++		      || h->ref_dynamic))
+ 		dynsym = TRUE;
+ 	    }
+ 	  else
+ 	    {
+ 	      if (! definition)
+-		h->ref_dynamic = 1;
++		{
++		  h->ref_dynamic = 1;
++		  hi->ref_dynamic = 1;
++		}
+ 	      else
+-		h->def_dynamic = 1;
+-	      if (h->def_regular
+-		  || h->ref_regular
+-		  || (h->u.weakdef != NULL
+-		      && ! new_weakdef
+-		      && h->u.weakdef->dynindx != -1))
++		{
++		  h->def_dynamic = 1;
++		  hi->def_dynamic = 1;
++		}
++
++	      /* If the indirect symbol has been forced local, don't
++		 make the real symbol dynamic.  */
++	      if ((h == hi || !hi->forced_local)
++		  && (h->def_regular
++		      || h->ref_regular
++		      || (h->u.weakdef != NULL
++			  && ! new_weakdef
++			  && h->u.weakdef->dynindx != -1)))
+ 		dynsym = TRUE;
+ 	    }
+ 
+@@ -8442,6 +8479,10 @@ elf_link_check_versioned_symbol (struct bfd_link_info *info,
+   if (!is_elf_hash_table (info->hash))
+     return FALSE;
+ 
++  /* Check indirect symbol.  */
++  while (h->root.type == bfd_link_hash_indirect)
++    h = (struct elf_link_hash_entry *) h->root.u.i.link;
++
+   switch (h->root.type)
+     {
+     default:
+@@ -8662,6 +8703,11 @@ elf_link_output_extsym (struct elf_link_hash_entry *h, void *data)
+     {
+       bfd *def_bfd;
+       const char *msg;
++      struct elf_link_hash_entry *hi = h;
++
++      /* Check indirect symbol.  */
++      while (hi->root.type == bfd_link_hash_indirect)
++	hi = (struct elf_link_hash_entry *) hi->root.u.i.link;
+ 
+       if (ELF_ST_VISIBILITY (h->other) == STV_INTERNAL)
+ 	msg = _("%B: internal symbol `%s' in %B is referenced by DSO");
+@@ -8670,8 +8716,8 @@ elf_link_output_extsym (struct elf_link_hash_entry *h, void *data)
+       else
+ 	msg = _("%B: local symbol `%s' in %B is referenced by DSO");
+       def_bfd = finfo->output_bfd;
+-      if (h->root.u.def.section != bfd_abs_section_ptr)
+-	def_bfd = h->root.u.def.section->owner;
++      if (hi->root.u.def.section != bfd_abs_section_ptr)
++	def_bfd = hi->root.u.def.section->owner;
+       (*_bfd_error_handler) (msg, finfo->output_bfd, def_bfd,
+ 			     h->root.root.string);
+       bfd_set_error (bfd_error_bad_value);
+@@ -8899,6 +8945,23 @@ elf_link_output_extsym (struct elf_link_hash_entry *h, void *data)
+     {
+       bfd_byte *esym;
+ 
++      /* Since there is no version information in the dynamic string,
++	 if there is no version info in symbol version section, we will
++	 have a run-time problem.  */
++      if (h->verinfo.verdef == NULL)
++	{
++	  char *p = strrchr (h->root.root.string, ELF_VER_CHR);
++
++	  if (p && p [1] != '\0')
++	    {
++	      (*_bfd_error_handler)
++		(_("%B: No symbol version section for versioned symbol `%s'"),
++		 finfo->output_bfd, h->root.root.string);
++	      eoinfo->failed = TRUE;
++	      return FALSE;
++	    }
++	}
++
+       sym.st_name = h->dynstr_index;
+       esym = finfo->dynsym_sec->contents + h->dynindx * bed->s->sizeof_sym;
+       if (! check_dynsym (finfo->output_bfd, &sym))
+diff --git a/ld/testsuite/ld-elf/indirect.exp b/ld/testsuite/ld-elf/indirect.exp
+new file mode 100644
+index 0000000..603179a
+--- /dev/null
++++ b/ld/testsuite/ld-elf/indirect.exp
+@@ -0,0 +1,126 @@
++# Expect script for various indirect symbol tests.
++#   Copyright 2006 Free Software Foundation, Inc.
++#
++# This file is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 2 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the Free Software
++# Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 02110-1301, USA.
++#
++
++#
++# Written by H.J. Lu (hongjiu.lu@intel.com)
++#
++
++# Exclude non-ELF targets.
++
++if ![is_elf_format] {
++    return
++}
++
++# Check if compiler works
++if { [which $CC] == 0 } {
++    return
++}
++
++proc check_link_message { cmd string testname } {
++    send_log "$cmd\n"
++    verbose "$cmd"
++    catch "exec $cmd" exec_output
++    send_log "$exec_output\n"
++    verbose "$exec_output"
++
++    foreach str $string {
++	if [string match "*$str*" $exec_output] {
++	    pass "$testname: $str"
++	} else {
++	    fail "$testname: $str"
++	}
++    }
++}
++
++if { ![ld_compile $CC $srcdir/$subdir/indirect1a.c tmpdir/indirect1a.o]
++     || ![ld_compile $CC $srcdir/$subdir/indirect1b.c tmpdir/indirect1b.o]
++     || ![ld_compile "$CC -fPIC" $srcdir/$subdir/indirect2.c tmpdir/indirect2.o]
++     || ![ld_compile $CC $srcdir/$subdir/indirect3a.c tmpdir/indirect3a.o]
++     || ![ld_compile $CC $srcdir/$subdir/indirect3b.c tmpdir/indirect3b.o]
++     || ![ld_compile $CC $srcdir/$subdir/indirect4a.c tmpdir/indirect4a.o]
++     || ![ld_compile $CC $srcdir/$subdir/indirect4b.c tmpdir/indirect4b.o] } {
++    unresolved "Indirect symbol tests"
++    return
++}
++
++set build_tests {
++  {"Build libindirect1c.so"
++   "-shared" "-fPIC"
++   {indirect1c.c} {} "libindirect1c.so"}
++  {"Build libindirect3c.so"
++   "-shared" "-fPIC"
++   {indirect3c.c} {} "libindirect3c.so"}
++  {"Build libindirect4c.so"
++   "-shared" "-fPIC"
++   {indirect4c.c} {} "libindirect4c.so"}
++}
++
++run_cc_link_tests $build_tests
++
++global ld
++
++set string ": final link failed: Bad value"
++set string1 ": local symbol \`foo\' in tmpdir/indirect1b.o is referenced by DSO"
++
++set testname "Indirect symbol 1a"
++set cmd "$ld -e start -o tmpdir/indirect1 tmpdir/indirect1a.o tmpdir/indirect1b.o tmpdir/libindirect1c.so"
++check_link_message "$cmd" [list $string1 $string] "$testname"
++
++set testname "Indirect symbol 1b"
++set cmd "$ld -e start -o tmpdir/indirect1 tmpdir/indirect1a.o tmpdir/libindirect1c.so tmpdir/indirect1b.o"
++check_link_message "$cmd" [list $string1 $string] "$testname"
++
++set string ": final link failed: Nonrepresentable section on output"
++set string2 ": No symbol version section for versioned symbol \`foo@FOO\'"
++set testname "Indirect symbol 2"
++set cmd "$ld -shared  -o tmpdir/indirect2.so tmpdir/indirect2.o"
++check_link_message "$cmd" [list $string2 $string] "$testname"
++
++# The following tests require running the executable generated by ld.
++if ![isnative] {
++    return
++}
++
++set run_tests {
++    {"Run with libindirect3c.so 1"
++     "tmpdir/indirect3a.o tmpdir/indirect3b.o tmpdir/libindirect3c.so" ""
++     {dummy.c} "indirect3a" "indirect3.out"}
++    {"Run with libindirect3c.so 2"
++     "tmpdir/indirect3a.o tmpdir/libindirect3c.so tmpdir/indirect3b.o" ""
++     {dummy.c} "indirect3b" "indirect3.out"}
++    {"Run with libindirect3c.so 3"
++     "tmpdir/indirect3b.o tmpdir/libindirect3c.so tmpdir/indirect3a.o" ""
++     {dummy.c} "indirect3c" "indirect3.out"}
++    {"Run with libindirect3c.so 4"
++     "tmpdir/libindirect3c.so tmpdir/indirect3b.o tmpdir/indirect3a.o" ""
++     {dummy.c} "indirect3d" "indirect3.out"}
++    {"Run with libindirect4c.so 1"
++     "tmpdir/indirect4a.o tmpdir/indirect4b.o tmpdir/libindirect4c.so" ""
++     {dummy.c} "indirect4a" "indirect4.out"}
++    {"Run with libindirect4c.so 2"
++     "tmpdir/indirect4a.o tmpdir/libindirect4c.so tmpdir/indirect4b.o" ""
++     {dummy.c} "indirect4b" "indirect4.out"}
++    {"Run with libindirect4c.so 3"
++     "tmpdir/indirect4b.o tmpdir/libindirect4c.so tmpdir/indirect4a.o" ""
++     {dummy.c} "indirect4c" "indirect4.out"}
++    {"Run with libindirect4c.so 4"
++     "tmpdir/libindirect4c.so tmpdir/indirect4b.o tmpdir/indirect4a.o" ""
++     {dummy.c} "indirect4d" "indirect4.out"}
++}
++
++run_ld_link_exec_tests [] $run_tests
+diff --git a/ld/testsuite/ld-elf/indirect1a.c b/ld/testsuite/ld-elf/indirect1a.c
+new file mode 100644
+index 0000000..6931542
+--- /dev/null
++++ b/ld/testsuite/ld-elf/indirect1a.c
+@@ -0,0 +1,8 @@
++extern void bar (void);
++
++int
++start (void)
++{
++  bar ();
++  return 0;
++}
+diff --git a/ld/testsuite/ld-elf/indirect1b.c b/ld/testsuite/ld-elf/indirect1b.c
+new file mode 100644
+index 0000000..51740f9
+--- /dev/null
++++ b/ld/testsuite/ld-elf/indirect1b.c
+@@ -0,0 +1,6 @@
++void
++foo (void)
++{
++}
++
++asm (".symver foo,foo@FOO");
+diff --git a/ld/testsuite/ld-elf/indirect1c.c b/ld/testsuite/ld-elf/indirect1c.c
+new file mode 100644
+index 0000000..eae278d
+--- /dev/null
++++ b/ld/testsuite/ld-elf/indirect1c.c
+@@ -0,0 +1,7 @@
++extern void foo (void);
++
++void
++bar (void)
++{
++  foo ();
++}
+diff --git a/ld/testsuite/ld-elf/indirect2.c b/ld/testsuite/ld-elf/indirect2.c
+new file mode 100644
+index 0000000..6df29be
+--- /dev/null
++++ b/ld/testsuite/ld-elf/indirect2.c
+@@ -0,0 +1,9 @@
++extern void foo (void);
++
++asm (".symver foo,foo@@@FOO");
++
++void
++bar (void)
++{
++  foo ();
++}
+diff --git a/ld/testsuite/ld-elf/indirect3.out b/ld/testsuite/ld-elf/indirect3.out
+new file mode 100644
+index 0000000..482e981
+--- /dev/null
++++ b/ld/testsuite/ld-elf/indirect3.out
+@@ -0,0 +1,2 @@
++MAIN
++DSO
+diff --git a/ld/testsuite/ld-elf/indirect3a.c b/ld/testsuite/ld-elf/indirect3a.c
+new file mode 100644
+index 0000000..0f6ddc8
+--- /dev/null
++++ b/ld/testsuite/ld-elf/indirect3a.c
+@@ -0,0 +1,10 @@
++extern void bar (void);
++extern void foo (void);
++
++int
++main (void)
++{
++  foo ();
++  bar ();
++  return 0;
++}
+diff --git a/ld/testsuite/ld-elf/indirect3b.c b/ld/testsuite/ld-elf/indirect3b.c
+new file mode 100644
+index 0000000..dbb37c3
+--- /dev/null
++++ b/ld/testsuite/ld-elf/indirect3b.c
+@@ -0,0 +1,9 @@
++#include <stdio.h>
++
++void
++foo (void)
++{
++  printf ("MAIN\n");
++}
++
++asm (".symver foo,foo@FOO");
+diff --git a/ld/testsuite/ld-elf/indirect3c.c b/ld/testsuite/ld-elf/indirect3c.c
+new file mode 100644
+index 0000000..b52cb95
+--- /dev/null
++++ b/ld/testsuite/ld-elf/indirect3c.c
+@@ -0,0 +1,15 @@
++#include <stdio.h>
++
++extern void foo (void);
++
++void
++foo (void)
++{
++  printf ("DSO\n");
++}
++
++void
++bar (void)
++{
++  foo ();
++}
+diff --git a/ld/testsuite/ld-elf/indirect4.out b/ld/testsuite/ld-elf/indirect4.out
+new file mode 100644
+index 0000000..3b34ee4
+--- /dev/null
++++ b/ld/testsuite/ld-elf/indirect4.out
+@@ -0,0 +1,2 @@
++MAIN2
++MAIN2
+diff --git a/ld/testsuite/ld-elf/indirect4a.c b/ld/testsuite/ld-elf/indirect4a.c
+new file mode 100644
+index 0000000..0f6ddc8
+--- /dev/null
++++ b/ld/testsuite/ld-elf/indirect4a.c
+@@ -0,0 +1,10 @@
++extern void bar (void);
++extern void foo (void);
++
++int
++main (void)
++{
++  foo ();
++  bar ();
++  return 0;
++}
+diff --git a/ld/testsuite/ld-elf/indirect4b.c b/ld/testsuite/ld-elf/indirect4b.c
+new file mode 100644
+index 0000000..b8db9d0
+--- /dev/null
++++ b/ld/testsuite/ld-elf/indirect4b.c
+@@ -0,0 +1,17 @@
++#include <stdio.h>
++
++void
++foo2 (void)
++{
++  printf ("MAIN2\n");
++}
++
++asm (".symver foo2,foo@@FOO2");
++
++void
++foo1 (void)
++{
++  printf ("MAIN1\n");
++}
++
++asm (".symver foo1,foo@FOO1");
+diff --git a/ld/testsuite/ld-elf/indirect4c.c b/ld/testsuite/ld-elf/indirect4c.c
+new file mode 100644
+index 0000000..b52cb95
+--- /dev/null
++++ b/ld/testsuite/ld-elf/indirect4c.c
+@@ -0,0 +1,15 @@
++#include <stdio.h>
++
++extern void foo (void);
++
++void
++foo (void)
++{
++  printf ("DSO\n");
++}
++
++void
++bar (void)
++{
++  foo ();
++}

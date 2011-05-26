@@ -1,0 +1,105 @@
+Description: elflink.c (elf_link_add_object_symbols): Check symbol type
+Description: for symbol alias in a dynamic object.
+Author: H.J. Lu  <hongjiu.lu@intel.com>
+Upstream status: hjl 2.19.51.0.3
+Original patch: binutils-weakdef-2.patch
+
+bfd/
+
+2007-07-19  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* elflink.c (elf_link_add_object_symbols): Check symbol type
+	for symbol alias in a dynamic object.
+
+ld/testsuite/
+
+2007-07-19  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* ld-elf/data2.c: New.
+	* ld-elf/weakdef1.c: Likewise.
+
+	* ld-elf/shared.exp: Add tests for libdata2 and weakdef1.
+
+--- a/bfd/elflink.c
++++ b/bfd/elflink.c
+@@ -4712,6 +4712,7 @@
+ 	  asection *slook;
+ 	  bfd_vma vlook;
+ 	  long ilook;
++	  int tlook;
+ 	  size_t i, j, idx;
+ 
+ 	  hlook = weaks;
+@@ -4724,6 +4725,7 @@
+ 		      || hlook->root.type == bfd_link_hash_indirect);
+ 	  slook = hlook->root.u.def.section;
+ 	  vlook = hlook->root.u.def.value;
++	  tlook = hlook->type;
+ 
+ 	  ilook = -1;
+ 	  i = 0;
+@@ -4761,9 +4763,10 @@
+ 	    {
+ 	      h = sorted_sym_hash [i];
+ 
+-	      /* Stop if value or section doesn't match.  */
++	      /* Stop if value, section or type doesn't match.  */
+ 	      if (h->root.u.def.value != vlook
+-		  || h->root.u.def.section != slook)
++		  || h->root.u.def.section != slook
++		  || h->type != tlook)
+ 		break;
+ 	      else if (h != hlook)
+ 		{
+--- /dev/null
++++ b/ld/testsuite/ld-elf/data2.c
+@@ -0,0 +1,9 @@
++int foo = 0;
++extern int foo_alias __attribute__ ((weak, alias ("foo")));
++
++void
++bar (void)
++{
++  foo = -1;
++}
++
+--- a/ld/testsuite/ld-elf/shared.exp
++++ b/ld/testsuite/ld-elf/shared.exp
+@@ -123,6 +123,9 @@
+   {"Build libdata1.so"
+    "-shared" "-fPIC"
+    {data1.c} {} "libdata1.so"}
++  {"Build libdata2.so"
++   "-shared" "-fPIC"
++   {data2.c} {} "libdata2.so"}
+   {"Build libcomm1.o"
+    "-r -nostdlib" ""
+    {comm1.c} {} "libcomm1.o"}
+@@ -266,6 +269,9 @@
+     {"Run with libdata1.so"
+      "tmpdir/libdata1.so" ""
+      {dynbss1.c} "dynbss1" "pass.out"}
++    {"Run with libdata2.so"
++     "tmpdir/libdata2.so" ""
++     {weakdef1.c} "weakdef1" "pass.out"}
+     {"Run with libfunc1.so comm1.o"
+      "tmpdir/libfunc1.so tmpdir/comm1.o" ""
+      {dummy.c} "comm1" "pass.out"}
+--- /dev/null
++++ b/ld/testsuite/ld-elf/weakdef1.c
+@@ -0,0 +1,15 @@
++#include <stdio.h>
++#include <stdlib.h>
++
++extern int foo_alias;
++extern void bar (void);
++
++int
++main (void)
++{
++  bar ();
++  if (foo_alias != -1)
++    abort ();
++  printf ("PASS\n");
++  return 0;
++}

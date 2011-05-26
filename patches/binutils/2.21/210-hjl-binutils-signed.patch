@@ -1,0 +1,682 @@
+Description: objdump.c (disassemble_bytes,dump_reloc_set): Print addend as signed.
+Author: H.J. Lu  <hongjiu.lu@intel.com>
+Upstream status: hjl 2.20.51.0.7
+Original patch: binutils-signed-4.patch
+
+binutils/
+
+2007-06-22  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* objdump.c (disassemble_bytes): Print addend as signed.
+	(dump_reloc_set): Likewise.
+
+gas/testsuite/
+
+2007-06-22  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* gas/alpha/elf-reloc-1.d: Expect addend as signed.
+	* gas/i386/mixed-mode-reloc64.d: Likewise.
+	* gas/i386/reloc64.d: Likewise.
+	* gas/ia64/pcrel.d: Likewise.
+	* gas/mips/branch-misc-2-64.d: Likewise.
+	* gas/mips/branch-misc-2pic-64.d: Likewise.
+	* gas/mips/ldstla-n64-sym32.d: Likewise.
+	* gas/mips/mips16-hilo-n32.d: Likewise.
+	* gas/ppc/astest.d: Likewise.
+	* gas/ppc/astest2.d: Likewise.
+	* gas/ppc/astest2_64.d: Likewise.
+	* gas/ppc/astest64.d: Likewise.
+	* gas/ppc/test1elf32.d: Likewise.
+	* gas/ppc/test1elf64.d: Likewise.
+	* gas/sparc/reloc64.d: Likewise.
+
+--- a/binutils/objdump.c
++++ b/binutils/objdump.c
+@@ -1807,8 +1807,15 @@
+ 
+ 	      if (q->addend)
+ 		{
+-		  printf ("+0x");
+-		  objdump_print_value (q->addend, inf, TRUE);
++		  bfd_signed_vma addend = q->addend;
++		  if (addend < 0)
++		    {
++		      printf ("-0x");
++		      addend = -addend;
++		    }
++		  else
++		    printf ("+0x");
++		  objdump_print_value (addend, inf, TRUE);
+ 		}
+ 
+ 	      printf ("\n");
+@@ -2917,8 +2924,15 @@
+ 
+       if (q->addend)
+ 	{
+-	  printf ("+0x");
+-	  bfd_printf_vma (abfd, q->addend);
++	  bfd_signed_vma addend = q->addend;
++	  if (addend < 0)
++	    {
++	      printf ("-0x");
++	      addend = -addend;
++	    }
++	  else
++	    printf ("+0x");
++	  bfd_printf_vma (abfd, addend);
+ 	}
+ 
+       printf ("\n");
+--- a/gas/testsuite/gas/alpha/elf-reloc-1.d
++++ b/gas/testsuite/gas/alpha/elf-reloc-1.d
+@@ -16,6 +16,6 @@
+ 0*000001c GPRELHIGH         d
+ 0*0000020 GPRELLOW          e
+ 0*0000024 GPDISP            \.text\+0x0*0000008
+-0*0000030 GPDISP            \.text\+0xf*ffffff8
++0*0000030 GPDISP            \.text-0x0*0000008
+ 
+ 
+--- a/gas/testsuite/gas/i386/mixed-mode-reloc64.d
++++ b/gas/testsuite/gas/i386/mixed-mode-reloc64.d
+@@ -7,8 +7,8 @@
+ RELOCATION RECORDS FOR \[.text\]:
+ OFFSET[ 	]+TYPE[ 	]+VALUE[ 	]*
+ [0-9a-f]+[ 	]+R_X86_64_GOT32[ 	]+xtrn[ 	]*
+-[0-9a-f]+[ 	]+R_X86_64_PLT32[ 	]+xtrn\+0xf+c[ 	]*
++[0-9a-f]+[ 	]+R_X86_64_PLT32[ 	]+xtrn-0x0*4[ 	]*
+ [0-9a-f]+[ 	]+R_X86_64_GOT32[ 	]+xtrn[ 	]*
+-[0-9a-f]+[ 	]+R_X86_64_PLT32[ 	]+xtrn\+0xf+c[ 	]*
++[0-9a-f]+[ 	]+R_X86_64_PLT32[ 	]+xtrn-0x0*4[ 	]*
+ [0-9a-f]+[ 	]+R_X86_64_GOT32[ 	]+xtrn[ 	]*
+-[0-9a-f]+[ 	]+R_X86_64_PLT32[ 	]+xtrn\+0xf+c[ 	]*
++[0-9a-f]+[ 	]+R_X86_64_PLT32[ 	]+xtrn-0x0*4[ 	]*
+--- a/gas/testsuite/gas/i386/reloc64.d
++++ b/gas/testsuite/gas/i386/reloc64.d
+@@ -16,33 +16,33 @@
+ .*[ 	]+R_X86_64_PC32[ 	]+xtrn\+0x0*2
+ .*[ 	]+R_X86_64_PC16[ 	]+xtrn\+0x0*2
+ .*[ 	]+R_X86_64_PC8[ 	]+xtrn\+0x0*1
+-.*[ 	]+R_X86_64_PC32[ 	]+xtrn\+0xf+c
+-.*[ 	]+R_X86_64_PC32[ 	]+xtrn\+0xf+c
+-.*[ 	]+R_X86_64_PC32[ 	]+xtrn\+0xf+c
+-.*[ 	]+R_X86_64_PC8[ 	]+xtrn\+0xf+f
++.*[ 	]+R_X86_64_PC32[ 	]+xtrn-0x0*4
++.*[ 	]+R_X86_64_PC32[ 	]+xtrn-0x0*4
++.*[ 	]+R_X86_64_PC32[ 	]+xtrn-0x0*4
++.*[ 	]+R_X86_64_PC8[ 	]+xtrn-0x0*1
+ .*[ 	]+R_X86_64_GOT64[ 	]+xtrn
+ .*[ 	]+R_X86_64_GOT32[ 	]+xtrn
+ .*[ 	]+R_X86_64_GOT32[ 	]+xtrn
+ .*[ 	]+R_X86_64_GOTOFF64[ 	]+xtrn
+ .*[ 	]+R_X86_64_GOTPCREL[ 	]+xtrn
+ .*[ 	]+R_X86_64_GOTPCREL[ 	]+xtrn
+-.*[ 	]+R_X86_64_GOTPCREL[ 	]+xtrn\+0xf+c
++.*[ 	]+R_X86_64_GOTPCREL[ 	]+xtrn-0x0*4
+ .*[ 	]+R_X86_64_GOTPC32[ 	]+_GLOBAL_OFFSET_TABLE_\+0x0*2
+-.*[ 	]+R_X86_64_GOTPC32[ 	]+_GLOBAL_OFFSET_TABLE_\+0xf+c
+-.*[ 	]+R_X86_64_GOTPC32[ 	]+_GLOBAL_OFFSET_TABLE_\+0xf+c
++.*[ 	]+R_X86_64_GOTPC32[ 	]+_GLOBAL_OFFSET_TABLE_-0x0*4
++.*[ 	]+R_X86_64_GOTPC32[ 	]+_GLOBAL_OFFSET_TABLE_-0x0*4
+ .*[ 	]+R_X86_64_GOTPC32[ 	]+_GLOBAL_OFFSET_TABLE_\+0x0*2
+ .*[ 	]+R_X86_64_PLT32[ 	]+xtrn
+ .*[ 	]+R_X86_64_PLT32[ 	]+xtrn
+-.*[ 	]+R_X86_64_PLT32[ 	]+xtrn\+0xf+c
++.*[ 	]+R_X86_64_PLT32[ 	]+xtrn-0x0*4
+ .*[ 	]+R_X86_64_TLSGD[ 	]+xtrn
+ .*[ 	]+R_X86_64_TLSGD[ 	]+xtrn
+-.*[ 	]+R_X86_64_TLSGD[ 	]+xtrn\+0xf+c
++.*[ 	]+R_X86_64_TLSGD[ 	]+xtrn-0x0*4
+ .*[ 	]+R_X86_64_GOTTPOFF[ 	]+xtrn
+ .*[ 	]+R_X86_64_GOTTPOFF[ 	]+xtrn
+-.*[ 	]+R_X86_64_GOTTPOFF[ 	]+xtrn\+0xf+c
++.*[ 	]+R_X86_64_GOTTPOFF[ 	]+xtrn-0x0*4
+ .*[ 	]+R_X86_64_TLSLD[ 	]+xtrn
+ .*[ 	]+R_X86_64_TLSLD[ 	]+xtrn
+-.*[ 	]+R_X86_64_TLSLD[ 	]+xtrn\+0xf+c
++.*[ 	]+R_X86_64_TLSLD[ 	]+xtrn-0x0*4
+ .*[ 	]+R_X86_64_DTPOFF64[ 	]+xtrn
+ .*[ 	]+R_X86_64_DTPOFF32[ 	]+xtrn
+ .*[ 	]+R_X86_64_DTPOFF32[ 	]+xtrn
+--- a/gas/testsuite/gas/ia64/pcrel.d
++++ b/gas/testsuite/gas/ia64/pcrel.d
+@@ -9,28 +9,28 @@
+ 0+10[[:space:]]+PCREL22[[:space:]]+esym
+ 0+20[[:space:]]+PCREL22[[:space:]]+esym\+0x0+20
+ 0+30[[:space:]]+PCREL22[[:space:]]+esym
+-0+40[[:space:]]+PCREL22[[:space:]]+esym\+0xf+e0
++0+40[[:space:]]+PCREL22[[:space:]]+esym-0x0+20
+ 
+ RELOCATION RECORDS FOR \[\.movl\]:
+ OFFSET[[:space:]]+TYPE[[:space:]]+VALUE[[:space:]]*
+ 0+12[[:space:]]+PCREL64I[[:space:]]+esym
+ 0+22[[:space:]]+PCREL64I[[:space:]]+esym\+0x0+20
+ 0+32[[:space:]]+PCREL64I[[:space:]]+esym
+-0+42[[:space:]]+PCREL64I[[:space:]]+esym\+0xf+e0
++0+42[[:space:]]+PCREL64I[[:space:]]+esym-0x0+20
+ 
+ RELOCATION RECORDS FOR \[\.data8\]:
+ OFFSET[[:space:]]+TYPE[[:space:]]+VALUE[[:space:]]*
+ 0+10[[:space:]]+PCREL64[LM]SB[[:space:]]+esym
+ 0+20[[:space:]]+PCREL64[LM]SB[[:space:]]+esym\+0x0+20
+ 0+30[[:space:]]+PCREL64[LM]SB[[:space:]]+esym
+-0+40[[:space:]]+PCREL64[LM]SB[[:space:]]+esym\+0xf+e0
++0+40[[:space:]]+PCREL64[LM]SB[[:space:]]+esym-0x0+20
+ 
+ RELOCATION RECORDS FOR \[\.data4\]:
+ OFFSET[[:space:]]+TYPE[[:space:]]+VALUE[[:space:]]*
+ 0+10[[:space:]]+PCREL32[LM]SB[[:space:]]+esym
+ 0+20[[:space:]]+PCREL32[LM]SB[[:space:]]+esym\+0x0+20
+ 0+30[[:space:]]+PCREL32[LM]SB[[:space:]]+esym
+-0+40[[:space:]]+PCREL32[LM]SB[[:space:]]+esym\+0xf+e0
++0+40[[:space:]]+PCREL32[LM]SB[[:space:]]+esym-0x0+20
+ 
+ 
+ Contents of section \.mov:
+--- a/gas/testsuite/gas/mips/branch-misc-2-64.d
++++ b/gas/testsuite/gas/mips/branch-misc-2-64.d
+@@ -13,51 +13,51 @@
+ 	\.\.\.
+ 	\.\.\.
+ 0+003c <[^>]*> 04110000 	bal	0000000000000040 <x\+0x4>
+-[ 	]*3c: R_MIPS_PC16	g1\+0xfffffffffffffffc
+-[ 	]*3c: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*3c: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*3c: R_MIPS_PC16	g1-0x4
++[ 	]*3c: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*3c: R_MIPS_NONE	\*ABS\*-0x4
+ 0+0040 <[^>]*> 00000000 	nop
+ 0+0044 <[^>]*> 04110000 	bal	0000000000000048 <x\+0xc>
+-[ 	]*44: R_MIPS_PC16	g2\+0xfffffffffffffffc
+-[ 	]*44: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*44: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*44: R_MIPS_PC16	g2-0x4
++[ 	]*44: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*44: R_MIPS_NONE	\*ABS\*-0x4
+ 0+0048 <[^>]*> 00000000 	nop
+ 0+004c <[^>]*> 04110000 	bal	0000000000000050 <x\+0x14>
+-[ 	]*4c: R_MIPS_PC16	g3\+0xfffffffffffffffc
+-[ 	]*4c: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*4c: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*4c: R_MIPS_PC16	g3-0x4
++[ 	]*4c: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*4c: R_MIPS_NONE	\*ABS\*-0x4
+ 0+0050 <[^>]*> 00000000 	nop
+ 0+0054 <[^>]*> 04110000 	bal	0000000000000058 <x\+0x1c>
+-[ 	]*54: R_MIPS_PC16	g4\+0xfffffffffffffffc
+-[ 	]*54: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*54: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*54: R_MIPS_PC16	g4-0x4
++[ 	]*54: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*54: R_MIPS_NONE	\*ABS\*-0x4
+ 0+0058 <[^>]*> 00000000 	nop
+ 0+005c <[^>]*> 04110000 	bal	0000000000000060 <x\+0x24>
+-[ 	]*5c: R_MIPS_PC16	g5\+0xfffffffffffffffc
+-[ 	]*5c: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*5c: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*5c: R_MIPS_PC16	g5-0x4
++[ 	]*5c: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*5c: R_MIPS_NONE	\*ABS\*-0x4
+ 0+0060 <[^>]*> 00000000 	nop
+ 0+0064 <[^>]*> 04110000 	bal	0000000000000068 <x\+0x2c>
+-[ 	]*64: R_MIPS_PC16	g6\+0xfffffffffffffffc
+-[ 	]*64: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*64: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*64: R_MIPS_PC16	g6-0x4
++[ 	]*64: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*64: R_MIPS_NONE	\*ABS\*-0x4
+ 0+0068 <[^>]*> 00000000 	nop
+ 	\.\.\.
+ 	\.\.\.
+ 	\.\.\.
+ 0+00a8 <[^>]*> 10000000 	b	00000000000000ac <g6\+0x4>
+-[ 	]*a8: R_MIPS_PC16	x1\+0xfffffffffffffffc
+-[ 	]*a8: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*a8: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*a8: R_MIPS_PC16	x1-0x4
++[ 	]*a8: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*a8: R_MIPS_NONE	\*ABS\*-0x4
+ 0+00ac <[^>]*> 00000000 	nop
+ 0+00b0 <[^>]*> 10000000 	b	00000000000000b4 <g6\+0xc>
+-[ 	]*b0: R_MIPS_PC16	x2\+0xfffffffffffffffc
+-[ 	]*b0: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*b0: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*b0: R_MIPS_PC16	x2-0x4
++[ 	]*b0: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*b0: R_MIPS_NONE	\*ABS\*-0x4
+ 0+00b4 <[^>]*> 00000000 	nop
+ 0+00b8 <[^>]*> 10000000 	b	00000000000000bc <g6\+0x14>
+-[ 	]*b8: R_MIPS_PC16	\.data\+0xfffffffffffffffc
+-[ 	]*b8: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*b8: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*b8: R_MIPS_PC16	\.data-0x4
++[ 	]*b8: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*b8: R_MIPS_NONE	\*ABS\*-0x4
+ 0+00bc <[^>]*> 00000000 	nop
+ 	\.\.\.
+--- a/gas/testsuite/gas/mips/branch-misc-2pic-64.d
++++ b/gas/testsuite/gas/mips/branch-misc-2pic-64.d
+@@ -13,51 +13,51 @@
+ 	\.\.\.
+ 	\.\.\.
+ 0+003c <[^>]*> 04110000 	bal	0000000000000040 <x\+0x4>
+-[ 	]*3c: R_MIPS_PC16	g1\+0xfffffffffffffffc
+-[ 	]*3c: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*3c: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*3c: R_MIPS_PC16	g1-0x4
++[ 	]*3c: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*3c: R_MIPS_NONE	\*ABS\*-0x4
+ 0+0040 <[^>]*> 00000000 	nop
+ 0+0044 <[^>]*> 04110000 	bal	0000000000000048 <x\+0xc>
+-[ 	]*44: R_MIPS_PC16	g2\+0xfffffffffffffffc
+-[ 	]*44: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*44: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*44: R_MIPS_PC16	g2-0x4
++[ 	]*44: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*44: R_MIPS_NONE	\*ABS\*-0x4
+ 0+0048 <[^>]*> 00000000 	nop
+ 0+004c <[^>]*> 04110000 	bal	0000000000000050 <x\+0x14>
+-[ 	]*4c: R_MIPS_PC16	g3\+0xfffffffffffffffc
+-[ 	]*4c: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*4c: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*4c: R_MIPS_PC16	g3-0x4
++[ 	]*4c: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*4c: R_MIPS_NONE	\*ABS\*-0x4
+ 0+0050 <[^>]*> 00000000 	nop
+ 0+0054 <[^>]*> 04110000 	bal	0000000000000058 <x\+0x1c>
+-[ 	]*54: R_MIPS_PC16	g4\+0xfffffffffffffffc
+-[ 	]*54: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*54: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*54: R_MIPS_PC16	g4-0x4
++[ 	]*54: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*54: R_MIPS_NONE	\*ABS\*-0x4
+ 0+0058 <[^>]*> 00000000 	nop
+ 0+005c <[^>]*> 04110000 	bal	0000000000000060 <x\+0x24>
+-[ 	]*5c: R_MIPS_PC16	g5\+0xfffffffffffffffc
+-[ 	]*5c: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*5c: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*5c: R_MIPS_PC16	g5-0x4
++[ 	]*5c: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*5c: R_MIPS_NONE	\*ABS\*-0x4
+ 0+0060 <[^>]*> 00000000 	nop
+ 0+0064 <[^>]*> 04110000 	bal	0000000000000068 <x\+0x2c>
+-[ 	]*64: R_MIPS_PC16	g6\+0xfffffffffffffffc
+-[ 	]*64: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*64: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*64: R_MIPS_PC16	g6-0x4
++[ 	]*64: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*64: R_MIPS_NONE	\*ABS\*-0x4
+ 0+0068 <[^>]*> 00000000 	nop
+ 	\.\.\.
+ 	\.\.\.
+ 	\.\.\.
+ 0+00a8 <[^>]*> 10000000 	b	00000000000000ac <g6\+0x4>
+-[ 	]*a8: R_MIPS_PC16	x1\+0xfffffffffffffffc
+-[ 	]*a8: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*a8: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*a8: R_MIPS_PC16	x1-0x4
++[ 	]*a8: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*a8: R_MIPS_NONE	\*ABS\*-0x4
+ 0+00ac <[^>]*> 00000000 	nop
+ 0+00b0 <[^>]*> 10000000 	b	00000000000000b4 <g6\+0xc>
+-[ 	]*b0: R_MIPS_PC16	x2\+0xfffffffffffffffc
+-[ 	]*b0: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*b0: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*b0: R_MIPS_PC16	x2-0x4
++[ 	]*b0: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*b0: R_MIPS_NONE	\*ABS\*-0x4
+ 0+00b4 <[^>]*> 00000000 	nop
+ 0+00b8 <[^>]*> 10000000 	b	00000000000000bc <g6\+0x14>
+-[ 	]*b8: R_MIPS_PC16	\.data\+0xfffffffffffffffc
+-[ 	]*b8: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
+-[ 	]*b8: R_MIPS_NONE	\*ABS\*\+0xfffffffffffffffc
++[ 	]*b8: R_MIPS_PC16	\.data-0x4
++[ 	]*b8: R_MIPS_NONE	\*ABS\*-0x4
++[ 	]*b8: R_MIPS_NONE	\*ABS\*-0x4
+ 0+00bc <[^>]*> 00000000 	nop
+ 	\.\.\.
+--- a/gas/testsuite/gas/mips/ldstla-n64-sym32.d
++++ b/gas/testsuite/gas/mips/ldstla-n64-sym32.d
+@@ -196,19 +196,19 @@
+ .*: R_MIPS_NONE	.*
+ .*	daddu	a0,a0,v1
+ .*	lui	a0,0x0
+-.*: R_MIPS_HI16	extern\+0xfffffffffffcc000
++.*: R_MIPS_HI16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	d?addiu	a0,a0,0
+-.*: R_MIPS_LO16	extern\+0xfffffffffffcc000
++.*: R_MIPS_LO16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	lui	a0,0x0
+-.*: R_MIPS_HI16	extern\+0xfffffffffffcc000
++.*: R_MIPS_HI16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	d?addiu	a0,a0,0
+-.*: R_MIPS_LO16	extern\+0xfffffffffffcc000
++.*: R_MIPS_LO16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	daddu	a0,a0,v1
+@@ -406,20 +406,20 @@
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	lui	a0,0x0
+-.*: R_MIPS_HI16	extern\+0xfffffffffffcc000
++.*: R_MIPS_HI16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	lw	a0,0\(a0\)
+-.*: R_MIPS_LO16	extern\+0xfffffffffffcc000
++.*: R_MIPS_LO16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	lui	a0,0x0
+-.*: R_MIPS_HI16	extern\+0xfffffffffffcc000
++.*: R_MIPS_HI16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	daddu	a0,a0,v1
+ .*	lw	a0,0\(a0\)
+-.*: R_MIPS_LO16	extern\+0xfffffffffffcc000
++.*: R_MIPS_LO16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ #
+@@ -616,20 +616,20 @@
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	lui	at,0x0
+-.*: R_MIPS_HI16	extern\+0xfffffffffffcc000
++.*: R_MIPS_HI16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	sw	a0,0\(at\)
+-.*: R_MIPS_LO16	extern\+0xfffffffffffcc000
++.*: R_MIPS_LO16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	lui	at,0x0
+-.*: R_MIPS_HI16	extern\+0xfffffffffffcc000
++.*: R_MIPS_HI16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	daddu	at,at,v1
+ .*	sw	a0,0\(at\)
+-.*: R_MIPS_LO16	extern\+0xfffffffffffcc000
++.*: R_MIPS_LO16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ #
+@@ -880,21 +880,21 @@
+ .*	swl	a0,0\(at\)
+ .*	swr	a0,3\(at\)
+ .*	lui	at,0x0
+-.*: R_MIPS_HI16	extern\+0xfffffffffffcc000
++.*: R_MIPS_HI16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	d?addiu	at,at,0
+-.*: R_MIPS_LO16	extern\+0xfffffffffffcc000
++.*: R_MIPS_LO16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	swl	a0,0\(at\)
+ .*	swr	a0,3\(at\)
+ .*	lui	at,0x0
+-.*: R_MIPS_HI16	extern\+0xfffffffffffcc000
++.*: R_MIPS_HI16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	d?addiu	at,at,0
+-.*: R_MIPS_LO16	extern\+0xfffffffffffcc000
++.*: R_MIPS_LO16	extern-0x34000
+ .*: R_MIPS_NONE	.*
+ .*: R_MIPS_NONE	.*
+ .*	daddu	at,at,v1
+--- a/gas/testsuite/gas/mips/mips16-hilo-n32.d
++++ b/gas/testsuite/gas/mips/mips16-hilo-n32.d
+@@ -141,45 +141,45 @@
+  13c:	f400 3480 	sll	a0,16
+  140:	f010 4c00 	addiu	a0,-32768
+  144:	f000 6c00 	li	a0,0
+-			144: R_MIPS16_HI16	\.data\+0xffff8000
++			144: R_MIPS16_HI16	\.data-0x8000
+  148:	f400 3480 	sll	a0,16
+  14c:	f000 4c00 	addiu	a0,0
+-			14c: R_MIPS16_LO16	\.data\+0xffff8000
++			14c: R_MIPS16_LO16	\.data-0x8000
+  150:	f000 6c00 	li	a0,0
+-			150: R_MIPS16_HI16	\.data\+0xffff8004
++			150: R_MIPS16_HI16	\.data-0x7ffc
+  154:	f400 3480 	sll	a0,16
+  158:	f000 4c00 	addiu	a0,0
+-			158: R_MIPS16_LO16	\.data\+0xffff8004
++			158: R_MIPS16_LO16	\.data-0x7ffc
+  15c:	f000 6c00 	li	a0,0
+-			15c: R_MIPS16_HI16	big_external_data_label\+0xffff8000
++			15c: R_MIPS16_HI16	big_external_data_label-0x8000
+  160:	f400 3480 	sll	a0,16
+  164:	f000 4c00 	addiu	a0,0
+-			164: R_MIPS16_LO16	big_external_data_label\+0xffff8000
++			164: R_MIPS16_LO16	big_external_data_label-0x8000
+  168:	f000 6c00 	li	a0,0
+-			168: R_MIPS16_HI16	small_external_data_label\+0xffff8000
++			168: R_MIPS16_HI16	small_external_data_label-0x8000
+  16c:	f400 3480 	sll	a0,16
+  170:	f000 4c00 	addiu	a0,0
+-			170: R_MIPS16_LO16	small_external_data_label\+0xffff8000
++			170: R_MIPS16_LO16	small_external_data_label-0x8000
+  174:	f000 6c00 	li	a0,0
+-			174: R_MIPS16_HI16	big_external_common\+0xffff8000
++			174: R_MIPS16_HI16	big_external_common-0x8000
+  178:	f400 3480 	sll	a0,16
+  17c:	f000 4c00 	addiu	a0,0
+-			17c: R_MIPS16_LO16	big_external_common\+0xffff8000
++			17c: R_MIPS16_LO16	big_external_common-0x8000
+  180:	f000 6c00 	li	a0,0
+-			180: R_MIPS16_HI16	small_external_common\+0xffff8000
++			180: R_MIPS16_HI16	small_external_common-0x8000
+  184:	f400 3480 	sll	a0,16
+  188:	f000 4c00 	addiu	a0,0
+-			188: R_MIPS16_LO16	small_external_common\+0xffff8000
++			188: R_MIPS16_LO16	small_external_common-0x8000
+  18c:	f000 6c00 	li	a0,0
+-			18c: R_MIPS16_HI16	\.bss\+0xffff8000
++			18c: R_MIPS16_HI16	\.bss-0x8000
+  190:	f400 3480 	sll	a0,16
+  194:	f000 4c00 	addiu	a0,0
+-			194: R_MIPS16_LO16	\.bss\+0xffff8000
++			194: R_MIPS16_LO16	\.bss-0x8000
+  198:	f000 6c00 	li	a0,0
+-			198: R_MIPS16_HI16	\.sbss\+0xffff8000
++			198: R_MIPS16_HI16	\.sbss-0x8000
+  19c:	f400 3480 	sll	a0,16
+  1a0:	f000 4c00 	addiu	a0,0
+-			1a0: R_MIPS16_LO16	\.sbss\+0xffff8000
++			1a0: R_MIPS16_LO16	\.sbss-0x8000
+  1a4:	6c01      	li	a0,1
+  1a6:	f400 3480 	sll	a0,16
+  1aa:	4c00      	addiu	a0,0
+@@ -399,45 +399,45 @@
+  3b4:	f400 35a0 	sll	a1,16
+  3b8:	f010 9d80 	lw	a0,-32768\(a1\)
+  3bc:	f000 6d00 	li	a1,0
+-			3bc: R_MIPS16_HI16	\.data\+0xffff8000
++			3bc: R_MIPS16_HI16	\.data-0x8000
+  3c0:	f400 35a0 	sll	a1,16
+  3c4:	f000 9d80 	lw	a0,0\(a1\)
+-			3c4: R_MIPS16_LO16	\.data\+0xffff8000
++			3c4: R_MIPS16_LO16	\.data-0x8000
+  3c8:	f000 6d00 	li	a1,0
+-			3c8: R_MIPS16_HI16	\.data\+0xffff8004
++			3c8: R_MIPS16_HI16	\.data-0x7ffc
+  3cc:	f400 35a0 	sll	a1,16
+  3d0:	f000 9d80 	lw	a0,0\(a1\)
+-			3d0: R_MIPS16_LO16	\.data\+0xffff8004
++			3d0: R_MIPS16_LO16	\.data-0x7ffc
+  3d4:	f000 6d00 	li	a1,0
+-			3d4: R_MIPS16_HI16	big_external_data_label\+0xffff8000
++			3d4: R_MIPS16_HI16	big_external_data_label-0x8000
+  3d8:	f400 35a0 	sll	a1,16
+  3dc:	f000 9d80 	lw	a0,0\(a1\)
+-			3dc: R_MIPS16_LO16	big_external_data_label\+0xffff8000
++			3dc: R_MIPS16_LO16	big_external_data_label-0x8000
+  3e0:	f000 6d00 	li	a1,0
+-			3e0: R_MIPS16_HI16	small_external_data_label\+0xffff8000
++			3e0: R_MIPS16_HI16	small_external_data_label-0x8000
+  3e4:	f400 35a0 	sll	a1,16
+  3e8:	f000 9d80 	lw	a0,0\(a1\)
+-			3e8: R_MIPS16_LO16	small_external_data_label\+0xffff8000
++			3e8: R_MIPS16_LO16	small_external_data_label-0x8000
+  3ec:	f000 6d00 	li	a1,0
+-			3ec: R_MIPS16_HI16	big_external_common\+0xffff8000
++			3ec: R_MIPS16_HI16	big_external_common-0x8000
+  3f0:	f400 35a0 	sll	a1,16
+  3f4:	f000 9d80 	lw	a0,0\(a1\)
+-			3f4: R_MIPS16_LO16	big_external_common\+0xffff8000
++			3f4: R_MIPS16_LO16	big_external_common-0x8000
+  3f8:	f000 6d00 	li	a1,0
+-			3f8: R_MIPS16_HI16	small_external_common\+0xffff8000
++			3f8: R_MIPS16_HI16	small_external_common-0x8000
+  3fc:	f400 35a0 	sll	a1,16
+  400:	f000 9d80 	lw	a0,0\(a1\)
+-			400: R_MIPS16_LO16	small_external_common\+0xffff8000
++			400: R_MIPS16_LO16	small_external_common-0x8000
+  404:	f000 6d00 	li	a1,0
+-			404: R_MIPS16_HI16	\.bss\+0xffff8000
++			404: R_MIPS16_HI16	\.bss-0x8000
+  408:	f400 35a0 	sll	a1,16
+  40c:	f000 9d80 	lw	a0,0\(a1\)
+-			40c: R_MIPS16_LO16	\.bss\+0xffff8000
++			40c: R_MIPS16_LO16	\.bss-0x8000
+  410:	f000 6d00 	li	a1,0
+-			410: R_MIPS16_HI16	\.sbss\+0xffff8000
++			410: R_MIPS16_HI16	\.sbss-0x8000
+  414:	f400 35a0 	sll	a1,16
+  418:	f000 9d80 	lw	a0,0\(a1\)
+-			418: R_MIPS16_LO16	\.sbss\+0xffff8000
++			418: R_MIPS16_LO16	\.sbss-0x8000
+  41c:	6d01      	li	a1,1
+  41e:	f400 35a0 	sll	a1,16
+  422:	9d80      	lw	a0,0\(a1\)
+--- a/gas/testsuite/gas/ppc/astest.d
++++ b/gas/testsuite/gas/ppc/astest.d
+@@ -52,11 +52,11 @@
+   60:	00 00 00 00 	\.long 0x0
+ 			60: R_PPC_ADDR32	z
+   64:	ff ff ff fc 	fnmsub  f31,f31,f31,f31
+-			64: R_PPC_ADDR32	x\+0xf+ffffffc
++			64: R_PPC_ADDR32	x-0x4
+   68:	00 00 00 00 	\.long 0x0
+ 			68: R_PPC_ADDR32	\.data
+   6c:	ff ff ff fc 	fnmsub  f31,f31,f31,f31
+-			6c: R_PPC_ADDR32	z\+0xf+ffffffc
++			6c: R_PPC_ADDR32	z-0x4
+   70:	ff ff ff 9c 	\.long 0xffffff9c
+   74:	ff ff ff 9c 	\.long 0xffffff9c
+   78:	00 00 00 00 	\.long 0x0
+--- a/gas/testsuite/gas/ppc/astest2.d
++++ b/gas/testsuite/gas/ppc/astest2.d
+@@ -48,11 +48,11 @@
+   60:	00 00 00 00 	\.long 0x0
+ 			60: R_PPC_ADDR32	z
+   64:	ff ff ff fc 	fnmsub  f31,f31,f31,f31
+-			64: R_PPC_ADDR32	x\+0xf+ffffffc
++			64: R_PPC_ADDR32	x-0x4
+   68:	00 00 00 00 	\.long 0x0
+ 			68: R_PPC_ADDR32	\.data
+   6c:	ff ff ff fc 	fnmsub  f31,f31,f31,f31
+-			6c: R_PPC_ADDR32	z\+0xf+ffffffc
++			6c: R_PPC_ADDR32	z-0x4
+   70:	00 00 00 08 	\.long 0x8
+   74:	00 00 00 08 	\.long 0x8
+ 
+--- a/gas/testsuite/gas/ppc/astest2_64.d
++++ b/gas/testsuite/gas/ppc/astest2_64.d
+@@ -45,11 +45,11 @@
+   58:	00 00 00 00 	\.long 0x0
+ 			58: R_PPC64_ADDR32	z
+   5c:	ff ff ff fc 	fnmsub  f31,f31,f31,f31
+-			5c: R_PPC64_ADDR32	x\+0xfffffffffffffffc
++			5c: R_PPC64_ADDR32	x-0x4
+   60:	00 00 00 00 	\.long 0x0
+ 			60: R_PPC64_ADDR32	\.data
+   64:	ff ff ff fc 	fnmsub  f31,f31,f31,f31
+-			64: R_PPC64_ADDR32	z\+0xfffffffffffffffc
++			64: R_PPC64_ADDR32	z-0x4
+   68:	00 00 00 08 	\.long 0x8
+   6c:	00 00 00 08 	\.long 0x8
+ 
+--- a/gas/testsuite/gas/ppc/astest64.d
++++ b/gas/testsuite/gas/ppc/astest64.d
+@@ -49,11 +49,11 @@
+   58:	00 00 00 00 	\.long 0x0
+ 			58: R_PPC64_ADDR32	z
+   5c:	ff ff ff fc 	fnmsub  f31,f31,f31,f31
+-			5c: R_PPC64_ADDR32	x\+0xfffffffffffffffc
++			5c: R_PPC64_ADDR32	x-0x4
+   60:	00 00 00 00 	\.long 0x0
+ 			60: R_PPC64_ADDR32	\.data
+   64:	ff ff ff fc 	fnmsub  f31,f31,f31,f31
+-			64: R_PPC64_ADDR32	z\+0xfffffffffffffffc
++			64: R_PPC64_ADDR32	z-0x4
+   68:	ff ff ff a4 	\.long 0xffffffa4
+   6c:	ff ff ff a4 	\.long 0xffffffa4
+   70:	00 00 00 00 	\.long 0x0
+--- a/gas/testsuite/gas/ppc/test1elf32.d
++++ b/gas/testsuite/gas/ppc/test1elf32.d
+@@ -79,7 +79,7 @@
+ 
+ 0+000c <dat0>:
+    c:	ff ff ff fc 	fnmsub  f31,f31,f31,f31
+-			c: R_PPC_REL32	jk\+0xf+fffc
++			c: R_PPC_REL32	jk-0x4
+ 
+ 0+0010 <dat1>:
+   10:	00 00 00 00 	\.long 0x0
+--- a/gas/testsuite/gas/ppc/test1elf64.d
++++ b/gas/testsuite/gas/ppc/test1elf64.d
+@@ -114,7 +114,7 @@
+ 
+ 0000000000000014 <dat0>:
+   14:	ff ff ff fc 	fnmsub  f31,f31,f31,f31
+-			14: R_PPC64_REL32	jk\+0xfffffffffffffffc
++			14: R_PPC64_REL32	jk-0x4
+ 
+ 0000000000000018 <dat1>:
+   18:	00 00 00 00 	\.long 0x0
+--- a/gas/testsuite/gas/sparc/reloc64.d
++++ b/gas/testsuite/gas/sparc/reloc64.d
+@@ -35,13 +35,13 @@
+ 			44: R_SPARC_LO10	.text
+   48:	01 00 00 00 	nop 
+   4c:	03 00 00 00 	sethi  %hi\((0x|)0\), %g1
+-			4c: R_SPARC_HH22	.text\+0xfedcba9876543210
++			4c: R_SPARC_HH22	.text\-0x123456789abcdf0
+   50:	82 10 60 00 	mov  %g1, %g1	! 0 <foo>
+-			50: R_SPARC_HM10	.text\+0xfedcba9876543210
++			50: R_SPARC_HM10	.text\-0x123456789abcdf0
+   54:	05 00 00 00 	sethi  %hi\((0x|)0\), %g2
+-			54: R_SPARC_LM22	.text\+0xfedcba9876543210
++			54: R_SPARC_LM22	.text\-0x123456789abcdf0
+   58:	84 10 60 00 	mov  %g1, %g2
+-			58: R_SPARC_LO10	.text\+0xfedcba9876543210
++			58: R_SPARC_LO10	.text\-0x123456789abcdf0
+   5c:	01 00 00 00 	nop 
+   60:	03 2a 61 d9 	sethi  %hi\(0xa9876400\), %g1
+   64:	82 10 61 43 	or  %g1, 0x143, %g1.*
+@@ -70,7 +70,7 @@
+ 			a0: R_SPARC_LOX10	.text
+   a4:	01 00 00 00 	nop 
+   a8:	03 00 00 00 	sethi  %hi\((0x|)0\), %g1
+-			a8: R_SPARC_HIX22	.text\+0xffffffff76543210
++			a8: R_SPARC_HIX22	.text-0x89abcdf0
+   ac:	82 18 60 00 	xor  %g1, 0, %g1
+-			ac: R_SPARC_LOX10	.text\+0xffffffff76543210
++			ac: R_SPARC_LOX10	.text-0x89abcdf0
+   b0:	01 00 00 00 	nop 
