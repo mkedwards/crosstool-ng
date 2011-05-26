@@ -234,7 +234,7 @@ install-lib-main: $(DESTDIR)$(LIBDIR) $(patsubst %,install-lib-%,$(LIB_SUB_DIR))
 #  - change every occurrence of CT_TOP_DIR to CT_LIB_DIR
 install-lib-samples: $(DESTDIR)$(LIBDIR) install-lib-main
 	@echo "  INSTDIR 'samples/'"
-	@for samp_file in samples/*/crosstool.config; do                        \
+	@for samp_file in samples/*/crosstool.*; do                             \
 	     mkdir -p "$(DESTDIR)$(LIBDIR)/$${samp_file%/*}";                   \
 	     $(sed) -r -e 's:\$$\{CT_TOP_DIR\}:\$$\{CT_LIB_DIR\}:;'             \
 	               -e 's:^(CT_WORK_DIR)=.*:\1="\$${CT_TOP_DIR}/.build":;'   \
