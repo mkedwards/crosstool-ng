@@ -1,4 +1,7 @@
 ac_cv_buggy_ether_ntohost=no
+ac_cv_file__usr_share_hwdata_pci_ids=no
+ac_cv_file__usr_share_misc_pci_ids=no
+ac_cv_file__usr_share_pci_ids=yes
 ac_cv_func_malloc_0_nonnull=yes
 ac_cv_func_memcmp_working=yes
 ac_cv_func_mmap_fixed_mapped=yes
