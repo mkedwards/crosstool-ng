@@ -16,6 +16,7 @@ do_cross_me_harder_protobuf_build() {
     CT_Pushd "${CT_BUILD_DIR}/build-protobuf-cross"
     
     CT_DoExecLog CFG \
+    LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}/lib" \
     "${CT_SRC_DIR}/protobuf-${CT_PROTOBUF_VERSION}/configure"   \
             --build=${CT_BUILD}                                 \
             --target=${CT_TARGET}                               \
