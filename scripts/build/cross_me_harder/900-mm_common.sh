@@ -22,7 +22,6 @@ do_cross_me_harder_mm_common_build() {
             --prefix="${CT_PREFIX_DIR}"
     CT_DoExecLog ALL make
     CT_DoExecLog ALL make \
-        DESTDIR="${CT_SYSROOT_DIR}"                             \
         pkgconfigdir="${CT_PREFIX_DIR}"/lib/pkgconfig           \
         shared_pkgconfigdir="${CT_PREFIX_DIR}"/lib/pkgconfig    \
         install
