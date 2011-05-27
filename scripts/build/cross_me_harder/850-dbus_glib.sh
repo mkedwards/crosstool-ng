@@ -17,7 +17,7 @@ do_cross_me_harder_dbus_glib_build() {
     
     CT_DoExecLog CFG \
     CPPFLAGS="-I${CT_PREFIX_DIR}/include"                       \
-    LDFLAGS="-L${CT_PREFIX_DIR}/lib"                            \
+    LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}" \
     "${CT_SRC_DIR}/dbus-glib-${CT_DBUS_GLIB_VERSION}/configure" \
             --build=${CT_BUILD}                                 \
             --target=${CT_TARGET}                               \

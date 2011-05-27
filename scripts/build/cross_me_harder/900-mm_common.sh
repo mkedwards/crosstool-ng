@@ -16,6 +16,8 @@ do_cross_me_harder_mm_common_build() {
     CT_Pushd "${CT_BUILD_DIR}/build-mm-common-cross"
     
     CT_DoExecLog CFG \
+    CPPFLAGS="-I${CT_PREFIX_DIR}/include"                       \
+    LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}" \
     "${CT_SRC_DIR}/mm-common-${CT_MM_COMMON_VERSION}/configure" \
             --build=${CT_BUILD}                                 \
             --target=${CT_TARGET}                               \

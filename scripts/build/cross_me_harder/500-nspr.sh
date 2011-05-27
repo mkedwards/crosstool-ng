@@ -29,6 +29,8 @@ do_cross_me_harder_nspr_build() {
 
     CC="${CT_HOST}-gcc"                                         \
     CT_DoExecLog CFG                                            \
+    CPPFLAGS="-I${CT_PREFIX_DIR}/include"                       \
+    LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}" \
     ./configure                                                 \
             --prefix="${CT_PREFIX_DIR}"                         \
             --enable-optimize=-Os                               \

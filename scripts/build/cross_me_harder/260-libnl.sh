@@ -20,7 +20,7 @@ do_cross_me_harder_libnl_build() {
     LEX="flex"                                                  \
     YACC="bison -y"                                             \
     CPPFLAGS="-I${CT_PREFIX_DIR}/include"                       \
-    LDFLAGS="-L${CT_PREFIX_DIR}/lib"                            \
+    LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}" \
     CFLAGS="-g -Os -fPIC -DPIC"                                 \
     ./configure                                                 \
             --build=${CT_BUILD}                                 \

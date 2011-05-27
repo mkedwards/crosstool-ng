@@ -18,6 +18,8 @@ do_cross_me_harder_glib_build() {
     CT_DoExecLog CFG \
     PCRE_CFLAGS="`pkg-config --cflags libpcre`"                 \
     PCRE_LIBS="`(pkg-config --libs libpcre && pkg-config --libs-only-L libpcre | sed -e 's/-L/-Wl,-rpath=/g') | tr '\n' ' '`" \
+    CPPFLAGS="-I${CT_PREFIX_DIR}/include"                       \
+    LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}" \
     "${CT_SRC_DIR}/glib-${CT_GLIB_VERSION}/configure"           \
             --build=${CT_BUILD}                                 \
             --target=${CT_TARGET}                               \

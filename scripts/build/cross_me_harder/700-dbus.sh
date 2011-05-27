@@ -17,7 +17,7 @@ do_cross_me_harder_dbus_build() {
     
     CT_DoExecLog CFG \
     CPPFLAGS="-I${CT_PREFIX_DIR}/include"                       \
-    LDFLAGS="-L${CT_PREFIX_DIR}/lib"                            \
+    LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}" \
     "${CT_SRC_DIR}/dbus-${CT_DBUS_VERSION}/configure"           \
             --build=${CT_BUILD}                                 \
             --target=${CT_TARGET}                               \
@@ -35,6 +35,8 @@ do_cross_me_harder_dbus_build() {
     mkdir -p "${CT_BUILD_DIR}/build-dbus-target"
     CT_Pushd "${CT_BUILD_DIR}/build-dbus-target"
     
+    rm -rf "${CT_SYSROOT_DIR}/etc/dbus-1"
+    mkdir -p "${CT_SYSROOT_DIR}/etc/dbus-1/system.d"
     cp ../../config.cache .
     CT_DoExecLog CFG \
     PKG_CONFIG="${CT_TARGET}-pkg-config --define-variable=prefix=${CT_SYSROOT_DIR}/usr" \
