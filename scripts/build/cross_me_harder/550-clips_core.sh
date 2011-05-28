@@ -19,7 +19,8 @@ do_cross_me_harder_clips_core_build() {
     autoreconf -fiv
     CT_Popd
 
-    mkdir -p "${CT_BUILD_DIR}/build-clips-core-host"
+    rm -rf "${CT_BUILD_DIR}/build-clips-core-host"
+    cp -a "${CT_SRC_DIR}/clips-core-${CT_CLIPS_CORE_VERSION}" "${CT_BUILD_DIR}/build-clips-core-host"
     CT_Pushd "${CT_BUILD_DIR}/build-clips-core-host"
     
     CT_DoExecLog CFG \
@@ -27,7 +28,7 @@ do_cross_me_harder_clips_core_build() {
     CPPFLAGS="-I${CT_PREFIX_DIR}/include"                       \
     LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}/lib" \
     CFLAGS="-g -Os -fPIC -DPIC"                                 \
-    "${CT_SRC_DIR}/clips-core-${CT_CLIPS_CORE_VERSION}/configure" \
+    ./configure                                                 \
             --build=${CT_BUILD}                                 \
             --prefix="${CT_PREFIX_DIR}"                         \
             --enable-debug
@@ -37,13 +38,14 @@ do_cross_me_harder_clips_core_build() {
     CT_EndStep
 
     CT_DoStep EXTRA "Installing cross clips-core"
-    mkdir -p "${CT_BUILD_DIR}/build-clips-core-cross"
+    rm -rf "${CT_BUILD_DIR}/build-clips-core-cross"
+    cp -a "${CT_SRC_DIR}/clips-core-${CT_CLIPS_CORE_VERSION}" "${CT_BUILD_DIR}/build-clips-core-cross"
     CT_Pushd "${CT_BUILD_DIR}/build-clips-core-cross"
     
     CT_DoExecLog CFG \
     PKG_CONFIG="${CT_TARGET}-pkg-config --define-variable=prefix=${CT_SYSROOT_DIR}/usr" \
     CFLAGS="-g -Os -fPIC -DPIC"                                 \
-    "${CT_SRC_DIR}/clips-core-${CT_CLIPS_CORE_VERSION}/configure" \
+    ./configure                                                 \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \
         --cache-file="$(pwd)/config.cache"                      \
