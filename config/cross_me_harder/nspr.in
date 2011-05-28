@@ -7,9 +7,9 @@ choice
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
-config NSPR_V_4_8_7
+config NSPR_V_4_8_8
     bool
-    prompt "4.8.7 (EXPERIMENTAL)"
+    prompt "4.8.8 (EXPERIMENTAL)"
     select PCRE_NEEDED
     select SQLITE_NEEDED
     select PCRE_TARGET
@@ -22,4 +22,4 @@ config NSPR_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
-    default "4.8.7" if NSPR_V_4_8_7
+    default "4.8.8" if NSPR_V_4_8_8

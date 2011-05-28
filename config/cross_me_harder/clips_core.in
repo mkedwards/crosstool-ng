@@ -1,0 +1,21 @@
+# clips-core
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "clips-core version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config CLIPS_CORE_V_6_30
+    bool
+    prompt "6.30 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config CLIPS_CORE_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "6.30" if CLIPS_CORE_V_6_30

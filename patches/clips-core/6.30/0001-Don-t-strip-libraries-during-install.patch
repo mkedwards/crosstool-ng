@@ -1,0 +1,27 @@
+From 8ce2595eaaee1d50b89152c86ff72680a4053e1e Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-epsvn.cisco.com>
+Date: Tue, 26 Apr 2011 20:59:25 +0000
+Subject: [PATCH] Don't strip libraries during install
+
+---
+ Makefile.in |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile.in b/Makefile.in
+index 11a7ebb..890ddd4 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -289,8 +289,8 @@ install-strip :
+ 
+ # Install libraries into standard location.
+ install-libs : libs
+-	$(INSTALL_PROGRAM) -s libclips.a $(DESTDIR)$(libdir)/
+-	$(INSTALL_PROGRAM) -s libclips.so.$(VERSION) $(DESTDIR)$(libdir)/
++	$(INSTALL_PROGRAM) libclips.a $(DESTDIR)$(libdir)/
++	$(INSTALL_PROGRAM) libclips.so.$(VERSION) $(DESTDIR)$(libdir)/
+ 	cp -a libclips.so.$(VERSION_MAJOR) $(DESTDIR)$(libdir)/
+ 	cp -a libclips.so                  $(DESTDIR)$(libdir)/
+ #		-ldconfig -vl $(DESTDIR)$(libdir)/libclips.so.$(VERSION)
+-- 
+1.7.0.4
+
