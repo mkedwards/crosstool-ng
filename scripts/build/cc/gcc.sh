@@ -2,6 +2,33 @@
 # Copyright 2007 Yann E. MORIN
 # Licensed under the GPL v2. See COPYING in the root of this package
 
+do_cc_get_linaro_from_bzr() {
+    local linaro_bzr_version
+    local bzr_url
+    local bzr_action
+
+    CT_HasOrAbort bzr
+
+    linaro_bzr_version="$( echo "${CT_CC_VERSION}"          \
+                       |sed -r -e 's/^linaro-//; s/-bzr//;' \
+                     )"
+
+    case "${linaro_bzr_version}" in
+        trunk)  bzr_url="lp:gcc-linaro";;
+        *)      bzr_url="lp:gcc-linaro/${linaro_bzr_version}";;
+    esac
+
+    case "${CT_CC_GCC_CHECKOUT}" in
+        y)  CT_DoExecLog ALL bzr checkout "${bzr_url}" gcc-linaro-tmp;;
+        *)  CT_DoExecLog ALL bzr export gcc-linaro-tmp "${bzr_url}";;
+    esac
+
+    # Compress gcc
+    CT_DoExecLog ALL mv gcc-linaro-tmp "gcc-${CT_CC_VERSION}"
+    CT_DoExecLog ALL tar cjf "${CT_LOCAL_TARBALLS_DIR}/gcc-${CT_CC_VERSION}.tar.bz2" "gcc-${CT_CC_VERSION}"
+    CT_DoExecLog ALL rm -rf "gcc-${CT_CC_VERSION}"
+}
+
 # Download gcc
 do_cc_get() {
     local linaro_version
@@ -16,6 +43,10 @@ do_cc_get() {
     linaro_series="$( echo "${linaro_version}"      \
                       |sed -r -e 's/-.*//;'         \
                     )"
+
+    case "${linaro_version}" in
+        *-bzr)  if [ ! -f "${CT_LOCAL_TARBALLS_DIR}/gcc-${CT_CC_VERSION}.tar.bz2" ]; then do_cc_get_linaro_from_bzr; fi;;
+    esac
 
     # Ah! gcc folks are kind of 'different': they store the tarballs in
     # subdirectories of the same name! That's because gcc is such /crap/ that

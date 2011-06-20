@@ -1,0 +1,182 @@
+From e40f18454d0fbae93812fa25c78fabec58270a67 Mon Sep 17 00:00:00 2001
+From: William Cohen <wcohen@redhat.com>
+Date: Tue, 10 May 2011 16:42:31 -0400
+Subject: [PATCH 4/4] Do additional checks on user supplied arguments
+
+Avoid blindly setting variable to user-supplied values. Check to the values
+to make sure they do not contain odd punctuation to address CVE-2011-1760.
+
+The patch was ported by Luciano Bello
+---
+ utils/opcontrol |   36 ++++++++++++++++++++++--------------
+ 1 files changed, 22 insertions(+), 14 deletions(-)
+
+--- a/utils/opcontrol
++++ b/utils/opcontrol
+@@ -60,6 +60,43 @@
+ 	fi
+ }
+ 
++# guess_number_base() checks if string is a valid octal(8), hexidecimal(16),
++# or decimal number(10). The value is returned in $?. Returns 0, if string
++# isn't a octal, hexidecimal, or decimal number.
++guess_number_base()
++{
++    if [[ "$1" =~ ^0[0-7]*$ ]] ; then
++        return 8;
++    elif [[ "$1" =~ ^0x[0-9a-fA-F]+$ ]] ; then
++        return 16;
++    elif [[ "$1" =~ ^[1-9][0-9]*$ ]] ; then
++        return 10;
++    else
++        return 0;
++    fi
++}
++
++# check value is a valid number
++error_if_not_number()
++{
++    error_if_empty $1 $2
++    guess_number_base $2
++    if test "$?" -eq 0 ; then
++        echo "Argument for $1, $2, is not a valid number." >&2
++        exit 1
++    fi
++}
++
++error_if_invalid_arg()
++{
++   error_if_empty $1 $2
++   clean_val="`echo "$2" | tr -cd '[:alnum:]_:/,\-.'`"
++   if [ "x$2" != "x$clean_val" ]; then
++       echo "Argument for $1, $2, is not valid argument." >&2
++       exit 1
++   fi
++}
++
+ # rm_device arguments $1=file_name
+ rm_device()
+ {
+@@ -436,7 +473,7 @@
+ 		# load the actual information from file
+ 		while IFS== read -r arg val; do
+ 			clean_arg="`echo "${arg}" | tr -cd '[:alnum:]_'`"
+-			clean_val="`echo "${val}" | tr -cd '[:alnum:]_:/.-'`"
++            clean_val="`echo "${val}" | tr -cd '[:alnum:]_:/,\-.'`"
+ 			if [ "x$arg" != "x$clean_arg" ]; then
+ 			    echo "Invalid variable \"$arg\" in $SETUP_FILE."
+ 			    exit 1
+@@ -748,7 +785,7 @@
+ 				;;
+ 
+ 			--save)
+-				error_if_empty $arg $val
++                error_if_invalid_arg $arg $val
+ 				DUMP=yes
+ 				SAVE_SESSION=yes
+ 				SAVE_NAME=$val
+@@ -773,7 +810,7 @@
+ 				# already processed
+ 				;;
+ 			--buffer-size)
+-				error_if_empty $arg $val
++				error_if_not_number $arg $val
+ 				BUF_SIZE=$val
+ 				DO_SETUP=yes
+ 				;;
+@@ -782,7 +819,7 @@
+ 					echo "$arg unsupported for this kernel version"
+ 					exit 1
+ 				fi
+-				error_if_empty $arg $val
++				error_if_not_number $arg $val
+ 				BUF_WATERSHED=$val
+ 				DO_SETUP=yes
+ 				;;
+@@ -791,12 +828,12 @@
+ 					echo "$arg unsupported for this kernel version"
+ 					exit 1
+ 				fi
+-				error_if_empty $arg $val
++				error_if_not_number $arg $val
+ 				CPU_BUF_SIZE=$val
+ 				DO_SETUP=yes
+ 				;;
+ 			-e|--event)
+-				error_if_empty $arg $val
++				error_if_invalid_arg $arg $val
+ 				# reset any read-in defaults from daemonrc
+ 				if test "$SEEN_EVENT" = "0"; then
+ 					NR_CHOSEN=0
+@@ -817,7 +854,6 @@
+ 				DO_SETUP=yes
+ 				;;
+ 			-c|--callgraph)
+-				error_if_empty $arg $val
+ 				if test ! -f $MOUNT/backtrace_depth; then
+ 					echo "Call-graph profiling unsupported on this kernel/hardware" >&2
+ 					exit 1
+@@ -826,7 +862,7 @@
+ 				DO_SETUP=yes
+ 				;;
+ 			--vmlinux)
+-				error_if_empty $arg $val
++				error_if_invalid_arg $arg $val
+ 				VMLINUX=$val
+ 				DO_SETUP=yes
+ 				;;
+@@ -835,32 +871,32 @@
+ 				DO_SETUP=yes
+ 				;;
+ 			--kernel-range)
+-				error_if_empty $arg $val
++				error_if_invalid_arg $arg $val
+ 				KERNEL_RANGE=$val
+ 				DO_SETUP=yes
+ 				;;
+ 			--xen)
+-				error_if_empty $arg $val
++				error_if_invalid_arg $arg $val
+ 				XENIMAGE=$val
+ 				DO_SETUP=yes
+ 				;;
+ 			--active-domains)
+-				error_if_empty $arg $val
++				error_if_invalid_arg $arg $val
+ 				ACTIVE_DOMAINS=$val
+ 				DO_SETUP=yes
+ 				;;
+ 			--note-table-size)
+-				error_if_empty $arg $val
+ 				if test "$KERNEL_SUPPORT" = "yes"; then
+ 					echo "\"$arg\" meaningless on this kernel" >&2
+ 					exit 1
+ 				else
++					error_if_not_number $arg $val
+ 					NOTE_SIZE=$val
+ 				fi
+ 				DO_SETUP=yes
+ 				;;
+ 			-i|--image)
+-				error_if_empty $arg $val
++				error_if_invalid_arg $arg $val
+ 				if test "$val" = "all"; then
+ 					IMAGE_FILTER=
+ 				else
+@@ -873,6 +909,7 @@
+ 				if test -z "$val"; then
+ 					VERBOSE="all"
+ 				else
++					error_if_invalid_arg $arg $val
+ 					VERBOSE=$val
+ 				fi
+ 				;;
+@@ -1809,7 +1846,7 @@
+ 				exit 0
+ 				;;
+ 			--session-dir)
+-				error_if_empty $arg $val
++				error_if_invalid_arg $arg $val
+ 				SESSION_DIR="$val"
+ 				DO_SETUP=yes
+ 				# do not exit early

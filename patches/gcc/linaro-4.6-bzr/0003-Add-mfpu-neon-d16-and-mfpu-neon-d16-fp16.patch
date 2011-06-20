@@ -1,0 +1,56 @@
+From 0c0c32974229803119c16c12af4923587b2061f2 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Tue, 22 Feb 2011 02:22:41 +0000
+Subject: [PATCH 3/3] Add -mfpu=neon-d16 and -mfpu=neon-d16-fp16
+
+---
+ gcc/config.gcc       |    4 ++--
+ gcc/config/arm/arm.c |    2 ++
+ gcc/doc/invoke.texi  |    4 ++--
+
+diff --git a/gcc/config.gcc b/gcc/config.gcc
+index 6db775e..042c971 100644
+--- a/gcc/config.gcc
++++ b/gcc/config.gcc
+@@ -3013,8 +3013,8 @@ case "${target}" in
+ 		"" \
+ 		| fpa | fpe2 | fpe3 | maverick | vfp | vfp3 | vfpv3 \
+ 		| vfpv3-fp16 | vfpv3-d16 | vfpv3-d16-fp16 | vfpv3xd \
+-		| vfpv3xd-fp16 | neon | neon-fp16 | vfpv4 | vfpv4-d16 \
+-		| fpv4-sp-d16 | neon-vfpv4)
++		| vfpv3xd-fp16 | neon | neon-fp16 | neon-d16 | neon-d16-fp16 \
++		| vfpv4 | vfpv4-d16 | fpv4-sp-d16 | neon-vfpv4)
+ 			# OK
+ 			;;
+ 		*)
+diff --git a/gcc/config/arm/arm.c b/gcc/config/arm/arm.c
+index 5366438..42f67ab 100644
+--- a/gcc/config/arm/arm.c
++++ b/gcc/config/arm/arm.c
+@@ -883,6 +883,8 @@ static const struct arm_fpu_desc all_fpus[] =
+   {"vfpv3xd-fp16",	ARM_FP_MODEL_VFP, 3, VFP_REG_SINGLE, false, true},
+   {"neon",		ARM_FP_MODEL_VFP, 3, VFP_REG_D32, true , false},
+   {"neon-fp16",		ARM_FP_MODEL_VFP, 3, VFP_REG_D32, true , true },
++  {"neon-d16",		ARM_FP_MODEL_VFP, 3, VFP_REG_D16, true , false},
++  {"neon-d16-fp16",	ARM_FP_MODEL_VFP, 3, VFP_REG_D16, true , true },
+   {"vfpv4",		ARM_FP_MODEL_VFP, 4, VFP_REG_D32, false, true},
+   {"vfpv4-d16",		ARM_FP_MODEL_VFP, 4, VFP_REG_D16, false, true},
+   {"fpv4-sp-d16",	ARM_FP_MODEL_VFP, 4, VFP_REG_SINGLE, false, true},
+diff --git a/gcc/doc/invoke.texi b/gcc/doc/invoke.texi
+index 7e4f3ce..4b8140d 100644
+--- a/gcc/doc/invoke.texi
++++ b/gcc/doc/invoke.texi
+@@ -9932,8 +9932,8 @@ This specifies what floating point hardware (or hardware emulation) is
+ available on the target.  Permissible names are: @samp{fpa}, @samp{fpe2},
+ @samp{fpe3}, @samp{maverick}, @samp{vfp}, @samp{vfpv3}, @samp{vfpv3-fp16},
+ @samp{vfpv3-d16}, @samp{vfpv3-d16-fp16}, @samp{vfpv3xd}, @samp{vfpv3xd-fp16},
+-@samp{neon}, @samp{neon-fp16}, @samp{vfpv4}, @samp{vfpv4-d16},
+-@samp{fpv4-sp-d16} and @samp{neon-vfpv4}.
++@samp{neon}, @samp{neon-fp16}, @samp{neon-d16}, @samp{neon-d16-fp16},
++@samp{vfpv4}, @samp{vfpv4-d16}, @samp{fpv4-sp-d16}, and @samp{neon-vfpv4}.
+ @option{-mfp} and @option{-mfpe} are synonyms for
+ @option{-mfpu}=@samp{fpe}@var{number}, for compatibility with older versions
+ of GCC@.
+-- 
+1.7.0.4
+

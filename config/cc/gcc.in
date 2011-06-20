@@ -37,6 +37,20 @@ choice
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
+config CC_V_linaro_trunk_bzr
+    bool
+    prompt "linaro-trunk-bzr (EXPERIMENTAL)"
+    depends on CC_GCC_SHOW_LINARO
+    select CC_GCC_4_6
+    select CC_GCC_LINARO_BZR
+
+config CC_V_linaro_4_6_bzr
+    bool
+    prompt "linaro-4.6-bzr (EXPERIMENTAL)"
+    depends on CC_GCC_SHOW_LINARO
+    select CC_GCC_4_6
+    select CC_GCC_LINARO_BZR
+
 config CC_V_linaro_4_6_2011_05_0
     bool
     prompt "linaro-4.6-2011.05-0 (EXPERIMENTAL)"
@@ -269,6 +283,24 @@ config CC_GCC_4_6_or_later
     default n
     select CC_GCC_4_5_or_later
 
+config CC_GCC_LINARO_BZR
+    bool
+    default n
+
+config CC_GCC_CHECKOUT
+    bool
+    prompt "checkout instead of export"
+    depends on CC_GCC_LINARO_BZR
+    default y if CC_V_linaro_trunk_bzr
+    default n if ! CC_V_linaro_trunk_bzr
+    help
+      By default, the Linaro gcc download will be an export of the bzr
+      repository. If you say 'y' here, then the repository will instead be
+      checked-out, so that you can update it later.
+      
+      Note that crosstool-NG will *not* update your working copy, you will
+      have to do that yourself.
+
 config CC_GCC_HAS_GRAPHITE
     bool
     default n
@@ -327,6 +359,8 @@ config CC_VERSION
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
     default "4.4.6" if CC_V_4_4_6
+    default "linaro-trunk-bzr" if CC_V_linaro_trunk_bzr
+    default "linaro-4.6-bzr" if CC_V_linaro_4_6_bzr
     default "linaro-4.6-2011.05-0" if CC_V_linaro_4_6_2011_05_0
     default "linaro-4.6-2011.04-0" if CC_V_linaro_4_6_2011_04_0
     default "4.6.0" if CC_V_4_6_0

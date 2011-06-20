@@ -1,0 +1,9 @@
+Fix shell interpreter
+--- trunk.orig/utils/opcontrol
++++ trunk/utils/opcontrol
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ #
+ # opcontrol is a script to control OProfile
+ # opcontrol --help and opcontrol --list-events have info

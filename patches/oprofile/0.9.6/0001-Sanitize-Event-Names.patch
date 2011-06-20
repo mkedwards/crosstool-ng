@@ -1,0 +1,37 @@
+From d52d142365cedb6c11e0d57835a6530cb9687474 Mon Sep 17 00:00:00 2001
+From: William Cohen <wcohen@redhat.com>
+Date: Tue, 10 May 2011 11:44:11 -0400
+Subject: [PATCH 1/4] Sanitize Event Names
+
+The event names need to be sanitized to only allow alphanumeric characters to
+address CVE-2011-1760.
+---
+ utils/opcontrol |   12 +++++++++++-
+ 1 files changed, 11 insertions(+), 1 deletions(-)
+
+diff --git a/utils/opcontrol b/utils/opcontrol
+index 3a8a814..f2558e6 100644
+--- a/utils/opcontrol
++++ b/utils/opcontrol
+@@ -390,7 +390,17 @@ get_event()
+ 
+ set_event()
+ {
+-	eval "CHOSEN_EVENTS_$1=$2"
++	clean1="`echo "${1}" | tr -cd '[:alnum:]_'`"
++	clean2="`echo "${2}" | tr -cd '[:alnum:]_:'`"
++	if [ "x$1" != "x$clean1" ]; then
++		echo "Invalid event number \"$1\"."
++		exit 1
++	fi
++	if [ "x$2" != "x$clean2" ]; then
++		echo "Invalid event \"$2\"."
++		exit 1
++	fi
++	eval "CHOSEN_EVENTS_$clean1=$clean2"
+ }
+ 
+ 
+-- 
+1.7.1
+

@@ -1,0 +1,39 @@
+From b38fae2cd24feee3e979c5f5eada8549cf2e39b2 Mon Sep 17 00:00:00 2001
+From: William Cohen <wcohen@redhat.com>
+Date: Tue, 10 May 2011 11:50:33 -0400
+Subject: [PATCH 2/4] Ensure that --save only saves things in $SESSION_DIR
+
+It was possible use the --session-dir and --save to copy files into arbitrary
+locations. This change limits the --save to moving directories within
+the $SESSION_DIR.
+---
+ utils/opcontrol |   11 +++++++++++
+ 1 files changed, 11 insertions(+), 0 deletions(-)
+
+--- a/utils/opcontrol
++++ b/utils/opcontrol
+@@ -50,6 +50,16 @@
+ }
+ 
+ 
++# check value is a base filename
++error_if_not_basename()
++{
++	bname=`basename "$2"`
++	if [[ "x$2" !=  "x$bname" ]] ; then 
++		echo "Argument for $1, $2, is not a base filename." >&2
++		exit 1
++	fi
++}
++
+ # rm_device arguments $1=file_name
+ rm_device()
+ {
+@@ -729,6 +739,7 @@
+ 
+ 			--save)
+ 				error_if_empty $arg $val
++				error_if_not_basename $arg $val
+ 				DUMP=yes
+ 				SAVE_SESSION=yes
+ 				SAVE_NAME=$val

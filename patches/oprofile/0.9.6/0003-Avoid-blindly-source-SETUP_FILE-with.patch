@@ -1,0 +1,45 @@
+From 02220ca51a25913a5b81885066ac4ff2ca2490c5 Mon Sep 17 00:00:00 2001
+From: William Cohen <wcohen@redhat.com>
+Date: Tue, 10 May 2011 14:38:26 -0400
+Subject: [PATCH 3/4] Avoid blindly source $SETUP_FILE with '.'
+
+If there could be arbitrary commands in the $SETUP_FILE, the '.' command
+would blindly execute them. This change limits do_load_setup to only
+assigning values to variables.
+---
+ utils/opcontrol |   17 +++++++++++++----
+ 1 files changed, 13 insertions(+), 4 deletions(-)
+
+--- a/utils/opcontrol
++++ b/utils/opcontrol
+@@ -434,9 +434,19 @@
+ {
+ 	if test -f "$SETUP_FILE"; then
+ 		# load the actual information from file
+-		# FIXME this is insecure, arbitrary commands could be added to
+-		# $SETUP_FILE and be executed as root
+-		. $SETUP_FILE
++		while IFS== read -r arg val; do
++			clean_arg="`echo "${arg}" | tr -cd '[:alnum:]_'`"
++			clean_val="`echo "${val}" | tr -cd '[:alnum:]_:/.-'`"
++			if [ "x$arg" != "x$clean_arg" ]; then
++			    echo "Invalid variable \"$arg\" in $SETUP_FILE."
++			    exit 1
++			fi
++			if [ "x$val" != "x$clean_val" ]; then
++			    echo "Invalid value \"$val\" in $SETUP_FILE."
++			    exit 1
++			fi
++			eval "${clean_arg}=${clean_val}"
++		done < $SETUP_FILE
+ 	fi
+ }
+ 
+@@ -739,7 +749,6 @@
+ 
+ 			--save)
+ 				error_if_empty $arg $val
+-				error_if_not_basename $arg $val
+ 				DUMP=yes
+ 				SAVE_SESSION=yes
+ 				SAVE_NAME=$val
