@@ -1,0 +1,189 @@
+From da50020299ff52b33552fa3ee78862f0116c2f49 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Tue, 28 Jun 2011 00:25:39 +0000
+Subject: [PATCH] Implement jsimd_idct_ifast() using NEON intrinsics
+
+---
+ simd/jsimd_arm.c |  154 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 152 insertions(+), 2 deletions(-)
+
+diff --git a/simd/jsimd_arm.c b/simd/jsimd_arm.c
+index 1a5cdd3..7ea863c 100644
+--- a/simd/jsimd_arm.c
++++ b/simd/jsimd_arm.c
+@@ -15,6 +15,8 @@
+  * Based on the stubs from 'jsimd_none.c'
+  */
+ 
++#include <arm_neon.h>
++
+ #define JPEG_INTERNALS
+ #include "../jinclude.h"
+ #include "../jpeglib.h"
+@@ -547,13 +549,161 @@ jsimd_idct_islow (j_decompress_ptr cinfo, jpeg_component_info * compptr,
+ {
+ }
+ 
++typedef struct {
++  int16x8x4_t half[2];
++} int16_8x8_t;
++
++inline static int16_8x8_t idct_helper(int16x4_t idct_constants, int16_8x8_t a) __attribute__ ((__always_inline__));
++
++inline static int16_8x8_t idct_helper(int16x4_t idct_constants, int16_8x8_t a)
++{
++  int16x8x4_t even_part, odd_part;
++
++  {
++    int16x8_t sum0 = vaddq_s16(a.half[0].val[0], a.half[1].val[0]);
++    int16x8_t sum2 = vaddq_s16(a.half[0].val[2], a.half[1].val[2]);
++    int16x8_t diff0 = vsubq_s16(a.half[0].val[0], a.half[1].val[0]);
++    int16x8_t diff2 = vsubq_s16(a.half[0].val[2], a.half[1].val[2]);
++
++    int16x8_t even_a = vqdmulhq_n_s16(diff2, vget_lane_s16(idct_constants, 0));
++    even_a = vaddq_s16(even_a, diff2);
++    even_a = vsubq_s16(even_a, sum2);
++
++    even_part.val[0] = vaddq_s16(sum0, sum2);
++    even_part.val[1] = vaddq_s16(diff0, even_a);
++    even_part.val[2] = vsubq_s16(diff0, even_a);
++    even_part.val[3] = vsubq_s16(sum0, sum2);
++  }
++
++  {
++    int16x8_t sum1 = vaddq_s16(a.half[0].val[1], a.half[1].val[3]);
++    int16x8_t sum3 = vaddq_s16(a.half[1].val[1], a.half[0].val[3]);
++    int16x8_t diff1 = vsubq_s16(a.half[0].val[1], a.half[1].val[3]);
++    int16x8_t diff3 = vsubq_s16(a.half[1].val[1], a.half[0].val[3]);
++
++    int16x8_t t1 = vsubq_s16(sum1, sum3);
++    int16x8_t odd_b = vqdmulhq_n_s16(t1, vget_lane_s16(idct_constants, 0));
++    odd_b = vaddq_s16(odd_b, t1);
++
++    t1 = vaddq_s16(diff1, diff3);
++    int16x8_t odd_d = vqdmulhq_n_s16(t1, vget_lane_s16(idct_constants, 1));
++    odd_d = vaddq_s16(odd_d, t1);
++
++    int16x8_t odd_a = vqdmulhq_n_s16(diff3, vget_lane_s16(idct_constants, 2));
++    odd_a = vaddq_s16(odd_a, diff3);
++    odd_a = vsubq_s16(odd_d, odd_a);
++
++    int16x8_t odd_c = vqdmulhq_n_s16(diff1, vget_lane_s16(idct_constants, 3));
++    odd_c = vaddq_s16(odd_c, diff1);
++    odd_c = vaddq_s16(odd_c, diff1);
++    odd_c = vsubq_s16(odd_d, odd_c);
++
++    odd_part.val[0] = vaddq_s16(sum1, sum3);
++    odd_part.val[1] = vsubq_s16(odd_a, odd_part.val[0]);
++    odd_part.val[2] = vsubq_s16(odd_b, odd_part.val[1]);
++    odd_part.val[3] = vsubq_s16(odd_c, odd_part.val[2]);
++  }
++
++  int16_8x8_t b;
++  b.half[0].val[0] = vaddq_s16(even_part.val[0], odd_part.val[0]);
++  b.half[1].val[3] = vsubq_s16(even_part.val[0], odd_part.val[0]);
++  b.half[0].val[1] = vaddq_s16(even_part.val[1], odd_part.val[1]);
++  b.half[1].val[2] = vsubq_s16(even_part.val[1], odd_part.val[1]);
++  b.half[0].val[2] = vaddq_s16(even_part.val[2], odd_part.val[2]);
++  b.half[1].val[1] = vsubq_s16(even_part.val[2], odd_part.val[2]);
++  b.half[0].val[3] = vaddq_s16(even_part.val[3], odd_part.val[3]);
++  b.half[1].val[0] = vsubq_s16(even_part.val[3], odd_part.val[3]);
++  return b;
++}
++
++inline static int16x8x2_t vswp_cheat(uint32x4_t a, uint32x4_t b) __attribute__ ((__always_inline__));
++
++inline static int16x8x2_t vswp_cheat(uint32x4_t a, uint32x4_t b)
++{
++  int16x8x2_t r;
++  asm ( "vswp %f0, %e1 \n\t" : "+w" (a), "+w" (b) : );
++  r.val[0] = vreinterpretq_s16_u32(a);
++  r.val[1] = vreinterpretq_s16_u32(b);
++  return r;
++}
++
++inline static int16_8x8_t transpose_8x8(int16_8x8_t a) __attribute__ ((__always_inline__));
++
++inline static int16_8x8_t transpose_8x8(int16_8x8_t a)
++{
++  int16x8x2_t t0 = vtrnq_s16(a.half[0].val[0], a.half[0].val[1]);
++  int16x8x2_t t1 = vtrnq_s16(a.half[0].val[2], a.half[0].val[3]);
++  int16x8x2_t t2 = vtrnq_s16(a.half[1].val[0], a.half[1].val[1]);
++  int16x8x2_t t3 = vtrnq_s16(a.half[1].val[2], a.half[1].val[3]);
++
++  uint32x4x2_t u0 = vtrnq_u32(vreinterpretq_u32_s16(t0.val[0]), vreinterpretq_u32_s16(t1.val[0]));
++  uint32x4x2_t u1 = vtrnq_u32(vreinterpretq_u32_s16(t0.val[1]), vreinterpretq_u32_s16(t1.val[1]));
++  uint32x4x2_t u2 = vtrnq_u32(vreinterpretq_u32_s16(t2.val[0]), vreinterpretq_u32_s16(t3.val[0]));
++  uint32x4x2_t u3 = vtrnq_u32(vreinterpretq_u32_s16(t2.val[1]), vreinterpretq_u32_s16(t3.val[1]));
++
++  int16_8x8_t b;
++  int16x8x2_t r;
++  r = vswp_cheat(u0.val[0], u2.val[0]);
++  b.half[0].val[0] = r.val[0];
++  b.half[1].val[0] = r.val[1];
++  r = vswp_cheat(u0.val[1], u2.val[1]);
++  b.half[0].val[1] = r.val[0];
++  b.half[1].val[1] = r.val[1];
++  r = vswp_cheat(u1.val[0], u3.val[0]);
++  b.half[0].val[2] = r.val[0];
++  b.half[1].val[2] = r.val[1];
++  r = vswp_cheat(u1.val[1], u3.val[1]);
++  b.half[0].val[3] = r.val[0];
++  b.half[1].val[3] = r.val[1];
++  return b;
++}
++
+ GLOBAL(void)
+ jsimd_idct_ifast (j_decompress_ptr cinfo, jpeg_component_info * compptr,
+                 JCOEFPTR coef_block, JSAMPARRAY output_buf,
+                 JDIMENSION output_col)
+ {
+-  if ((simd_support & JSIMD_ARM_NEON))
+-    jsimd_idct_ifast_neon(compptr->dct_table, coef_block, output_buf, output_col);
++  if (!(simd_support & JSIMD_ARM_NEON))
++	return;
++
++  int16_8x8_t coef;
++  coef.half[0] = vld4q_s16((int16_t*) coef_block);
++  coef.half[1] = vld4q_s16(((int16_t*) coef_block) + 32);
++
++  {
++    int16x8x4_t dequant;
++
++    dequant = vld4q_s16((int16_t*) compptr->dct_table);
++    coef.half[0].val[0] = vmulq_s16(coef.half[0].val[0], dequant.val[0]);
++    coef.half[0].val[1] = vmulq_s16(coef.half[0].val[1], dequant.val[1]);
++    coef.half[0].val[2] = vmulq_s16(coef.half[0].val[2], dequant.val[2]);
++    coef.half[0].val[3] = vmulq_s16(coef.half[0].val[3], dequant.val[3]);
++
++    dequant = vld4q_s16(((int16_t*) compptr->dct_table) + 32);
++    coef.half[1].val[0] = vmulq_s16(coef.half[1].val[0], dequant.val[0]);
++    coef.half[1].val[1] = vmulq_s16(coef.half[1].val[1], dequant.val[1]);
++    coef.half[1].val[2] = vmulq_s16(coef.half[1].val[2], dequant.val[2]);
++    coef.half[1].val[3] = vmulq_s16(coef.half[1].val[3], dequant.val[3]);
++  }
++
++  {
++    static int16_t idct_constants[4] __attribute__ ((aligned (8))) = { 13573, 27779, 2700, 20091 };
++    int16x4_t c = vld1_s16(idct_constants);
++    coef = transpose_8x8(idct_helper(c, transpose_8x8(idct_helper(c, coef))));
++  }
++
++  {
++    int16x8_t vector_one_half = vdupq_n_s16(0x80 << 5);
++
++    vst1_u8((uint8_t*)(output_buf[0] + output_col), vqshrun_n_s16(vqaddq_s16(coef.half[0].val[0], vector_one_half), 5));
++    vst1_u8((uint8_t*)(output_buf[1] + output_col), vqshrun_n_s16(vqaddq_s16(coef.half[0].val[1], vector_one_half), 5));
++    vst1_u8((uint8_t*)(output_buf[2] + output_col), vqshrun_n_s16(vqaddq_s16(coef.half[0].val[2], vector_one_half), 5));
++    vst1_u8((uint8_t*)(output_buf[3] + output_col), vqshrun_n_s16(vqaddq_s16(coef.half[0].val[3], vector_one_half), 5));
++    vst1_u8((uint8_t*)(output_buf[4] + output_col), vqshrun_n_s16(vqaddq_s16(coef.half[1].val[0], vector_one_half), 5));
++    vst1_u8((uint8_t*)(output_buf[5] + output_col), vqshrun_n_s16(vqaddq_s16(coef.half[1].val[1], vector_one_half), 5));
++    vst1_u8((uint8_t*)(output_buf[6] + output_col), vqshrun_n_s16(vqaddq_s16(coef.half[1].val[2], vector_one_half), 5));
++    vst1_u8((uint8_t*)(output_buf[7] + output_col), vqshrun_n_s16(vqaddq_s16(coef.half[1].val[3], vector_one_half), 5));
++  }
+ }
+ 
+ GLOBAL(void)
+-- 
+1.7.0.4
+
