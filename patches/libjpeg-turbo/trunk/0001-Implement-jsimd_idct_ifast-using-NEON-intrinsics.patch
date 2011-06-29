@@ -1,12 +1,13 @@
-From f98ffcee02bfb044661d023f8556fd16f2b96be8 Mon Sep 17 00:00:00 2001
+From 8ccf0c68f18593c55b438329200df3dd40e558e7 Mon Sep 17 00:00:00 2001
 From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
-Date: Tue, 28 Jun 2011 03:10:18 +0000
+Date: Tue, 28 Jun 2011 04:41:25 +0000
 Subject: [PATCH] Implement jsimd_idct_ifast() using NEON intrinsics
 
 ---
  simd/jsimd.h     |    1 +
- simd/jsimd_arm.c |  161 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 161 insertions(+), 1 deletions(-)
+ simd/jsimd_arm.c |  163 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ turbojpeg.c      |    1 +
+ 3 files changed, 163 insertions(+), 2 deletions(-)
 
 diff --git a/simd/jsimd.h b/simd/jsimd.h
 index 39a0867..645c087 100644
@@ -21,7 +22,7 @@ index 39a0867..645c087 100644
  /* Short forms of external names for systems with brain-damaged linkers. */
  
 diff --git a/simd/jsimd_arm.c b/simd/jsimd_arm.c
-index 1a5cdd3..3d2c4b9 100644
+index 1a5cdd3..c2f4537 100644
 --- a/simd/jsimd_arm.c
 +++ b/simd/jsimd_arm.c
 @@ -15,6 +15,8 @@
@@ -33,13 +34,15 @@ index 1a5cdd3..3d2c4b9 100644
  #define JPEG_INTERNALS
  #include "../jinclude.h"
  #include "../jpeglib.h"
-@@ -126,6 +128,9 @@ init_simd (void)
+@@ -125,7 +127,10 @@ init_simd (void)
+   /* Force different settings through environment variables */
    env = getenv("JSIMD_FORCE_ARM_NEON");
    if ((env != NULL) && (strcmp(env, "1") == 0))
-     simd_support &= JSIMD_ARM_NEON;
+-    simd_support &= JSIMD_ARM_NEON;
++    simd_support |= JSIMD_ARM_NEON;
 +  env = getenv("JSIMD_FORCE_ARM_NEON_ASM");
 +  if ((env != NULL) && (strcmp(env, "1") == 0))
-+    simd_support &= JSIMD_ARM_NEON_ASM;
++    simd_support |= JSIMD_ARM_NEON_ASM;
    env = getenv("JSIMD_FORCE_NO_SIMD");
    if ((env != NULL) && (strcmp(env, "1") == 0))
      simd_support = 0;
@@ -212,6 +215,18 @@ index 1a5cdd3..3d2c4b9 100644
  }
  
  GLOBAL(void)
+diff --git a/turbojpeg.c b/turbojpeg.c
+index c890bc0..97461da 100644
+--- a/turbojpeg.c
++++ b/turbojpeg.c
+@@ -214,6 +214,7 @@ static void setDecompDefaults(struct jpeg_decompress_struct *dinfo,
+ 			_throw("Unsupported pixel format");
+ 		#endif
+ 	}
++	dinfo->dct_method=JDCT_IFAST;
+ }
+ 
+ 
 -- 
 1.7.0.4
 
