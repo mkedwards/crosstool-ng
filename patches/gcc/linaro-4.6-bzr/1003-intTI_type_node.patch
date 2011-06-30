@@ -1,18 +1,34 @@
---- a/gcc/config/arm/arm.c	2011-06-29 22:26:17.000000000 +0000
-+++ b/gcc/config/arm/arm.c	2011-06-30 04:52:22.000000000 +0000
+--- a/gcc/config/arm/arm.c	2011-06-30 05:22:11.000000000 +0000
++++ b/gcc/config/arm/arm.c	2011-06-30 05:17:51.000000000 +0000
 @@ -18785,6 +18785,7 @@
    tree intUSI_type_node;
    tree intUDI_type_node;
  
-+  tree intTI_type_node;
++  tree neon_intTI_type_node;
    tree intEI_type_node;
    tree intOI_type_node;
    tree intCI_type_node;
-@@ -18907,6 +18908,7 @@
+@@ -18907,12 +18908,13 @@
  					     "__builtin_neon_udi");
  
    /* Opaque integer types for structures of vectors.  */
-+  intTI_type_node = make_signed_type (GET_MODE_PRECISION (TImode));
++  neon_intTI_type_node = make_signed_type (GET_MODE_PRECISION (TImode));
    intEI_type_node = make_signed_type (GET_MODE_PRECISION (EImode));
    intOI_type_node = make_signed_type (GET_MODE_PRECISION (OImode));
    intCI_type_node = make_signed_type (GET_MODE_PRECISION (CImode));
+   intXI_type_node = make_signed_type (GET_MODE_PRECISION (XImode));
+ 
+-  (*lang_hooks.types.register_builtin_type) (intTI_type_node,
++  (*lang_hooks.types.register_builtin_type) (neon_intTI_type_node,
+ 					     "__builtin_neon_ti");
+   (*lang_hooks.types.register_builtin_type) (intEI_type_node,
+ 					     "__builtin_neon_ei");
+@@ -19151,7 +19153,7 @@
+ 			  case SImode: eltype = neon_intSI_type_node; break;
+ 			  case SFmode: eltype = neon_float_type_node; break;
+ 			  case DImode: eltype = neon_intDI_type_node; break;
+-			  case TImode: eltype = intTI_type_node; break;
++			  case TImode: eltype = neon_intTI_type_node; break;
+ 			  case EImode: eltype = intEI_type_node; break;
+ 			  case OImode: eltype = intOI_type_node; break;
+ 			  case CImode: eltype = intCI_type_node; break;
