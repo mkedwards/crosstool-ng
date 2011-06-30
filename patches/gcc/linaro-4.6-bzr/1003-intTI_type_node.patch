@@ -1,0 +1,18 @@
+--- a/gcc/config/arm/arm.c	2011-06-29 22:26:17.000000000 +0000
++++ b/gcc/config/arm/arm.c	2011-06-30 04:52:22.000000000 +0000
+@@ -18785,6 +18785,7 @@
+   tree intUSI_type_node;
+   tree intUDI_type_node;
+ 
++  tree intTI_type_node;
+   tree intEI_type_node;
+   tree intOI_type_node;
+   tree intCI_type_node;
+@@ -18907,6 +18908,7 @@
+ 					     "__builtin_neon_udi");
+ 
+   /* Opaque integer types for structures of vectors.  */
++  intTI_type_node = make_signed_type (GET_MODE_PRECISION (TImode));
+   intEI_type_node = make_signed_type (GET_MODE_PRECISION (EImode));
+   intOI_type_node = make_signed_type (GET_MODE_PRECISION (OImode));
+   intCI_type_node = make_signed_type (GET_MODE_PRECISION (CImode));
