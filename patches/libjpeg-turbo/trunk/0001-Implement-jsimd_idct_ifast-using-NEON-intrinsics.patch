@@ -1,6 +1,6 @@
-From 8ccf0c68f18593c55b438329200df3dd40e558e7 Mon Sep 17 00:00:00 2001
+From 80f8ab256ab0a7bfec602916831b8e262f66ff22 Mon Sep 17 00:00:00 2001
 From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
-Date: Tue, 28 Jun 2011 04:41:25 +0000
+Date: Thu, 30 Jun 2011 22:08:41 +0000
 Subject: [PATCH] Implement jsimd_idct_ifast() using NEON intrinsics
 
 ---
@@ -22,7 +22,7 @@ index 39a0867..645c087 100644
  /* Short forms of external names for systems with brain-damaged linkers. */
  
 diff --git a/simd/jsimd_arm.c b/simd/jsimd_arm.c
-index 1a5cdd3..c2f4537 100644
+index 1a5cdd3..081d476 100644
 --- a/simd/jsimd_arm.c
 +++ b/simd/jsimd_arm.c
 @@ -15,6 +15,8 @@
@@ -66,7 +66,7 @@ index 1a5cdd3..c2f4537 100644
 +    int16x8_t diff0 = vsubq_s16(a.half[0].val[0], a.half[1].val[0]);
 +    int16x8_t diff2 = vsubq_s16(a.half[0].val[2], a.half[1].val[2]);
 +
-+    int16x8_t even_a = vqdmulhq_n_s16(diff2, vget_lane_s16(idct_constants, 0));
++    int16x8_t even_a = vqdmulhq_lane_s16(diff2, idct_constants, 0);
 +    even_a = vaddq_s16(even_a, diff2);
 +    even_a = vsubq_s16(even_a, sum2);
 +
@@ -83,18 +83,18 @@ index 1a5cdd3..c2f4537 100644
 +    int16x8_t diff3 = vsubq_s16(a.half[1].val[1], a.half[0].val[3]);
 +
 +    int16x8_t t1 = vsubq_s16(sum1, sum3);
-+    int16x8_t odd_b = vqdmulhq_n_s16(t1, vget_lane_s16(idct_constants, 0));
++    int16x8_t odd_b = vqdmulhq_lane_s16(t1, idct_constants, 0);
 +    odd_b = vaddq_s16(odd_b, t1);
 +
 +    t1 = vaddq_s16(diff1, diff3);
-+    int16x8_t odd_d = vqdmulhq_n_s16(t1, vget_lane_s16(idct_constants, 1));
++    int16x8_t odd_d = vqdmulhq_lane_s16(t1, idct_constants, 1);
 +    odd_d = vaddq_s16(odd_d, t1);
 +
-+    int16x8_t odd_a = vqdmulhq_n_s16(diff3, vget_lane_s16(idct_constants, 2));
++    int16x8_t odd_a = vqdmulhq_lane_s16(diff3, idct_constants, 2);
 +    odd_a = vaddq_s16(odd_a, diff3);
 +    odd_a = vsubq_s16(odd_d, odd_a);
 +
-+    int16x8_t odd_c = vqdmulhq_n_s16(diff1, vget_lane_s16(idct_constants, 3));
++    int16x8_t odd_c = vqdmulhq_lane_s16(diff1, idct_constants, 3);
 +    odd_c = vaddq_s16(odd_c, diff1);
 +    odd_c = vaddq_s16(odd_c, diff1);
 +    odd_c = vsubq_s16(odd_d, odd_c);
@@ -175,23 +175,23 @@ index 1a5cdd3..c2f4537 100644
 +  }
 +
 +  int16_8x8_t coef;
-+  coef.half[0] = vld4q_s16((int16_t*) coef_block);
-+  coef.half[1] = vld4q_s16(((int16_t*) coef_block) + 32);
 +
 +  {
 +    int16x8x4_t dequant;
++    int16x8x4_t coef0 = vld4q_s16((int16_t*) coef_block);
++    int16x8x4_t coef1 = vld4q_s16(((int16_t*) coef_block) + 32);
 +
 +    dequant = vld4q_s16((int16_t*) compptr->dct_table);
-+    coef.half[0].val[0] = vmulq_s16(coef.half[0].val[0], dequant.val[0]);
-+    coef.half[0].val[1] = vmulq_s16(coef.half[0].val[1], dequant.val[1]);
-+    coef.half[0].val[2] = vmulq_s16(coef.half[0].val[2], dequant.val[2]);
-+    coef.half[0].val[3] = vmulq_s16(coef.half[0].val[3], dequant.val[3]);
++    coef.half[0].val[0] = vmulq_s16(coef0.val[0], dequant.val[0]);
++    coef.half[0].val[1] = vmulq_s16(coef0.val[1], dequant.val[1]);
++    coef.half[0].val[2] = vmulq_s16(coef0.val[2], dequant.val[2]);
++    coef.half[0].val[3] = vmulq_s16(coef0.val[3], dequant.val[3]);
 +
 +    dequant = vld4q_s16(((int16_t*) compptr->dct_table) + 32);
-+    coef.half[1].val[0] = vmulq_s16(coef.half[1].val[0], dequant.val[0]);
-+    coef.half[1].val[1] = vmulq_s16(coef.half[1].val[1], dequant.val[1]);
-+    coef.half[1].val[2] = vmulq_s16(coef.half[1].val[2], dequant.val[2]);
-+    coef.half[1].val[3] = vmulq_s16(coef.half[1].val[3], dequant.val[3]);
++    coef.half[1].val[0] = vmulq_s16(coef1.val[0], dequant.val[0]);
++    coef.half[1].val[1] = vmulq_s16(coef1.val[1], dequant.val[1]);
++    coef.half[1].val[2] = vmulq_s16(coef1.val[2], dequant.val[2]);
++    coef.half[1].val[3] = vmulq_s16(coef1.val[3], dequant.val[3]);
 +  }
 +
 +  {
