@@ -1,0 +1,224 @@
+From be431eb3d35e5de7c3d04fb046c8f09b5b701b64 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Tue, 5 Jul 2011 20:30:30 +0000
+Subject: [PATCH] Add color space conversion using NEON intrinsics
+
+---
+ simd/jsimd_arm.c |  168 +++++++++++++++++++++++++++++++++++++++++++++++++++---
+ 1 files changed, 159 insertions(+), 9 deletions(-)
+
+diff --git a/simd/jsimd_arm.c b/simd/jsimd_arm.c
+index 51fa4fa..14b6369 100644
+--- a/simd/jsimd_arm.c
++++ b/simd/jsimd_arm.c
+@@ -234,9 +234,9 @@ inline static int16_8x8_t idct_helper_8x8(int16x4_t idct_constants, int16_8x8_t
+   return b;
+ }
+ 
+-inline static int16x8x2_t vswp_cheat(uint32x4_t a, uint32x4_t b) __attribute__ ((__always_inline__));
++inline static int16x8x2_t vswpq_cheat(uint32x4_t a, uint32x4_t b) __attribute__ ((__always_inline__));
+ 
+-inline static int16x8x2_t vswp_cheat(uint32x4_t a, uint32x4_t b)
++inline static int16x8x2_t vswpq_cheat(uint32x4_t a, uint32x4_t b)
+ {
+   int16x8x2_t r;
+   asm ( "vswp %f0, %e1 \n\t" : "+w" (a), "+w" (b) : );
+@@ -281,16 +281,16 @@ inline static int16_8x8_t transpose_8x8(int16_8x8_t a)
+ 
+   int16_8x8_t b;
+   int16x8x2_t r;
+-  r = vswp_cheat(u0.val[0], u2.val[0]);
++  r = vswpq_cheat(u0.val[0], u2.val[0]);
+   b.half[0].val[0] = r.val[0];
+   b.half[1].val[0] = r.val[1];
+-  r = vswp_cheat(u1.val[0], u3.val[0]);
++  r = vswpq_cheat(u1.val[0], u3.val[0]);
+   b.half[0].val[1] = r.val[0];
+   b.half[1].val[1] = r.val[1];
+-  r = vswp_cheat(u0.val[1], u2.val[1]);
++  r = vswpq_cheat(u0.val[1], u2.val[1]);
+   b.half[0].val[2] = r.val[0];
+   b.half[1].val[2] = r.val[1];
+-  r = vswp_cheat(u1.val[1], u3.val[1]);
++  r = vswpq_cheat(u1.val[1], u3.val[1]);
+   b.half[0].val[3] = r.val[0];
+   b.half[1].val[3] = r.val[1];
+ 
+@@ -469,11 +469,163 @@ jsimd_rgb_gray_convert (j_compress_ptr cinfo,
+ {
+ }
+ 
++inline static uint8x8x3_t vswp_rgb(uint8x8x3_t a, int flags) __attribute__ ((__always_inline__));
++
++inline static uint8x8x3_t vswp_rgb(uint8x8x3_t a, int flags)
++{
++  asm ( "teq %2, #1\n\tit eq \n\tvswpeq %P0, %P1 \n\t" : "+w" (a.val[0]), "+w" (a.val[2]) : "r" (flags) );
++  return a;
++}
++
++inline static uint8x8x3_t ycbcr2rgb(uint8x8x3_t ycbcr, int16x4_t ycc_constants, uint8x8_t v128) __attribute__ ((__always_inline__));
++
++inline static uint8x8x3_t ycbcr2rgb(uint8x8x3_t ycbcr, int16x4_t ycc_constants, uint8x8_t v128)
++{
++  uint8x8x3_t rgb;
++  int16x8_t cb16 = vshll_n_s8(vreinterpret_s8_u8(vadd_u8(ycbcr.val[1], v128)), 7);
++  int16x8_t cr16 = vshll_n_s8(vreinterpret_s8_u8(vadd_u8(ycbcr.val[2], v128)), 7);
++  int16x8_t y16 = vshll_n_s8(vreinterpret_s8_u8(vadd_u8(ycbcr.val[0], v128)), 6);
++  int16x8_t cg16 = vaddq_s16(cr16, vqrdmulhq_lane_s16(cb16, ycc_constants, 0));
++  int16x8_t b16 = vaddq_s16(y16, vqdmulhq_lane_s16(cb16, ycc_constants, 2));
++  int16x8_t r16 = vaddq_s16(y16, vqdmulhq_lane_s16(cr16, ycc_constants, 3));
++  int16x8_t g16 = vsubq_s16(y16, vqdmulhq_lane_s16(cg16, ycc_constants, 1));
++  rgb.val[2] = vadd_u8(vreinterpret_u8_s8(vqrshrn_n_s16(b16, 6)), v128);
++  rgb.val[0] = vadd_u8(vreinterpret_u8_s8(vqrshrn_n_s16(r16, 6)), v128);
++  rgb.val[1] = vadd_u8(vreinterpret_u8_s8(vqrshrn_n_s16(g16, 6)), v128);
++  return rgb;
++}
++
++inline static void store_rgb(uint8_t* outptr, uint8x8x3_t rgb, int flags, uint8x8_t alpha) __attribute__ ((__always_inline__));
++
++inline static void store_rgb(uint8_t* outptr, uint8x8x3_t rgb, int flags, uint8x8_t alpha)
++{
++  rgb = vswp_rgb(rgb, flags);
++  if (flags & 2) {
++    vst3_u8(outptr, rgb);
++    return;
++  }
++  if (flags & 4) {
++    uint8x8x4_t rgba;
++    rgba.val[0] = alpha;
++    rgba.val[1] = rgb.val[0];
++    rgba.val[2] = rgb.val[1];
++    rgba.val[3] = rgb.val[2];
++    vst4_u8(outptr, rgba);
++  } else {
++    uint8x8x4_t rgba;
++    rgba.val[0] = rgb.val[0];
++    rgba.val[1] = rgb.val[1];
++    rgba.val[2] = rgb.val[2];
++    rgba.val[3] = alpha;
++    vst4_u8(outptr, rgba);
++  }
++}
++
++#define LOAD_YCBCR(lane) do { \
++            ycbcr.val[0] = vld1_lane_u8((uint8_t*) &yrow[j], ycbcr.val[0], lane); \
++            ycbcr.val[1] = vld1_lane_u8((uint8_t*) &cbrow[j], ycbcr.val[1], lane); \
++            ycbcr.val[2] = vld1_lane_u8((uint8_t*) &crrow[j], ycbcr.val[2], lane); \
++            ++j; \
++          } while (0)
++
++#define STORE_RGB(lane) do { \
++            vst3_lane_u8(outptr, rgb, lane); \
++            outptr += rgbstride; \
++          } while (0)
++
+ GLOBAL(void)
+ jsimd_ycc_rgb_convert (j_decompress_ptr cinfo,
+                        JSAMPIMAGE input_buf, JDIMENSION input_row,
+                        JSAMPARRAY output_buf, int num_rows)
+ {
++  if (!(simd_support & JSIMD_ARM_NEON))
++    return;
++
++  if (!(simd_support & JSIMD_ARM_NEON_ASM))
++  {
++    static int16_t ycc_constants[4] __attribute__ ((aligned (8)))
++      = { 15791, 11700, 29032, 22970 };
++    int16x4_t c = vld1_s16(ycc_constants);
++    uint8x8_t v128 = vdup_n_u8(128);
++    uint8x8_t alpha = vdup_n_u8(255);
++    JDIMENSION num_cols = cinfo->output_width;
++    int rgbstride = rgb_pixelsize[cinfo->out_color_space];
++    int rindex = rgb_red[cinfo->out_color_space];
++    int bindex = rgb_blue[cinfo->out_color_space];
++    int flags = 0;
++    if (rgb_red[cinfo->out_color_space] > rgb_blue[cinfo->out_color_space])
++      flags |= 1;
++    if (rgbstride == 3)
++      flags |= 2;
++    if (rindex && bindex)
++      flags |= 4;
++
++    int i, j;
++    for (i = 0; i < num_rows; ++i)
++    {
++      JSAMPROW yrow = input_buf[0][input_row + i];
++      JSAMPROW cbrow = input_buf[1][input_row + i];
++      JSAMPROW crrow = input_buf[2][input_row + i];
++      uint8_t* outptr = (uint8_t*) output_buf[i];
++
++      int trailing_cols = num_cols % 8;
++      for (j = 0; j < num_cols - trailing_cols; j += 8)
++      {
++        uint8x8x3_t ycbcr;
++        ycbcr.val[0] = vld1_u8((uint8_t*) &yrow[j]);
++        ycbcr.val[1] = vld1_u8((uint8_t*) &cbrow[j]);
++        ycbcr.val[2] = vld1_u8((uint8_t*) &crrow[j]);
++        uint8x8x3_t rgb = ycbcr2rgb(ycbcr, c, v128);
++        store_rgb(outptr, rgb, flags, alpha);
++        outptr += rgbstride * 8;
++      }
++      if (trailing_cols)
++      {
++        uint8x8x3_t ycbcr;
++        ycbcr.val[0] = vdup_n_u8(0);
++        ycbcr.val[1] = vdup_n_u8(0);
++        ycbcr.val[2] = vdup_n_u8(0);
++        if (trailing_cols & 4)
++        {
++          LOAD_YCBCR(0);
++          LOAD_YCBCR(1);
++          LOAD_YCBCR(2);
++          LOAD_YCBCR(3);
++        }
++        if (trailing_cols & 2)
++        {
++          LOAD_YCBCR(4);
++          LOAD_YCBCR(5);
++        }
++        if (trailing_cols & 1)
++        {
++          LOAD_YCBCR(6);
++        }
++        uint8x8x3_t rgb = ycbcr2rgb(ycbcr, c, v128);
++        rgb = vswp_rgb(rgb, flags);
++        if (flags & 4)
++          ++outptr;
++        if (trailing_cols & 4)
++        {
++          STORE_RGB(0);
++          STORE_RGB(1);
++          STORE_RGB(2);
++          STORE_RGB(3);
++        }
++        if (trailing_cols & 2)
++        {
++          STORE_RGB(4);
++          STORE_RGB(5);
++        }
++        if (trailing_cols & 1)
++        {
++          STORE_RGB(6);
++        }
++      }
++    }
++    return;
++  }
++
+   void (*neonfct)(JDIMENSION, JSAMPIMAGE, JDIMENSION, JSAMPARRAY, int);
+ 
+   switch(cinfo->out_color_space)
+@@ -501,9 +653,7 @@ jsimd_ycc_rgb_convert (j_decompress_ptr cinfo,
+       break;
+   }
+ 
+-  if (simd_support & JSIMD_ARM_NEON)
+-    neonfct(cinfo->output_width, input_buf,
+-        input_row, output_buf, num_rows);
++  neonfct(cinfo->output_width, input_buf, input_row, output_buf, num_rows);
+ }
+ 
+ GLOBAL(int)
+-- 
+1.7.0.4
+
