@@ -1,34 +1,105 @@
---- a/gcc/reload1.c	2011-05-06 11:28:27 +0000
-+++ b/gcc/reload1.c	2011-06-30 18:42:13 +0000
-@@ -6464,11 +6464,25 @@
- 		  if (byte == 0)
- 		    need_mode = mode;
- 		  else
+Index: gcc/gcc/reload1.c
+===================================================================
+--- gcc.orig/gcc/reload1.c
++++ gcc/gcc/reload1.c
+@@ -6485,6 +6485,8 @@ choose_reload_regs (struct insn_chain *c
+ 
+ 	      if (regno >= 0
+ 		  && reg_last_reload_reg[regno] != 0
++		  && (GET_MODE_SIZE (GET_MODE (reg_last_reload_reg[regno]))
++		      >= GET_MODE_SIZE (mode) + byte)
+ #ifdef CANNOT_CHANGE_MODE_CLASS
+ 		  /* Verify that the register it's in can be used in
+ 		     mode MODE.  */
+@@ -6496,24 +6498,12 @@ choose_reload_regs (struct insn_chain *c
+ 		{
+ 		  enum reg_class rclass = rld[r].rclass, last_class;
+ 		  rtx last_reg = reg_last_reload_reg[regno];
+-		  enum machine_mode need_mode;
+ 
+ 		  i = REGNO (last_reg);
+ 		  i += subreg_regno_offset (i, GET_MODE (last_reg), byte, mode);
+ 		  last_class = REGNO_REG_CLASS (i);
+ 
+-		  if (byte == 0)
+-		    need_mode = mode;
+-		  else
 -		    need_mode
 -		      = smallest_mode_for_size
 -		        (GET_MODE_BITSIZE (mode) + byte * BITS_PER_UNIT,
 -			 GET_MODE_CLASS (mode) == MODE_PARTIAL_INT
 -			 ? MODE_INT : GET_MODE_CLASS (mode));
-+		    {
-+		      unsigned int msize
-+			= GET_MODE_BITSIZE (mode) + byte * BITS_PER_UNIT;
-+		      enum mode_class mclass
-+			= (GET_MODE_CLASS (mode) == MODE_PARTIAL_INT)
-+			  ? MODE_INT : GET_MODE_CLASS (mode);
-+		      if (mclass != MODE_INT)
-+			{
-+			  enum machine_mode tmpmode;
-+			  for (tmpmode = GET_CLASS_NARROWEST_MODE (mclass);
-+			       tmpmode != VOIDmode;
-+			       tmpmode = GET_MODE_WIDER_MODE (tmpmode))
-+			    if (GET_MODE_PRECISION (mode) >= msize)
-+			      break;
-+			  if (tmpmode == VOIDmode)
-+			    mclass = MODE_INT;
-+			}
-+		      need_mode = smallest_mode_for_size (msize, mclass);
-+		    }
- 
- 		  if ((GET_MODE_SIZE (GET_MODE (last_reg))
- 		       >= GET_MODE_SIZE (need_mode))
-
+-
+-		  if ((GET_MODE_SIZE (GET_MODE (last_reg))
+-		       >= GET_MODE_SIZE (need_mode))
+-		      && reg_reloaded_contents[i] == regno
++		  if (reg_reloaded_contents[i] == regno
+ 		      && TEST_HARD_REG_BIT (reg_reloaded_valid, i)
+ 		      && HARD_REGNO_MODE_OK (i, rld[r].mode)
+ 		      && (TEST_HARD_REG_BIT (reg_class_contents[(int) rclass], i)
+Index: gcc/gcc/testsuite/gcc.target/arm/neon-modes-3.c
+===================================================================
+--- /dev/null
++++ gcc/gcc/testsuite/gcc.target/arm/neon-modes-3.c
+@@ -0,0 +1,61 @@
++/* { dg-do compile } */
++/* { dg-require-effective-target arm_neon_ok } */
++/* { dg-options "-O" } */
++/* { dg-add-options arm_neon } */
++
++#include <arm_neon.h>
++
++void f1 (volatile float32x4_t *dest, volatile float32x4x4_t *src, int n)
++{
++  float32x4x4_t a5, a6, a7, a8, a9;
++  int i;
++
++  a5 = *src;
++  a6 = *src;
++  a7 = *src;
++  a8 = *src;
++  a9 = *src;
++  while (n--)
++    {
++      for (i = 0; i < 8; i++)
++	{
++	  float32x4x4_t a0, a1, a2, a3, a4;
++
++	  a0 = *src;
++	  a1 = *src;
++	  a2 = *src;
++	  a3 = *src;
++	  a4 = *src;
++	  *src = a0;
++	  *dest = a0.val[0];
++	  *dest = a0.val[3];
++	  *src = a1;
++	  *dest = a1.val[0];
++	  *dest = a1.val[3];
++	  *src = a2;
++	  *dest = a2.val[0];
++	  *dest = a2.val[3];
++	  *src = a3;
++	  *dest = a3.val[0];
++	  *dest = a3.val[3];
++	  *src = a4;
++	  *dest = a4.val[0];
++	  *dest = a4.val[3];
++	}
++      *src = a5;
++      *dest = a5.val[0];
++      *dest = a5.val[3];
++      *src = a6;
++      *dest = a6.val[0];
++      *dest = a6.val[3];
++      *src = a7;
++      *dest = a7.val[0];
++      *dest = a7.val[3];
++      *src = a8;
++      *dest = a8.val[0];
++      *dest = a8.val[3];
++      *src = a9;
++      *dest = a9.val[0];
++      *dest = a9.val[3];
++    }
++}
