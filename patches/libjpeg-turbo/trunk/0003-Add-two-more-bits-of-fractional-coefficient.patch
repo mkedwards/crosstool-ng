@@ -1,0 +1,215 @@
+From b032468cc6463a0965a91fd47bf65623c3df3472 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Wed, 6 Jul 2011 00:45:10 +0000
+Subject: [PATCH] Add two more bits of fractional coefficient
+
+---
+ jdct.h           |    2 ++
+ jddctmgr.c       |   48 +++++++++++++++++++++++++++++++++++++++++-------
+ jpeglib.h        |    5 +++--
+ simd/jsimd_arm.c |   33 ++++++++++++++++++++-------------
+ 4 files changed, 66 insertions(+), 22 deletions(-)
+
+diff --git a/jdct.h b/jdct.h
+index 7b49a97..bfd55b3 100644
+--- a/jdct.h
++++ b/jdct.h
+@@ -65,9 +65,11 @@ typedef MULTIPLIER ISLOW_MULT_TYPE; /* short or int, whichever is faster */
+ #if BITS_IN_JSAMPLE == 8
+ typedef MULTIPLIER IFAST_MULT_TYPE; /* 16 bits is OK, use short if faster */
+ #define IFAST_SCALE_BITS  2	/* fractional bits in scale factors */
++#define IFAST2_SCALE_BITS 4	/* fractional bits in scale factors */
+ #else
+ typedef INT32 IFAST_MULT_TYPE;	/* need 32 bits for scaled quantizers */
+ #define IFAST_SCALE_BITS  13	/* fractional bits in scale factors */
++#define IFAST2_SCALE_BITS 13	/* fractional bits in scale factors */
+ #endif
+ typedef FAST_FLOAT FLOAT_MULT_TYPE; /* preferred floating type */
+ 
+diff --git a/jddctmgr.c b/jddctmgr.c
+index 6b9063c..e9198d2 100644
+--- a/jddctmgr.c
++++ b/jddctmgr.c
+@@ -112,8 +112,8 @@ start_pass (j_decompress_ptr cinfo)
+       method = JDCT_ISLOW;	/* jidctred uses islow-style table */
+       if (can = jsimd_can_idct_2x2()) {
+         method_ptr = jsimd_idct_2x2;
+-        if (can == -1)
+-          method = JDCT_IFAST;
++        if (can == 2)
++          method = JDCT_IFAST2;
+       } else
+         method_ptr = jpeg_idct_2x2;
+       break;
+@@ -121,8 +121,8 @@ start_pass (j_decompress_ptr cinfo)
+       method = JDCT_ISLOW;	/* jidctred uses islow-style table */
+       if (can = jsimd_can_idct_4x4()) {
+         method_ptr = jsimd_idct_4x4;
+-        if (can == -1)
+-          method = JDCT_IFAST;
++        if (can == 2)
++          method = JDCT_IFAST2;
+       } else
+         method_ptr = jpeg_idct_4x4;
+       break;
+@@ -140,11 +140,13 @@ start_pass (j_decompress_ptr cinfo)
+ #endif
+ #ifdef DCT_IFAST_SUPPORTED
+       case JDCT_IFAST:
+-	if (jsimd_can_idct_ifast())
++	method = JDCT_IFAST;
++	if (can = jsimd_can_idct_ifast()) {
+ 	  method_ptr = jsimd_idct_ifast;
+-	else
++          if (can == 2)
++            method = JDCT_IFAST2;
++        } else
+ 	  method_ptr = jpeg_idct_ifast;
+-	method = JDCT_IFAST;
+ 	break;
+ #endif
+ #ifdef DCT_FLOAT_SUPPORTED
+@@ -226,6 +228,38 @@ start_pass (j_decompress_ptr cinfo)
+ 	}
+       }
+       break;
++    case JDCT_IFAST2:
++      {
++	/* For AA&N IDCT method, multipliers are equal to quantization
++	 * coefficients scaled by scalefactor[row]*scalefactor[col], where
++	 *   scalefactor[0] = 1
++	 *   scalefactor[k] = cos(k*PI/16) * sqrt(2)    for k=1..7
++	 * For integer operation, the multiplier table is to be scaled by
++	 * IFAST2_SCALE_BITS.
++	 */
++	IFAST_MULT_TYPE * ifmtbl = (IFAST_MULT_TYPE *) compptr->dct_table;
++#define CONST_BITS 14
++	static const INT16 aanscales[DCTSIZE2] = {
++	  /* precomputed values scaled up by 14 bits */
++	  16384, 22725, 21407, 19266, 16384, 12873,  8867,  4520,
++	  22725, 31521, 29692, 26722, 22725, 17855, 12299,  6270,
++	  21407, 29692, 27969, 25172, 21407, 16819, 11585,  5906,
++	  19266, 26722, 25172, 22654, 19266, 15137, 10426,  5315,
++	  16384, 22725, 21407, 19266, 16384, 12873,  8867,  4520,
++	  12873, 17855, 16819, 15137, 12873, 10114,  6967,  3552,
++	   8867, 12299, 11585, 10426,  8867,  6967,  4799,  2446,
++	   4520,  6270,  5906,  5315,  4520,  3552,  2446,  1247
++	};
++	SHIFT_TEMPS
++
++	for (i = 0; i < DCTSIZE2; i++) {
++	  ifmtbl[i] = (IFAST_MULT_TYPE)
++	    DESCALE(MULTIPLY16V16((INT32) qtbl->quantval[i],
++				  (INT32) aanscales[i]),
++		    CONST_BITS-IFAST2_SCALE_BITS);
++	}
++      }
++      break;
+ #endif
+ #ifdef DCT_FLOAT_SUPPORTED
+     case JDCT_FLOAT:
+diff --git a/jpeglib.h b/jpeglib.h
+index cb3acaf..a70ed8f 100644
+--- a/jpeglib.h
++++ b/jpeglib.h
+@@ -233,11 +233,12 @@ typedef enum {
+ typedef enum {
+ 	JDCT_ISLOW,		/* slow but accurate integer algorithm */
+ 	JDCT_IFAST,		/* faster, less accurate integer method */
+-	JDCT_FLOAT		/* floating-point: accurate, fast on fast HW */
++	JDCT_FLOAT,		/* floating-point: accurate, fast on fast HW */
++	JDCT_IFAST2		/* alternate faster, less accurate integer method */
+ } J_DCT_METHOD;
+ 
+ #ifndef JDCT_DEFAULT		/* may be overridden in jconfig.h */
+-#define JDCT_DEFAULT  JDCT_ISLOW
++#define JDCT_DEFAULT  JDCT_IFAST
+ #endif
+ #ifndef JDCT_FASTEST		/* may be overridden in jconfig.h */
+ #define JDCT_FASTEST  JDCT_IFAST
+diff --git a/simd/jsimd_arm.c b/simd/jsimd_arm.c
+index 14b6369..db87d7c 100644
+--- a/simd/jsimd_arm.c
++++ b/simd/jsimd_arm.c
+@@ -895,7 +895,7 @@ jsimd_can_idct_2x2 (void)
+   if ((simd_support & JSIMD_ARM_NEON)) {
+     if ((simd_support & JSIMD_ARM_NEON_ASM))
+       return 1;
+-    return -1;
++    return 2;
+   }
+ 
+   return 0;
+@@ -921,7 +921,7 @@ jsimd_can_idct_4x4 (void)
+   if ((simd_support & JSIMD_ARM_NEON)) {
+     if ((simd_support & JSIMD_ARM_NEON_ASM))
+       return 1;
+-    return -1;
++    return 2;
+   }
+ 
+   return 0;
+@@ -973,7 +973,7 @@ jsimd_idct_2x2 (j_decompress_ptr cinfo, jpeg_component_info * compptr,
+       vpaddlq_s16(vqaddq_s16(coef.half[1].val[2], coef.half[1].val[3])));
+     int16x4_t all = vqrshrn_n_s32(vcombine_s32(
+       vpadd_s32(vget_low_s32(half0), vget_high_s32(half0)),
+-      vpadd_s32(vget_low_s32(half1), vget_high_s32(half1))), 9);
++      vpadd_s32(vget_low_s32(half1), vget_high_s32(half1))), 7 + IFAST2_SCALE_BITS);
+ 
+     int16x4_t zero4 = vdup_n_s16(0);
+     uint8x8_t result = vreinterpret_u8_s8(vqmovn_s16(vcombine_s16(all, zero4)));
+@@ -1035,11 +1035,11 @@ jsimd_idct_4x4 (j_decompress_ptr cinfo, jpeg_component_info * compptr,
+     uint8x16_t result;
+     result = vreinterpretq_u8_s8(vcombine_s8(
+       vqmovn_s16(vcombine_s16(
+-        vqrshrn_n_s32(vpaddlq_s16(vqaddq_s16(coef.half[0].val[0], coef.half[0].val[1])), 7),
+-        vqrshrn_n_s32(vpaddlq_s16(vqaddq_s16(coef.half[0].val[2], coef.half[0].val[3])), 7))),
++        vqrshrn_n_s32(vpaddlq_s16(vqaddq_s16(coef.half[0].val[0], coef.half[0].val[1])), 5 + IFAST2_SCALE_BITS),
++        vqrshrn_n_s32(vpaddlq_s16(vqaddq_s16(coef.half[0].val[2], coef.half[0].val[3])), 5 + IFAST2_SCALE_BITS))),
+       vqmovn_s16(vcombine_s16(
+-        vqrshrn_n_s32(vpaddlq_s16(vqaddq_s16(coef.half[1].val[0], coef.half[1].val[1])), 7),
+-        vqrshrn_n_s32(vpaddlq_s16(vqaddq_s16(coef.half[1].val[2], coef.half[1].val[3])), 7)))));
++        vqrshrn_n_s32(vpaddlq_s16(vqaddq_s16(coef.half[1].val[0], coef.half[1].val[1])), 5 + IFAST2_SCALE_BITS),
++        vqrshrn_n_s32(vpaddlq_s16(vqaddq_s16(coef.half[1].val[2], coef.half[1].val[3])), 5 + IFAST2_SCALE_BITS)))));
+ 
+     uint8x16_t v128 = vdupq_n_u8(128);
+     result = vaddq_u8(result, v128);
+@@ -1104,8 +1104,11 @@ jsimd_can_idct_ifast (void)
+   if (IFAST_SCALE_BITS != 2)
+     return 0;
+ 
+-  if ((simd_support & JSIMD_ARM_NEON))
+-    return 1;
++  if ((simd_support & JSIMD_ARM_NEON)) {
++    if ((simd_support & JSIMD_ARM_NEON_ASM))
++      return 1;
++    return 2;
++  }
+ 
+   return 0;
+ }
+@@ -1157,13 +1160,17 @@ jsimd_idct_ifast (j_decompress_ptr cinfo, jpeg_component_info * compptr,
+   {
+     uint8x16x4_t result;
+     result.val[0] = vreinterpretq_u8_s8(vcombine_s8(
+-      vqrshrn_n_s16(coef.half[0].val[0], 5), vqrshrn_n_s16(coef.half[0].val[1], 5)));
++      vqrshrn_n_s16(coef.half[0].val[0], 3 + IFAST2_SCALE_BITS),
++      vqrshrn_n_s16(coef.half[0].val[1], 3 + IFAST2_SCALE_BITS)));
+     result.val[1] = vreinterpretq_u8_s8(vcombine_s8(
+-      vqrshrn_n_s16(coef.half[0].val[2], 5), vqrshrn_n_s16(coef.half[0].val[3], 5)));
++      vqrshrn_n_s16(coef.half[0].val[2], 3 + IFAST2_SCALE_BITS),
++      vqrshrn_n_s16(coef.half[0].val[3], 3 + IFAST2_SCALE_BITS)));
+     result.val[2] = vreinterpretq_u8_s8(vcombine_s8(
+-      vqrshrn_n_s16(coef.half[1].val[0], 5), vqrshrn_n_s16(coef.half[1].val[1], 5)));
++      vqrshrn_n_s16(coef.half[1].val[0], 3 + IFAST2_SCALE_BITS),
++      vqrshrn_n_s16(coef.half[1].val[1], 3 + IFAST2_SCALE_BITS)));
+     result.val[3] = vreinterpretq_u8_s8(vcombine_s8(
+-      vqrshrn_n_s16(coef.half[1].val[2], 5), vqrshrn_n_s16(coef.half[1].val[3], 5)));
++      vqrshrn_n_s16(coef.half[1].val[2], 3 + IFAST2_SCALE_BITS),
++      vqrshrn_n_s16(coef.half[1].val[3], 3 + IFAST2_SCALE_BITS)));
+ 
+     uint8x16_t v128 = vdupq_n_u8(128);
+     result.val[0] = vaddq_u8(result.val[0], v128);
+-- 
+1.7.0.4
+
