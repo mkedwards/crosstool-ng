@@ -1,0 +1,719 @@
+From 6239a490e8e7a843760661b1294d091629ecc130 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Thu, 7 Jul 2011 20:24:05 +0000
+Subject: [PATCH] Implement compression using NEON intrinsics
+
+---
+ jcdctmgr.c       |   59 ++++---
+ jdct.h           |    5 +-
+ simd/jsimd_arm.c |  470 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ turbojpeg.c      |    1 +
+ 4 files changed, 507 insertions(+), 28 deletions(-)
+
+diff --git a/jcdctmgr.c b/jcdctmgr.c
+index 711f9da..bcc518e 100644
+--- a/jcdctmgr.c
++++ b/jcdctmgr.c
+@@ -164,17 +164,21 @@ flss (UINT16 val)
+  * routines.
+  */
+ LOCAL(int)
+-compute_reciprocal (UINT16 divisor, DCTELEM * dtbl)
++compute_reciprocal (UINT16 divisor, DCTELEM * dtbl, int simd_convention)
+ {
+-  UDCTELEM2 fq, fr;
++  UDCTELEM2 scaled_one, fq, fr;
+   UDCTELEM c;
+   int b, r;
+ 
+   b = flss(divisor) - 1;
+   r  = sizeof(DCTELEM) * 8 + b;
+ 
+-  fq = ((UDCTELEM2)1 << r) / divisor;
+-  fr = ((UDCTELEM2)1 << r) % divisor;
++  scaled_one = (UDCTELEM2)1 << r;
++  if (simd_convention == 2)
++    scaled_one >>= 1;
++
++  fq = scaled_one / divisor;
++  fr = scaled_one % divisor;
+ 
+   c = divisor / 2; /* for rounding */
+ 
+@@ -192,8 +196,10 @@ compute_reciprocal (UINT16 divisor, DCTELEM * dtbl)
+   dtbl[DCTSIZE2 * 1] = (DCTELEM) c;       /* correction + roundfactor */
+   dtbl[DCTSIZE2 * 2] = (DCTELEM) (1 << (sizeof(DCTELEM)*8*2 - r));  /* scale */
+   dtbl[DCTSIZE2 * 3] = (DCTELEM) r - sizeof(DCTELEM)*8; /* shift */
++  if (simd_convention == 2)
++    dtbl[DCTSIZE2 * 3] = - dtbl[DCTSIZE2 * 3];
+ 
+-  if(r <= 16) return 0;
++  if (simd_convention != 2 && r <= 16) return 0;
+   else return 1;
+ }
+ 
+@@ -228,30 +234,35 @@ start_pass_fdctmgr (j_compress_ptr cinfo)
+     switch (cinfo->dct_method) {
+ #ifdef DCT_ISLOW_SUPPORTED
+     case JDCT_ISLOW:
+-      /* For LL&M IDCT method, divisors are equal to raw quantization
+-       * coefficients multiplied by 8 (to counteract scaling).
+-       */
+-      if (fdct->divisors[qtblno] == NULL) {
+-	fdct->divisors[qtblno] = (DCTELEM *)
+-	  (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+-				      (DCTSIZE2 * 4) * SIZEOF(DCTELEM));
+-      }
+-      dtbl = fdct->divisors[qtblno];
+-      for (i = 0; i < DCTSIZE2; i++) {
+-	if(!compute_reciprocal(qtbl->quantval[i] << 3, &dtbl[i])
+-	  && fdct->quantize == jsimd_quantize)
+-	  fdct->quantize = quantize;
++      {
++        /* For LL&M FDCT method, divisors are equal to raw quantization
++         * coefficients multiplied by 8 (to counteract scaling).
++         */
++        if (fdct->divisors[qtblno] == NULL) {
++	  fdct->divisors[qtblno] = (DCTELEM *)
++	    (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
++				        (DCTSIZE2 * 4) * SIZEOF(DCTELEM));
++        }
++        dtbl = fdct->divisors[qtblno];
++        int simd_convention = jsimd_can_quantize();
++        for (i = 0; i < DCTSIZE2; i++) {
++	  if(!compute_reciprocal(qtbl->quantval[i] << 3, &dtbl[i], simd_convention)
++	    && fdct->quantize == jsimd_quantize)
++	    fdct->quantize = quantize;
++        }
+       }
+       break;
+ #endif
+ #ifdef DCT_IFAST_SUPPORTED
+     case JDCT_IFAST:
+       {
+-	/* For AA&N IDCT method, divisors are equal to quantization
++	/* For AA&N FDCT method, divisors are equal to quantization
+ 	 * coefficients scaled by scalefactor[row]*scalefactor[col], where
+ 	 *   scalefactor[0] = 1
+ 	 *   scalefactor[k] = cos(k*PI/16) * sqrt(2)    for k=1..7
+-	 * We apply a further scale factor of 8.
++	 * We apply a further scale factor of 8 (or 16 if IFAST wants it).
++	 * What's actually stored is 1/divisor so that the inner loop can
++	 * use a multiplication rather than a division.
+ 	 */
+ #define CONST_BITS 14
+ 	static const INT16 aanscales[DCTSIZE2] = {
+@@ -267,17 +278,19 @@ start_pass_fdctmgr (j_compress_ptr cinfo)
+ 	};
+ 	SHIFT_TEMPS
+ 
++        int fdct_fractional_bits = (jsimd_can_fdct_ifast() == 2) ? 4 : 3;
+ 	if (fdct->divisors[qtblno] == NULL) {
+ 	  fdct->divisors[qtblno] = (DCTELEM *)
+ 	    (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+ 					(DCTSIZE2 * 4) * SIZEOF(DCTELEM));
+ 	}
+ 	dtbl = fdct->divisors[qtblno];
++        int simd_convention = jsimd_can_quantize();
+ 	for (i = 0; i < DCTSIZE2; i++) {
+-	  if(!compute_reciprocal(
++	  if (!compute_reciprocal(
+ 	    DESCALE(MULTIPLY16V16((INT32) qtbl->quantval[i],
+ 				  (INT32) aanscales[i]),
+-		    CONST_BITS-3), &dtbl[i])
++		    CONST_BITS-fdct_fractional_bits), &dtbl[i], simd_convention)
+ 	    && fdct->quantize == jsimd_quantize)
+ 	    fdct->quantize = quantize;
+ 	}
+@@ -287,7 +300,7 @@ start_pass_fdctmgr (j_compress_ptr cinfo)
+ #ifdef DCT_FLOAT_SUPPORTED
+     case JDCT_FLOAT:
+       {
+-	/* For float AA&N IDCT method, divisors are equal to quantization
++	/* For float AA&N FDCT method, divisors are equal to quantization
+ 	 * coefficients scaled by scalefactor[row]*scalefactor[col], where
+ 	 *   scalefactor[0] = 1
+ 	 *   scalefactor[k] = cos(k*PI/16) * sqrt(2)    for k=1..7
+diff --git a/jdct.h b/jdct.h
+index bfd55b3..734c096 100644
+--- a/jdct.h
++++ b/jdct.h
+@@ -19,8 +19,9 @@
+  * for 8-bit samples, INT32 for 12-bit samples.  (NOTE: Floating-point DCT
+  * implementations use an array of type FAST_FLOAT, instead.)
+  * The DCT inputs are expected to be signed (range +-CENTERJSAMPLE).
+- * The DCT outputs are returned scaled up by a factor of 8; they therefore
+- * have a range of +-8K for 8-bit data, +-128K for 12-bit data.  This
++ * The DCT outputs are returned scaled up by a factor of 8 (16 in some SIMD
++ * implementations); they therefore have a range of +-8K for 8-bit data
++ * (+-16K in some SIMD implementations), +-128K for 12-bit data.  This
+  * convention improves accuracy in integer implementations and saves some
+  * work in floating-point ones.
+  * Quantization of the output coefficients is done by jcdctmgr.c. This
+diff --git a/simd/jsimd_arm.c b/simd/jsimd_arm.c
+index db87d7c..dd06b6e 100644
+--- a/simd/jsimd_arm.c
++++ b/simd/jsimd_arm.c
+@@ -29,15 +29,87 @@
+ #include <string.h>
+ #include <ctype.h>
+ 
++//#define DEBUG_FDCT_CONVSAMP
++//#define DEBUG_FDCT_LOAD
++//#define DEBUG_FDCT_TRANSFORM
++//#define DEBUG_FDCT_STORE
++//#define DEBUG_FDCT_QUANTIZE
++
+ //#define DEBUG_IDCT_DEQUANTIZE
+ //#define DEBUG_IDCT_TRANSFORM
+-//#define DEBUG_IDCT_TRANSPOSE
+ //#define DEBUG_IDCT_NARROW
+ 
++//#define DEBUG_XDCT_TRANSPOSE
++
+ typedef struct {
+   int16x8x4_t half[2];
+ } int16_8x8_t;
+ 
++inline static int16_8x8_t load_transpose_8x8(const int16x8x4_t* cp) __attribute__ ((__always_inline__));
++
++inline static int16_8x8_t load_transpose_8x8(const int16x8x4_t* cp)
++{
++  int16_8x8_t coef;
++
++  {
++    int16x8x2_t unzipped;
++    const int16x8x4_t* coefp = cp;
++
++    coef.half[0] = vld4q_s16((const int16_t*) (coefp++));
++    coef.half[1] = vld4q_s16((const int16_t*) (coefp++));
++
++    unzipped = vuzpq_s16(coef.half[0].val[0], coef.half[1].val[0]);
++    coef.half[0].val[0] = unzipped.val[0];
++    coef.half[1].val[0] = unzipped.val[1];
++    unzipped = vuzpq_s16(coef.half[0].val[1], coef.half[1].val[1]);
++    coef.half[0].val[1] = unzipped.val[0];
++    coef.half[1].val[1] = unzipped.val[1];
++    unzipped = vuzpq_s16(coef.half[0].val[2], coef.half[1].val[2]);
++    coef.half[0].val[2] = unzipped.val[0];
++    coef.half[1].val[2] = unzipped.val[1];
++    unzipped = vuzpq_s16(coef.half[0].val[3], coef.half[1].val[3]);
++    coef.half[0].val[3] = unzipped.val[0];
++    coef.half[1].val[3] = unzipped.val[1];
++
++#ifdef DEBUG_FDCT_LOAD
++    fprintf(stderr, "Loading and transposing:\n");
++    const int16x8_t* coeflp = (const int16x8_t*) cp;
++    int i, j;
++    for (i = 0; i < 2; ++i) {
++      for (j = 0; j < 4; ++j) {
++        int16x8_t coef_line = vld1q_s16((const int16_t*) (coeflp++));
++        fprintf(stderr, "   %6d %6d %6d %6d %6d %6d %6d %6d\n",
++                vgetq_lane_s16(coef_line, 0),
++                vgetq_lane_s16(coef_line, 1),
++                vgetq_lane_s16(coef_line, 2),
++                vgetq_lane_s16(coef_line, 3),
++                vgetq_lane_s16(coef_line, 4),
++                vgetq_lane_s16(coef_line, 5),
++                vgetq_lane_s16(coef_line, 6),
++                vgetq_lane_s16(coef_line, 7));
++      }
++    }
++    fprintf(stderr, "becomes:\n");
++    for (i = 0; i < 2; ++i) {
++      for (j = 0; j < 4; ++j) {
++        fprintf(stderr, "   %6d %6d %6d %6d %6d %6d %6d %6d\n",
++                vgetq_lane_s16(coef.half[i].val[j], 0),
++                vgetq_lane_s16(coef.half[i].val[j], 1),
++                vgetq_lane_s16(coef.half[i].val[j], 2),
++                vgetq_lane_s16(coef.half[i].val[j], 3),
++                vgetq_lane_s16(coef.half[i].val[j], 4),
++                vgetq_lane_s16(coef.half[i].val[j], 5),
++                vgetq_lane_s16(coef.half[i].val[j], 6),
++                vgetq_lane_s16(coef.half[i].val[j], 7));
++      }
++    }
++    fprintf(stderr, "(loaded and transposed).\n");
++#endif
++  }
++
++  return coef;
++}
++
+ inline static int16_8x8_t dq_transpose_8x8(const int16x8x4_t* cp, const int16x8x4_t* dp) __attribute__ ((__always_inline__));
+ 
+ inline static int16_8x8_t dq_transpose_8x8(const int16x8x4_t* cp, const int16x8x4_t* dp)
+@@ -133,6 +205,108 @@ inline static int16_8x8_t dq_transpose_8x8(const int16x8x4_t* cp, const int16x8x
+   return coef;
+ }
+ 
++inline static int16_8x8_t fdct_helper_8x8(int16x4_t fdct_constants, int16_8x8_t a) __attribute__ ((__always_inline__));
++
++inline static int16_8x8_t fdct_helper_8x8(int16x4_t fdct_constants, int16_8x8_t a)
++{
++  int16x8x4_t even_part, odd_part;
++  int16_8x8_t b;
++
++#ifdef DEBUG_FDCT_TRANSFORM
++  int i, j;
++
++  fprintf(stderr, "1-D FDCT of:\n");
++  for (i = 0; i < 2; ++i) {
++    for (j = 0; j < 4; ++j) {
++      fprintf(stderr, "   %6d %6d %6d %6d %6d %6d %6d %6d\n",
++              vgetq_lane_s16(a.half[i].val[j], 0),
++              vgetq_lane_s16(a.half[i].val[j], 1),
++              vgetq_lane_s16(a.half[i].val[j], 2),
++              vgetq_lane_s16(a.half[i].val[j], 3),
++              vgetq_lane_s16(a.half[i].val[j], 4),
++              vgetq_lane_s16(a.half[i].val[j], 5),
++              vgetq_lane_s16(a.half[i].val[j], 6),
++              vgetq_lane_s16(a.half[i].val[j], 7));
++    }
++  }
++  fprintf(stderr, "becomes:\n");
++#endif
++
++  even_part.val[0] = vaddq_s16(a.half[0].val[0], a.half[1].val[3]);
++  even_part.val[1] = vaddq_s16(a.half[0].val[1], a.half[1].val[2]);
++  even_part.val[2] = vaddq_s16(a.half[0].val[2], a.half[1].val[1]);
++  even_part.val[3] = vaddq_s16(a.half[0].val[3], a.half[1].val[0]);
++  odd_part.val[0] = vsubq_s16(a.half[0].val[0], a.half[1].val[3]);
++  odd_part.val[1] = vsubq_s16(a.half[0].val[1], a.half[1].val[2]);
++  odd_part.val[2] = vsubq_s16(a.half[0].val[2], a.half[1].val[1]);
++  odd_part.val[3] = vsubq_s16(a.half[0].val[3], a.half[1].val[0]);
++
++  {
++    int16x8_t diff0 = vsubq_s16(even_part.val[0], even_part.val[3]);
++    int16x8_t diff1 = vsubq_s16(even_part.val[1], even_part.val[2]);
++    int16x8_t sum0 = vaddq_s16(even_part.val[0], even_part.val[3]);
++    int16x8_t sum1 = vaddq_s16(even_part.val[1], even_part.val[2]);
++
++    int16x8_t even_a = vaddq_s16(diff0, diff1);
++    int16x8_t even_b = vqrdmulhq_lane_s16(even_a, fdct_constants, 0);
++    even_b = vaddq_s16(even_a, even_b);
++    even_a = vshlq_n_s16(diff0, 1);
++
++    b.half[0].val[0] = vshlq_n_s16(vaddq_s16(sum0, sum1), 1);
++    b.half[1].val[0] = vshlq_n_s16(vsubq_s16(sum0, sum1), 1);
++    b.half[0].val[2] = vaddq_s16(even_a, even_b);
++    b.half[1].val[2] = vsubq_s16(even_a, even_b);
++  }
++
++  {
++    int16x8_t sum12 = vaddq_s16(odd_part.val[1], odd_part.val[2]);
++    int16x8_t odd_d = vqrdmulhq_lane_s16(sum12, fdct_constants, 0);
++    odd_d = vaddq_s16(odd_d, sum12);
++    int16x8_t t1 = vshlq_n_s16(odd_part.val[0], 1);
++    int16x8_t odd_x = vaddq_s16(t1, odd_d);
++    int16x8_t odd_y = vsubq_s16(t1, odd_d);
++
++    int16x8_t sum01 = vaddq_s16(odd_part.val[0], odd_part.val[1]);
++    int16x8_t sum23 = vaddq_s16(odd_part.val[2], odd_part.val[3]);
++
++    t1 = vsubq_s16(sum23, sum01);
++    int16x8_t odd_b = vqrdmulhq_lane_s16(t1, fdct_constants, 1);
++
++    int16x8_t odd_a = vqrdmulhq_lane_s16(sum01, fdct_constants, 3);
++    odd_a = vaddq_s16(odd_a, sum01);
++    odd_a = vaddq_s16(odd_a, sum01);
++    odd_a = vaddq_s16(odd_a, odd_b);
++
++    int16x8_t odd_c = vqrdmulhq_lane_s16(sum23, fdct_constants, 2);
++    odd_c = vaddq_s16(odd_c, sum23);
++    odd_c = vaddq_s16(odd_c, odd_b);
++
++    b.half[0].val[1] = vaddq_s16(odd_x, odd_a);
++    b.half[1].val[3] = vsubq_s16(odd_x, odd_a);
++    b.half[1].val[1] = vaddq_s16(odd_y, odd_c);
++    b.half[0].val[3] = vsubq_s16(odd_y, odd_c);
++  }
++
++#ifdef DEBUG_FDCT_TRANSFORM
++  for (i = 0; i < 2; ++i) {
++    for (j = 0; j < 4; ++j) {
++      fprintf(stderr, "   %6d %6d %6d %6d %6d %6d %6d %6d\n",
++              vgetq_lane_s16(b.half[i].val[j], 0),
++              vgetq_lane_s16(b.half[i].val[j], 1),
++              vgetq_lane_s16(b.half[i].val[j], 2),
++              vgetq_lane_s16(b.half[i].val[j], 3),
++              vgetq_lane_s16(b.half[i].val[j], 4),
++              vgetq_lane_s16(b.half[i].val[j], 5),
++              vgetq_lane_s16(b.half[i].val[j], 6),
++              vgetq_lane_s16(b.half[i].val[j], 7));
++    }
++  }
++  fprintf(stderr, "(transformed).\n");
++#endif
++
++  return b;
++}
++
+ inline static int16_8x8_t idct_helper_8x8(int16x4_t idct_constants, int16_8x8_t a) __attribute__ ((__always_inline__));
+ 
+ inline static int16_8x8_t idct_helper_8x8(int16x4_t idct_constants, int16_8x8_t a)
+@@ -249,7 +423,7 @@ inline static int16_8x8_t transpose_8x8(int16_8x8_t a) __attribute__ ((__always_
+ 
+ inline static int16_8x8_t transpose_8x8(int16_8x8_t a)
+ {
+-#ifdef DEBUG_IDCT_TRANSPOSE
++#ifdef DEBUG_XDCT_TRANSPOSE
+   int i, j;
+ 
+   fprintf(stderr, "Transposing:\n");
+@@ -294,7 +468,7 @@ inline static int16_8x8_t transpose_8x8(int16_8x8_t a)
+   b.half[0].val[3] = r.val[0];
+   b.half[1].val[3] = r.val[1];
+ 
+-#ifdef DEBUG_IDCT_TRANSPOSE
++#ifdef DEBUG_XDCT_TRANSPOSE
+   for (i = 0; i < 2; ++i) {
+     for (j = 0; j < 4; ++j) {
+       fprintf(stderr, "   %6d %6d %6d %6d %6d %6d %6d %6d\n",
+@@ -785,6 +959,22 @@ jsimd_can_convsamp (void)
+ {
+   init_simd();
+ 
++  /* The code is optimised for these values only */
++  if (DCTSIZE != 8)
++    return 0;
++  if (sizeof(JCOEF) != 2)
++    return 0;
++  if (BITS_IN_JSAMPLE != 8)
++    return 0;
++  if (sizeof(JDIMENSION) != 4)
++    return 0;
++
++  if ((simd_support & JSIMD_ARM_NEON)) {
++    if ((simd_support & JSIMD_ARM_NEON_ASM))
++      return 0;
++    return 2;
++  }
++
+   return 0;
+ }
+ 
+@@ -800,6 +990,80 @@ GLOBAL(void)
+ jsimd_convsamp (JSAMPARRAY sample_data, JDIMENSION start_col,
+                 DCTELEM * workspace)
+ {
++  if (!(simd_support & JSIMD_ARM_NEON))
++    return;
++
++  int8x16_t v128 = vdupq_n_s8(-128);
++  int8x16x2_t samples;
++  uint16x8x2_t samples_as_u16;
++  int16x8x4_t coef;
++  int16x8x4_t* wp = (int16x8x4_t*) workspace;
++
++  samples.val[0] = vcombine_s8(
++    vld1_s8((const int8_t*)(sample_data[0] + start_col)),
++    vld1_s8((const int8_t*)(sample_data[1] + start_col)));
++  samples.val[1] = vcombine_s8(
++    vld1_s8((const int8_t*)(sample_data[2] + start_col)),
++    vld1_s8((const int8_t*)(sample_data[3] + start_col)));
++  samples.val[0] = vaddq_s8(samples.val[0], v128);
++  samples.val[1] = vaddq_s8(samples.val[1], v128);
++  samples_as_u16 = vuzpq_u16(vreinterpretq_u16_s8(samples.val[0]), vreinterpretq_u16_s8(samples.val[1]));
++  samples = vuzpq_s8(vreinterpretq_s8_u16(samples_as_u16.val[0]), vreinterpretq_s8_u16(samples_as_u16.val[1]));
++
++  coef.val[0] = vshll_n_s8(vget_low_s8(samples.val[0]), 3);
++  coef.val[1] = vshll_n_s8(vget_low_s8(samples.val[1]), 3);
++  coef.val[2] = vshll_n_s8(vget_high_s8(samples.val[0]), 3);
++  coef.val[3] = vshll_n_s8(vget_high_s8(samples.val[1]), 3);
++  vst4q_s16((int16_t*)(wp++), coef);
++
++  samples.val[0] = vcombine_s8(
++    vld1_s8((const int8_t*)(sample_data[4] + start_col)),
++    vld1_s8((const int8_t*)(sample_data[5] + start_col)));
++  samples.val[1] = vcombine_s8(
++    vld1_s8((const int8_t*)(sample_data[6] + start_col)),
++    vld1_s8((const int8_t*)(sample_data[7] + start_col)));
++  samples.val[0] = vaddq_s8(samples.val[0], v128);
++  samples.val[1] = vaddq_s8(samples.val[1], v128);
++  samples_as_u16 = vuzpq_u16(vreinterpretq_u16_s8(samples.val[0]), vreinterpretq_u16_s8(samples.val[1]));
++  samples = vuzpq_s8(vreinterpretq_s8_u16(samples_as_u16.val[0]), vreinterpretq_s8_u16(samples_as_u16.val[1]));
++
++  coef.val[0] = vshll_n_s8(vget_low_s8(samples.val[0]), 3);
++  coef.val[1] = vshll_n_s8(vget_low_s8(samples.val[1]), 3);
++  coef.val[2] = vshll_n_s8(vget_high_s8(samples.val[0]), 3);
++  coef.val[3] = vshll_n_s8(vget_high_s8(samples.val[1]), 3);
++  vst4q_s16((int16_t*)(wp++), coef);
++
++#ifdef DEBUG_FDCT_CONVSAMP
++    fprintf(stderr, "Converting samples:\n");
++    int i;
++    for (i = 0; i < 8; ++i) {
++      uint8x8_t samp_line = vld1_u8((const uint8_t*) (sample_data[i] + start_col));
++      fprintf(stderr, "   %6d %6d %6d %6d %6d %6d %6d %6d\n",
++              vget_lane_u8(samp_line, 0),
++              vget_lane_u8(samp_line, 1),
++              vget_lane_u8(samp_line, 2),
++              vget_lane_u8(samp_line, 3),
++              vget_lane_u8(samp_line, 4),
++              vget_lane_u8(samp_line, 5),
++              vget_lane_u8(samp_line, 6),
++              vget_lane_u8(samp_line, 7));
++    }
++    fprintf(stderr, "becomes (after << 3):\n");
++    const int16x8_t* coeflp = (const int16x8_t*) workspace;
++    for (i = 0; i < 8; ++i) {
++      int16x8_t coef_line = vld1q_s16((const int16_t*) (coeflp++));
++      fprintf(stderr, "   %6d %6d %6d %6d %6d %6d %6d %6d\n",
++              vgetq_lane_s16(coef_line, 0),
++              vgetq_lane_s16(coef_line, 1),
++              vgetq_lane_s16(coef_line, 2),
++              vgetq_lane_s16(coef_line, 3),
++              vgetq_lane_s16(coef_line, 4),
++              vgetq_lane_s16(coef_line, 5),
++              vgetq_lane_s16(coef_line, 6),
++              vgetq_lane_s16(coef_line, 7));
++    }
++    fprintf(stderr, "(converted and scaled).\n");
++#endif
+ }
+ 
+ GLOBAL(void)
+@@ -821,6 +1085,26 @@ jsimd_can_fdct_ifast (void)
+ {
+   init_simd();
+ 
++  /* The code is optimised for these values only */
++  if (DCTSIZE != 8)
++    return 0;
++  if (sizeof(JCOEF) != 2)
++    return 0;
++  if (BITS_IN_JSAMPLE != 8)
++    return 0;
++  if (sizeof(JDIMENSION) != 4)
++    return 0;
++  if (sizeof(IFAST_MULT_TYPE) != 2)
++    return 0;
++  if (IFAST_SCALE_BITS != 2)
++    return 0;
++
++  if ((simd_support & JSIMD_ARM_NEON)) {
++    if ((simd_support & JSIMD_ARM_NEON_ASM))
++      return 0;
++    return 2;
++  }
++
+   return 0;
+ }
+ 
+@@ -840,6 +1124,66 @@ jsimd_fdct_islow (DCTELEM * data)
+ GLOBAL(void)
+ jsimd_fdct_ifast (DCTELEM * data)
+ {
++  if (!(simd_support & JSIMD_ARM_NEON))
++    return;
++
++  int16_8x8_t coef;
++
++  {
++    const int16x8x4_t* coefp = (const int16x8x4_t*) data;
++    coef = load_transpose_8x8(coefp);
++  }
++
++  {
++    static int16_t fdct_constants[4] __attribute__ ((aligned (8)))
++      = { 13573, 25080, 2700, 20091 };
++    int16x4_t c = vld1_s16(fdct_constants);
++    coef = transpose_8x8(fdct_helper_8x8(c, coef));
++
++    coef.half[0].val[0] = vrshrq_n_s16(coef.half[0].val[0], 4);
++    coef.half[0].val[1] = vrshrq_n_s16(coef.half[0].val[1], 4);
++    coef.half[0].val[2] = vrshrq_n_s16(coef.half[0].val[2], 4);
++    coef.half[0].val[3] = vrshrq_n_s16(coef.half[0].val[3], 4);
++    coef.half[1].val[0] = vrshrq_n_s16(coef.half[1].val[0], 4);
++    coef.half[1].val[1] = vrshrq_n_s16(coef.half[1].val[1], 4);
++    coef.half[1].val[2] = vrshrq_n_s16(coef.half[1].val[2], 4);
++    coef.half[1].val[3] = vrshrq_n_s16(coef.half[1].val[3], 4);
++
++    coef = fdct_helper_8x8(c, coef);
++  }
++
++  {
++    int16x8_t* coeflp = (int16x8_t*) data;
++
++#ifdef DEBUG_FDCT_STORE
++    int i, j;
++
++    fprintf(stderr, "fDCT result:\n");
++    for (i = 0; i < 2; ++i) {
++      for (j = 0; j < 4; ++j) {
++        fprintf(stderr, "   %6d %6d %6d %6d %6d %6d %6d %6d\n",
++                vgetq_lane_s16(coef.half[i].val[j], 0),
++                vgetq_lane_s16(coef.half[i].val[j], 1),
++                vgetq_lane_s16(coef.half[i].val[j], 2),
++                vgetq_lane_s16(coef.half[i].val[j], 3),
++                vgetq_lane_s16(coef.half[i].val[j], 4),
++                vgetq_lane_s16(coef.half[i].val[j], 5),
++                vgetq_lane_s16(coef.half[i].val[j], 6),
++                vgetq_lane_s16(coef.half[i].val[j], 7));
++      }
++    }
++    fprintf(stderr, "(result stored)\n");
++#endif
++
++    vst1q_s16((int16_t*)(coeflp++), coef.half[0].val[0]);
++    vst1q_s16((int16_t*)(coeflp++), coef.half[0].val[1]);
++    vst1q_s16((int16_t*)(coeflp++), coef.half[0].val[2]);
++    vst1q_s16((int16_t*)(coeflp++), coef.half[0].val[3]);
++    vst1q_s16((int16_t*)(coeflp++), coef.half[1].val[0]);
++    vst1q_s16((int16_t*)(coeflp++), coef.half[1].val[1]);
++    vst1q_s16((int16_t*)(coeflp++), coef.half[1].val[2]);
++    vst1q_s16((int16_t*)(coeflp++), coef.half[1].val[3]);
++  }
+ }
+ 
+ GLOBAL(void)
+@@ -852,6 +1196,22 @@ jsimd_can_quantize (void)
+ {
+   init_simd();
+ 
++  /* The code is optimised for these values only */
++  if (DCTSIZE != 8)
++    return 0;
++  if (sizeof(JCOEF) != 2)
++    return 0;
++  if (BITS_IN_JSAMPLE != 8)
++    return 0;
++  if (sizeof(JDIMENSION) != 4)
++    return 0;
++
++  if ((simd_support & JSIMD_ARM_NEON)) {
++    if ((simd_support & JSIMD_ARM_NEON_ASM))
++      return 0;
++    return 2;
++  }
++
+   return 0;
+ }
+ 
+@@ -867,6 +1227,110 @@ GLOBAL(void)
+ jsimd_quantize (JCOEFPTR coef_block, DCTELEM * divisors,
+                 DCTELEM * workspace)
+ {
++  if (!(simd_support & JSIMD_ARM_NEON))
++    return;
++
++  int16x8x4_t* wp = (int16x8x4_t*) workspace;
++  int16x8x4_t* coefp = (int16x8x4_t*) coef_block;
++  int16x8x4_t* recipp = (int16x8x4_t*) &(divisors[DCTSIZE2 * 0]);
++  int16x8x4_t* corrp = (int16x8x4_t*) &(divisors[DCTSIZE2 * 1]);
++  int16x8x4_t* shiftp = (int16x8x4_t*) &(divisors[DCTSIZE2 * 3]);
++  int16x8x4_t coef, recip, corr, shift;
++
++  coef = vld4q_s16((int16_t*)(wp++));
++  recip = vld4q_s16((int16_t*)(recipp++));
++  corr = vld4q_s16((int16_t*)(corrp++));
++  shift = vld4q_s16((int16_t*)(shiftp++));
++  coef.val[0] = vshlq_s16(vqdmulhq_s16(vqaddq_s16(coef.val[0], corr.val[0]), recip.val[0]), shift.val[0]);
++  coef.val[1] = vshlq_s16(vqdmulhq_s16(vqaddq_s16(coef.val[1], corr.val[1]), recip.val[1]), shift.val[1]);
++  coef.val[2] = vshlq_s16(vqdmulhq_s16(vqaddq_s16(coef.val[2], corr.val[2]), recip.val[2]), shift.val[2]);
++  coef.val[3] = vshlq_s16(vqdmulhq_s16(vqaddq_s16(coef.val[3], corr.val[3]), recip.val[3]), shift.val[3]);
++  vst4q_s16((int16_t*)(coefp++), coef);
++
++  coef = vld4q_s16((int16_t*)(wp++));
++  recip = vld4q_s16((int16_t*)(recipp++));
++  corr = vld4q_s16((int16_t*)(corrp++));
++  shift = vld4q_s16((int16_t*)(shiftp++));
++  coef.val[0] = vshlq_s16(vqdmulhq_s16(vqaddq_s16(coef.val[0], corr.val[0]), recip.val[0]), shift.val[0]);
++  coef.val[1] = vshlq_s16(vqdmulhq_s16(vqaddq_s16(coef.val[1], corr.val[1]), recip.val[1]), shift.val[1]);
++  coef.val[2] = vshlq_s16(vqdmulhq_s16(vqaddq_s16(coef.val[2], corr.val[2]), recip.val[2]), shift.val[2]);
++  coef.val[3] = vshlq_s16(vqdmulhq_s16(vqaddq_s16(coef.val[3], corr.val[3]), recip.val[3]), shift.val[3]);
++  vst4q_s16((int16_t*)(coefp++), coef);
++
++#ifdef DEBUG_FDCT_QUANTIZE
++  fprintf(stderr, "Quantizing coefficients:\n");
++  int i;
++  const int16x8_t* coeflp = (const int16x8_t*) workspace;
++  for (i = 0; i < 8; ++i) {
++    int16x8_t coef_line = vld1q_s16((const int16_t*) (coeflp++));
++    fprintf(stderr, "   %6d %6d %6d %6d %6d %6d %6d %6d\n",
++            vgetq_lane_s16(coef_line, 0),
++            vgetq_lane_s16(coef_line, 1),
++            vgetq_lane_s16(coef_line, 2),
++            vgetq_lane_s16(coef_line, 3),
++            vgetq_lane_s16(coef_line, 4),
++            vgetq_lane_s16(coef_line, 5),
++            vgetq_lane_s16(coef_line, 6),
++            vgetq_lane_s16(coef_line, 7));
++  }
++  fprintf(stderr, "with reciprocals:\n");
++  coeflp = (const int16x8_t*) &(divisors[DCTSIZE2 * 0]);
++  for (i = 0; i < 8; ++i) {
++    int16x8_t coef_line = vld1q_s16((const int16_t*) (coeflp++));
++    fprintf(stderr, "   %6d %6d %6d %6d %6d %6d %6d %6d\n",
++            vgetq_lane_s16(coef_line, 0),
++            vgetq_lane_s16(coef_line, 1),
++            vgetq_lane_s16(coef_line, 2),
++            vgetq_lane_s16(coef_line, 3),
++            vgetq_lane_s16(coef_line, 4),
++            vgetq_lane_s16(coef_line, 5),
++            vgetq_lane_s16(coef_line, 6),
++            vgetq_lane_s16(coef_line, 7));
++  }
++  fprintf(stderr, "and corrections:\n");
++  coeflp = (const int16x8_t*) &(divisors[DCTSIZE2 * 1]);
++  for (i = 0; i < 8; ++i) {
++    int16x8_t coef_line = vld1q_s16((const int16_t*) (coeflp++));
++    fprintf(stderr, "   %6d %6d %6d %6d %6d %6d %6d %6d\n",
++            vgetq_lane_s16(coef_line, 0),
++            vgetq_lane_s16(coef_line, 1),
++            vgetq_lane_s16(coef_line, 2),
++            vgetq_lane_s16(coef_line, 3),
++            vgetq_lane_s16(coef_line, 4),
++            vgetq_lane_s16(coef_line, 5),
++            vgetq_lane_s16(coef_line, 6),
++            vgetq_lane_s16(coef_line, 7));
++  }
++  fprintf(stderr, "and shifts:\n");
++  coeflp = (const int16x8_t*) &(divisors[DCTSIZE2 * 3]);
++  for (i = 0; i < 8; ++i) {
++    int16x8_t coef_line = vld1q_s16((const int16_t*) (coeflp++));
++    fprintf(stderr, "   %6d %6d %6d %6d %6d %6d %6d %6d\n",
++            vgetq_lane_s16(coef_line, 0),
++            vgetq_lane_s16(coef_line, 1),
++            vgetq_lane_s16(coef_line, 2),
++            vgetq_lane_s16(coef_line, 3),
++            vgetq_lane_s16(coef_line, 4),
++            vgetq_lane_s16(coef_line, 5),
++            vgetq_lane_s16(coef_line, 6),
++            vgetq_lane_s16(coef_line, 7));
++  }
++  fprintf(stderr, "becomes (after >> 4 and quantization):\n");
++  coeflp = (const int16x8_t*) coef_block;
++  for (i = 0; i < 8; ++i) {
++    int16x8_t coef_line = vld1q_s16((const int16_t*) (coeflp++));
++    fprintf(stderr, "   %6d %6d %6d %6d %6d %6d %6d %6d\n",
++            vgetq_lane_s16(coef_line, 0),
++            vgetq_lane_s16(coef_line, 1),
++            vgetq_lane_s16(coef_line, 2),
++            vgetq_lane_s16(coef_line, 3),
++            vgetq_lane_s16(coef_line, 4),
++            vgetq_lane_s16(coef_line, 5),
++            vgetq_lane_s16(coef_line, 6),
++            vgetq_lane_s16(coef_line, 7));
++  }
++  fprintf(stderr, "(descaled and quantized).\n");
++#endif
+ }
+ 
+ GLOBAL(void)
+diff --git a/turbojpeg.c b/turbojpeg.c
+index 97461da..a5a1949 100644
+--- a/turbojpeg.c
++++ b/turbojpeg.c
+@@ -182,6 +182,7 @@ static void setCompDefaults(struct jpeg_compress_struct *cinfo,
+ 	cinfo->comp_info[0].v_samp_factor=tjMCUHeight[subsamp]/8;
+ 	cinfo->comp_info[1].v_samp_factor=1;
+ 	cinfo->comp_info[2].v_samp_factor=1;
++	cinfo->dct_method=JDCT_IFAST;
+ }
+ 
+ static void setDecompDefaults(struct jpeg_decompress_struct *dinfo,
+-- 
+1.7.0.4
+
