@@ -1,0 +1,19 @@
+Author: Jamie Strandboge <jamie@canonical.com>
+Description: add back error_if_not_basename() which was removed in
+ 0003-Avoid-blindly-source-SETUP_FILE-with.patch
+Forwarded: yes
+
+Index: oprofile-0.9.6/utils/opcontrol
+===================================================================
+--- oprofile-0.9.6.orig/utils/opcontrol	2011-07-07 10:58:26.000000000 -0500
++++ oprofile-0.9.6/utils/opcontrol	2011-07-07 10:58:35.000000000 -0500
+@@ -785,7 +785,8 @@
+ 				;;
+ 
+ 			--save)
+-                error_if_invalid_arg $arg $val
++				error_if_invalid_arg $arg $val
++				error_if_not_basename $arg $val
+ 				DUMP=yes
+ 				SAVE_SESSION=yes
+ 				SAVE_NAME=$val
