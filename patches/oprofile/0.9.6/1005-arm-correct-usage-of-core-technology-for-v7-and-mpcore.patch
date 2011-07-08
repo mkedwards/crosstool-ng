@@ -1,0 +1,106 @@
+Currently, OProfile refers to the ARM11MPCore as "ARM MPCore".
+The Cortex-A9 is also available in MP configurations, so this
+nomenclature is ambiguous.
+
+Additionally, OProfile refers to the Cortex-A8 event set as
+"ARMv7 PMNC" which doesn't make sense when the Cortex-A9 is
+added to the equation.
+
+This patch fixes up errors in terminology, but leaves the
+string which is used to communicate with the Kernel alone in
+order to remain backwards compatible. Furthermore, a new cpu_descr
+is added for Cortex-A9.
+
+Signed-off-by: Will Deacon <will.deacon@arm.com>
+---
+ events/Makefile.am  |    2 ++
+ libop/op_cpu_type.c |    5 +++--
+ libop/op_cpu_type.h |    3 ++-
+ libop/op_events.c   |    1 +
+ utils/ophelp.c      |    8 +++++++-
+ 5 files changed, 15 insertions(+), 4 deletions(-)
+
+--- a/events/Makefile.am
++++ b/events/Makefile.am
+@@ -38,7 +38,9 @@
+ 	arm/xscale1/events arm/xscale1/unit_masks \
+ 	arm/xscale2/events arm/xscale2/unit_masks \
+ 	arm/armv6/events arm/armv6/unit_masks \
++	arm/armv7-common/events arm/armv7-common/unit_masks \
+ 	arm/armv7/events arm/armv7/unit_masks \
++	arm/armv7-ca9/events arm/armv7-ca9/unit_masks \
+ 	arm/mpcore/events arm/mpcore/unit_masks \
+ 	avr32/events avr32/unit_masks \
+ 	mips/20K/events mips/20K/unit_masks \
+--- a/libop/op_cpu_type.c
++++ b/libop/op_cpu_type.c
+@@ -70,18 +70,19 @@
+ 	{ "ppc64 Cell Broadband Engine", "ppc64/cell-be", CPU_PPC64_CELL, 8 },
+ 	{ "AMD64 family10", "x86-64/family10", CPU_FAMILY10, 4 },
+ 	{ "ppc64 PA6T", "ppc64/pa6t", CPU_PPC64_PA6T, 6 },
+-	{ "ARM MPCore", "arm/mpcore", CPU_ARM_MPCORE, 2 },
++	{ "ARM 11MPCore", "arm/mpcore", CPU_ARM_MPCORE, 2 },
+ 	{ "ARM V6 PMU", "arm/armv6", CPU_ARM_V6, 3 },
+ 	{ "ppc64 POWER5++", "ppc64/power5++", CPU_PPC64_POWER5pp, 6 },
+ 	{ "e300", "ppc/e300", CPU_PPC_E300, 4 },
+ 	{ "AVR32", "avr32", CPU_AVR32, 3 },
+-	{ "ARM V7 PMNC", "arm/armv7", CPU_ARM_V7, 5 },
++	{ "ARM Cortex-A8", "arm/armv7", CPU_ARM_V7, 5 },
+  	{ "Intel Architectural Perfmon", "i386/arch_perfmon", CPU_ARCH_PERFMON, 0},
+ 	{ "AMD64 family11h", "x86-64/family11h", CPU_FAMILY11H, 4 },
+ 	{ "ppc64 POWER7", "ppc64/power7", CPU_PPC64_POWER7, 6 },
+ 	{ "ppc64 compat version 1", "ppc64/ibm-compat-v1", CPU_PPC64_IBM_COMPAT_V1, 4 },
+    	{ "Intel Core/i7", "i386/core_i7", CPU_CORE_I7, 4 },
+    	{ "Intel Atom", "i386/atom", CPU_ATOM, 2 },
++	{ "ARM Cortex-A9", "arm/armv7-ca9", CPU_ARM_V7_CA9, 7 },
+ };
+  
+ static size_t const nr_cpu_descrs = sizeof(cpu_descrs) / sizeof(struct cpu_descr);
+--- a/libop/op_cpu_type.h
++++ b/libop/op_cpu_type.h
+@@ -72,13 +72,14 @@
+ 	CPU_PPC64_POWER5pp,  /**< ppc64 Power5++ family */
+ 	CPU_PPC_E300, /**< e300 */
+ 	CPU_AVR32, /**< AVR32 */
+-	CPU_ARM_V7, /**< ARM V7 */
++	CPU_ARM_V7, /**< ARM Cortex-A8 */
+  	CPU_ARCH_PERFMON, /**< Intel architectural perfmon */
+ 	CPU_FAMILY11H, /**< AMD family 11h */
+ 	CPU_PPC64_POWER7, /**< ppc64 POWER7 family */
+ 	CPU_PPC64_IBM_COMPAT_V1, /**< IBM PPC64 processor compat mode version 1 */
+    	CPU_CORE_I7, /* Intel Core i7, Nehalem */
+    	CPU_ATOM, /* First generation Intel Atom */
++	CPU_ARM_V7_CA9, /**< ARM Cortex-A9 */
+ 	MAX_CPU_TYPE
+ } op_cpu;
+ 
+--- a/libop/op_events.c
++++ b/libop/op_events.c
+@@ -1005,6 +1005,7 @@
+ 		case CPU_ARM_MPCORE:
+ 		case CPU_ARM_V6:
+ 		case CPU_ARM_V7:
++		case CPU_ARM_V7_CA9:
+ 		case CPU_AVR32:
+ 			descr->name = "CPU_CYCLES";
+ 			break;
+--- a/utils/ophelp.c
++++ b/utils/ophelp.c
+@@ -534,10 +534,16 @@
+ 
+ 	case CPU_ARM_V7:
+ 		event_doc =
+-			"See ARM11 Technical Reference Manual\n"
++			"See Cortex-A8 Technical Reference Manual\n"
+ 			"Cortex A8 DDI (ARM DDI 0344B, revision r1p1)\n";
+ 		break;
+ 
++	case CPU_ARM_V7_CA9:
++		event_doc =
++			"See Cortex-A9 Technical Reference Manual\n"
++			"Cortex A9 DDI (ARM DDI 0388E, revision r2p0)\n";
++		break;
++
+ 	case CPU_PPC64_PA6T:
+ 		event_doc =
+ 			"See PA6T Power Implementation Features Book IV\n"
