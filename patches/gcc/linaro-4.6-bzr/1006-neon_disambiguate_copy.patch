@@ -1,0 +1,12 @@
+--- a/gcc/config/arm/arm.c	2011-07-11 21:20:36.000000000 +0000
++++ b/gcc/config/arm/arm.c	2011-07-11 21:19:52.000000000 +0000
+@@ -19824,6 +19824,9 @@
+         {
+           int good = 1;
+ 
++          if (copied & (i << i))
++            continue;
++
+           for (j = 0; good && j < count; j++)
+             if (i != j && (copied & (1 << j)) == 0
+                 && reg_overlap_mentioned_p (src[j], dest[i]))
