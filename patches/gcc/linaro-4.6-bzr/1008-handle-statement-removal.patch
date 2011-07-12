@@ -1,0 +1,76 @@
+diff -ur a/gcc/gimple-fold.c b/gcc/gimple-fold.c
+--- a/gcc/gimple-fold.c	2011-06-08 01:09:10.000000000 +0000
++++ b/gcc/gimple-fold.c	2011-07-12 23:10:15.000000000 +0000
+@@ -1572,6 +1572,9 @@
+     default:;
+     }
+ 
++  if (!gsi->ptr)
++    return changed;
++
+   stmt = gsi_stmt (*gsi);
+ 
+   /* Fold *& on the lhs.  */
+diff -ur a/gcc/tree-eh.c b/gcc/tree-eh.c
+--- a/gcc/tree-eh.c	2011-06-08 01:09:10.000000000 +0000
++++ b/gcc/tree-eh.c	2011-07-12 23:31:41.000000000 +0000
+@@ -2634,7 +2634,7 @@
+ 
+   if (lp_nr != 0)
+     {
+-      bool new_stmt_could_throw = stmt_could_throw_p (new_stmt);
++      bool new_stmt_could_throw = new_stmt ? stmt_could_throw_p (new_stmt) : false;
+ 
+       if (new_stmt == old_stmt && new_stmt_could_throw)
+ 	return false;
+diff -ur a/gcc/tree-ssa-propagate.c b/gcc/tree-ssa-propagate.c
+--- a/gcc/tree-ssa-propagate.c	2011-06-08 01:09:10.000000000 +0000
++++ b/gcc/tree-ssa-propagate.c	2011-07-12 23:32:48.000000000 +0000
+@@ -1141,14 +1141,14 @@
+ 	  /* Now cleanup.  */
+ 	  if (did_replace)
+ 	    {
+-	      stmt = gsi_stmt (oldi);
++	      stmt = (oldi.ptr) ? gsi_stmt (oldi) : NULL;
+ 
+               /* If we cleaned up EH information from the statement,
+                  remove EH edges.  */
+ 	      if (maybe_clean_or_replace_eh_stmt (old_stmt, stmt))
+ 		gimple_purge_dead_eh_edges (bb);
+ 
+-              if (is_gimple_assign (stmt)
++              if (stmt && is_gimple_assign (stmt)
+                   && (get_gimple_rhs_class (gimple_assign_rhs_code (stmt))
+                       == GIMPLE_SINGLE_RHS))
+               {
+@@ -1158,10 +1158,15 @@
+                   recompute_tree_invariant_for_addr_expr (rhs);
+               }
+ 
+-	      /* Determine what needs to be done to update the SSA form.  */
+-	      update_stmt (stmt);
+-	      if (!is_gimple_debug (stmt))
++	      if (!stmt)
+ 		something_changed = true;
++	      else
++              {
++		/* Determine what needs to be done to update the SSA form.  */
++		update_stmt (stmt);
++		if (!is_gimple_debug (stmt))
++		  something_changed = true;
++              }
+ 	    }
+ 
+ 	  if (dump_file && (dump_flags & TDF_DETAILS))
+@@ -1169,7 +1174,10 @@
+ 	      if (did_replace)
+ 		{
+ 		  fprintf (dump_file, "Folded into: ");
+-		  print_gimple_stmt (dump_file, stmt, 0, TDF_SLIM);
++		  if (stmt)
++		    print_gimple_stmt (dump_file, stmt, 0, TDF_SLIM);
++		  else
++		    fprintf (dump_file, "(nothing)");
+ 		  fprintf (dump_file, "\n");
+ 		}
+ 	      else
