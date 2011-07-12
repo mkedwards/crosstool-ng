@@ -116,7 +116,7 @@ do_debug_gdb_build() {
         native_extra_config=("${extra_config[@]}")
 
         native_extra_config+=("--with-curses")
-        native_extra_config+=("--with-expat")
+        native_extra_config+=("--with-expat" "--without-libexpat-prefix")
 
         CT_DoLog EXTRA "Configuring native gdb"
 

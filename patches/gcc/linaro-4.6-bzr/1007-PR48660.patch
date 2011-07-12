@@ -1,0 +1,14 @@
+--- a/gcc/expr.c	2011-07-11 23:38:04.000000000 +0000
++++ b/gcc/expr.c	2011-07-11 23:38:49.000000000 +0000
+@@ -8543,10 +8543,10 @@
+ 					     TREE_TYPE
+ 					     (TREE_TYPE (gimple_call_fn (g))),
+ 					     2);
++	      gcc_assert (GET_MODE (decl_rtl) == pmode);
+ 	    }
+ 	  else
+ 	    pmode = promote_decl_mode (exp, &unsignedp);
+-	  gcc_assert (GET_MODE (decl_rtl) == pmode);
+ 
+ 	  temp = gen_lowpart_SUBREG (mode, decl_rtl);
+ 	  SUBREG_PROMOTED_VAR_P (temp) = 1;
