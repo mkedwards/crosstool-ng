@@ -37,7 +37,7 @@ do_companion_tools_libtool_build_for_target() {
     CT_DoExecLog CFG                                            \
     CC="${CT_TARGET}-gcc"                                       \
     CFLAGS="-g -Os -fPIC -DPIC"                                 \
-    ./configure                                                 \
+    "${CT_SRC_DIR}/libtool-${CT_LIBTOOL_VERSION}/configure"     \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \
         --target=${CT_TARGET}                                   \
