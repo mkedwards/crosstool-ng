@@ -25,7 +25,9 @@ do_companion_tools_libtool_build() {
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep
+}
 
+do_companion_tools_libtool_build_for_target() {
     CT_DoStep EXTRA "Installing libtool for the target"
     mkdir -p "${CT_BUILD_DIR}/build-libtool-for-target"
     CT_Pushd "${CT_BUILD_DIR}/build-libtool-for-target"
