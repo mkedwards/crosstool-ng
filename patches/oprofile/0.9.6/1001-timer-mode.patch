@@ -1,0 +1,11 @@
+Patch from Joachim Berdal Haga: Make oprofile be able to start in timer mode (Closes: #548574)
+--- trunk.orig/utils/opcontrol
++++ trunk/utils/opcontrol
+@@ -1301,6 +1301,7 @@
+ 	fi
+ 
+ 	if test "$IS_TIMER" = 1; then
++		OPROFILED_EVENTS=TIMER_INT
+ 		return
+ 	fi
+ 
