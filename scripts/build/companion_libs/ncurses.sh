@@ -36,6 +36,8 @@ do_ncurses() {
         --build=${CT_BUILD}                                     \
         --host=${CT_BUILD}                                      \
         --prefix="${CT_BUILDTOOLS_PREFIX_DIR}"                  \
+        --mandir="${CT_BUILDTOOLS_PREFIX_DIR}"/share/man        \
+        --infodir="${CT_BUILDTOOLS_PREFIX_DIR}"/share/info      \
         --with-build-cc=${CT_REAL_BUILD}-gcc                    \
         --with-build-cpp=${CT_REAL_BUILD}-gcc                   \
         --with-build-cflags="${CT_CFLAGS_FOR_HOST}"             \

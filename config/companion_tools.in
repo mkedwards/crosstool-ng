@@ -11,6 +11,7 @@ config COMP_TOOLS
     help
       Crosstool-NG relies on some external tools to be recent enough, namely:
         make = 3.81 (in some cases)
+        cmake >= 2.8.5
         m4 >= 1.4.12
         autoconf >= 2.63
         automake >= 1.10.2
@@ -27,6 +28,10 @@ if COMP_TOOLS
 config COMP_TOOLS_make
     bool
     prompt "make"
+
+config COMP_TOOLS_cmake
+    bool
+    prompt "cmake"
 
 config COMP_TOOLS_m4
     bool
