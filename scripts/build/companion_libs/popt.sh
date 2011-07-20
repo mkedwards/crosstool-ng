@@ -36,7 +36,7 @@ do_popt() {
         --enable-static
 
     CT_DoLog EXTRA "Building popt"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing popt"
     CT_DoExecLog ALL make install
@@ -73,7 +73,7 @@ do_popt_target() {
         --enable-static
 
     CT_DoLog EXTRA "Building popt"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing popt"
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install

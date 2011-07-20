@@ -36,7 +36,7 @@ do_elfutils() {
         --enable-static
 
     CT_DoLog EXTRA "Building elfutils"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing elfutils"
     CT_DoExecLog ALL make install
@@ -73,7 +73,7 @@ do_elfutils_target() {
         --enable-static
 
     CT_DoLog EXTRA "Building elfutils"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing elfutils"
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install

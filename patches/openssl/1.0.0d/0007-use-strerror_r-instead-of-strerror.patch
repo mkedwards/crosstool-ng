@@ -1,0 +1,86 @@
+From d5d0f4da97dd3095794f0959e569d8df15698446 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Sun, 17 Apr 2011 00:08:52 +0000
+Subject: [PATCH 7/7] use strerror_r() instead of strerror()
+
+---
+ crypto/dso/dso_dl.c |   15 +++++++++------
+ crypto/err/err.c    |   11 ++++++-----
+ 2 files changed, 15 insertions(+), 11 deletions(-)
+
+diff --git a/crypto/dso/dso_dl.c b/crypto/dso/dso_dl.c
+index fc4236b..9d3907f 100644
+--- a/crypto/dso/dso_dl.c
++++ b/crypto/dso/dso_dl.c
+@@ -136,9 +136,10 @@ static int dl_load(DSO *dso)
+ 		(dso->flags&DSO_FLAG_NO_NAME_TRANSLATION?0:DYNAMIC_PATH), 0L);
+ 	if(ptr == NULL)
+ 		{
++		char buf[1024];
+ 		DSOerr(DSO_F_DL_LOAD,DSO_R_LOAD_FAILED);
+-		ERR_add_error_data(4, "filename(", filename, "): ",
+-			strerror(errno));
++		strerror_r(errno, buf, 1024);
++		ERR_add_error_data(4, "filename(", filename, "): ", buf);
+ 		goto err;
+ 		}
+ 	if(!sk_push(dso->meth_data, (char *)ptr))
+@@ -206,9 +207,10 @@ static void *dl_bind_var(DSO *dso, const char *symname)
+ 		}
+ 	if (shl_findsym(&ptr, symname, TYPE_UNDEFINED, &sym) < 0)
+ 		{
++		char buf[1024];
+ 		DSOerr(DSO_F_DL_BIND_VAR,DSO_R_SYM_FAILURE);
+-		ERR_add_error_data(4, "symname(", symname, "): ",
+-			strerror(errno));
++		strerror_r(errno, buf, 1024);
++		ERR_add_error_data(4, "symname(", symname, "): ", buf);
+ 		return(NULL);
+ 		}
+ 	return(sym);
+@@ -237,9 +239,10 @@ static DSO_FUNC_TYPE dl_bind_func(DSO *dso, const char *symname)
+ 		}
+ 	if (shl_findsym(&ptr, symname, TYPE_UNDEFINED, &sym) < 0)
+ 		{
++		char buf[1024];
+ 		DSOerr(DSO_F_DL_BIND_FUNC,DSO_R_SYM_FAILURE);
+-		ERR_add_error_data(4, "symname(", symname, "): ",
+-			strerror(errno));
++		strerror_r(errno, buf, 1024);
++		ERR_add_error_data(4, "symname(", symname, "): ", buf);
+ 		return(NULL);
+ 		}
+ 	return((DSO_FUNC_TYPE)sym);
+diff --git a/crypto/err/err.c b/crypto/err/err.c
+index 69713a6..642b89e 100644
+--- a/crypto/err/err.c
++++ b/crypto/err/err.c
+@@ -561,8 +561,8 @@ static int int_err_get_next_lib(void)
+ #define LEN_SYS_STR_REASON 32
+ 
+ static ERR_STRING_DATA SYS_str_reasons[NUM_SYS_STR_REASONS + 1];
+-/* SYS_str_reasons is filled with copies of strerror() results at
+- * initialization.
++/* SYS_str_reasons is filled with copies of strerror_r()
++ * results at initialization.
+  * 'errno' values up to 127 should cover all usual errors,
+  * others will be displayed numerically by ERR_error_string.
+  * It is crucial that we have something for each reason code
+@@ -600,10 +600,11 @@ static void build_SYS_str_reasons(void)
+ 		if (str->string == NULL)
+ 			{
+ 			char (*dest)[LEN_SYS_STR_REASON] = &(strerror_tab[i - 1]);
+-			char *src = strerror(i);
+-			if (src != NULL)
++			char buf[LEN_SYS_STR_REASON];
++			int len = strerror_r(i, buf, LEN_SYS_STR_REASON);
++			if (len > 0)
+ 				{
+-				strncpy(*dest, src, sizeof *dest);
++				strncpy(*dest, buf, sizeof *dest);
+ 				(*dest)[sizeof *dest - 1] = '\0';
+ 				str->string = *dest;
+ 				}
+-- 
+1.7.0.4
+

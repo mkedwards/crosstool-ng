@@ -36,7 +36,7 @@ do_libunwind() {
         --enable-static
 
     CT_DoLog EXTRA "Building libunwind"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing libunwind"
     CT_DoExecLog ALL make install
@@ -74,7 +74,7 @@ do_libunwind_target() {
         --enable-static
 
     CT_DoLog EXTRA "Building libunwind"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing libunwind"
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install

@@ -1,0 +1,1548 @@
+From ac8706c72a656921519ffaf9ea28e38e0b416879 Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Mon, 19 Jul 2010 01:27:49 -0700
+Subject: [PATCH] Add SRTP DTLS
+
+---
+ apps/s_client.c          |   69 +++++++
+ apps/s_server.c          |   69 +++++++
+ crypto/stack/safestack.h |   22 +++
+ include/openssl/srtp.h   |    1 +
+ ssl/Makefile             |   26 +++-
+ ssl/d1_srtp.c            |  467 ++++++++++++++++++++++++++++++++++++++++++++++
+ ssl/srtp.h               |  155 +++++++++++++++
+ ssl/ssl.h                |   41 ++++
+ ssl/ssl_asn1.c           |   50 +++++
+ ssl/ssl_err.c            |   12 ++
+ ssl/ssl_lib.c            |   16 ++
+ ssl/ssl_sess.c           |    5 +
+ ssl/t1_enc.c             |   38 ++++
+ ssl/t1_lib.c             |   69 +++++++
+ ssl/tls1.h               |    5 +
+ 15 files changed, 1042 insertions(+), 3 deletions(-)
+ create mode 120000 include/openssl/srtp.h
+ create mode 100644 ssl/d1_srtp.c
+ create mode 100644 ssl/srtp.h
+
+diff --git a/apps/s_client.c b/apps/s_client.c
+index 34ad2ce..cf5e8f5 100644
+--- a/apps/s_client.c
++++ b/apps/s_client.c
+@@ -342,6 +342,9 @@ static void sc_usage(void)
+ 	BIO_printf(bio_err," -tlsextdebug      - hex dump of all TLS extensions received\n");
+ 	BIO_printf(bio_err," -status           - request certificate status from server\n");
+ 	BIO_printf(bio_err," -no_ticket        - disable use of RFC4507bis session tickets\n");
++#ifndef OPENSSL_NO_SRTP
++	BIO_printf(bio_err," -use_srtp profiles - Offer SRTP key management with a colon-separated profile list");
++#endif
+ #endif
+ 	BIO_printf(bio_err," -legacy_renegotiation - enable use of legacy renegotiation (dangerous)\n");
+ 	}
+@@ -429,6 +432,10 @@ int MAIN(int argc, char **argv)
+ 	char *servername = NULL; 
+         tlsextctx tlsextcbp = 
+         {NULL,0};
++
++#ifndef OPENSSL_NO_SRTP
++	char *srtp_profiles = NULL;
++#endif
+ #endif
+ 	char *sess_in = NULL;
+ 	char *sess_out = NULL;
+@@ -722,6 +729,13 @@ int MAIN(int argc, char **argv)
+ 			if (--argc < 1) goto bad;
+ 			jpake_secret = *++argv;
+ 			}
++#ifndef OPENSSL_NO_SRTP
++		else if (strcmp(*argv,"-use_srtp") == 0)
++			{
++			if (--argc < 1) goto bad;
++			srtp_profiles = *(++argv);
++			}
++#endif
+ #endif
+ 		else
+ 			{
+@@ -914,6 +928,12 @@ bad:
+ 		SSL_CTX_set_tlsext_servername_callback(ctx, ssl_servername_cb);
+ 		SSL_CTX_set_tlsext_servername_arg(ctx, &tlsextcbp);
+ 		}
++#ifndef OPENSSL_NO_SRTP
++	if (srtp_profiles != NULL)
++		{
++		SSL_CTX_set_tlsext_use_srtp(ctx, srtp_profiles);
++		}
++#endif
+ #endif
+ 
+ 	con=SSL_new(ctx);
+@@ -1742,6 +1762,55 @@ static void print_stuff(BIO *bio, SSL *s, int full)
+ 	BIO_printf(bio,"Expansion: %s\n",
+ 		expansion ? SSL_COMP_get_name(expansion) : "NONE");
+ #endif
++#ifndef OPENSSL_NO_SRTP
++	{
++	SRTP_PROTECTION_PROFILE *srtp_profile=SSL_get_selected_srtp_profile(s);
++
++	if(srtp_profile)
++	    {
++	    unsigned char *cmk,*smk,*cms,*sms;
++	    int cmkl,smkl,cmsl,smsl;
++	    int i;
++
++	    BIO_printf(bio,"SRTP Extension negotiated, profile=%s\n", srtp_profile->name);
++	    if(!SSL_get_srtp_key_info(s,&cmk,&cmkl,&smk,&smkl,&cms,&cmsl,&sms,&smsl))
++		{
++		BIO_printf(bio,"SRTP client master key (len=%d): ",cmkl);
++
++		for (i=0; i<cmkl;i++)
++		    {
++		    BIO_printf(bio,"%02X",cmk[i]);
++		    }
++		BIO_puts(bio,"\n");
++
++		BIO_printf(bio,"SRTP server master key (len=%d): ",smkl);
++
++		for (i=0; i<smkl;i++)
++		    {
++		    BIO_printf(bio,"%02X",smk[i]);
++		    }
++		BIO_puts(bio,"\n");
++
++		BIO_printf(bio,"SRTP client master salt (len=%d): ",cmsl);
++
++		for (i=0; i<cmsl;i++)
++		    {
++		    BIO_printf(bio,"%02X",cms[i]);
++		    }
++		BIO_puts(bio,"\n");
++
++		BIO_printf(bio,"SRTP server master salt (len=%d): ",smsl);
++
++		for (i=0; i<smkl;i++)
++		    {
++		    BIO_printf(bio,"%02X",smk[i]);
++		    }
++		BIO_puts(bio,"\n");
++		}
++	    }
++
++	}
++#endif
+ 	SSL_SESSION_print(bio,SSL_get_session(s));
+ 	BIO_printf(bio,"---\n");
+ 	if (peer != NULL)
+diff --git a/apps/s_server.c b/apps/s_server.c
+index 1a06d19..c2afd04 100644
+--- a/apps/s_server.c
++++ b/apps/s_server.c
+@@ -492,6 +492,9 @@ static void sv_usage(void)
+ 	BIO_printf(bio_err," -tlsextdebug  - hex dump of all TLS extensions received\n");
+ 	BIO_printf(bio_err," -no_ticket    - disable use of RFC4507bis session tickets\n");
+ 	BIO_printf(bio_err," -legacy_renegotiation - enable use of legacy renegotiation (dangerous)\n");
++#ifndef OPENSSL_NO_SRTP
++	BIO_printf(bio_err," -use_srtp profiles - Offer SRTP key management with a colon-separated profile list");
++#endif
+ #endif
+ 	}
+ 
+@@ -872,6 +875,10 @@ int MAIN(int argc, char *argv[])
+ 	/* by default do not send a PSK identity hint */
+ 	static char *psk_identity_hint=NULL;
+ #endif
++#ifndef OPENSSL_NO_SRTP
++	char *srtp_profiles = NULL;
++#endif
++
+ #if !defined(OPENSSL_NO_SSL2) && !defined(OPENSSL_NO_SSL3)
+ 	meth=SSLv23_server_method();
+ #elif !defined(OPENSSL_NO_SSL3)
+@@ -969,6 +976,13 @@ int MAIN(int argc, char *argv[])
+ 			named_curve = *(++argv);
+ 			}
+ #endif
++#ifndef OPENSSL_NO_SRTP
++		else if (strcmp(*argv,"-use_srtp") == 0)
++			{
++			if (--argc < 1) goto bad;
++			srtp_profiles = *(++argv);
++			}
++#endif
+ 		else if	(strcmp(*argv,"-dcertform") == 0)
+ 			{
+ 			if (--argc < 1) goto bad;
+@@ -1476,6 +1490,12 @@ bad:
+ 		if (vpm)
+ 			SSL_CTX_set1_param(ctx2, vpm);
+ 		}
++#ifndef OPENSSL_NO_SRTP
++	if (srtp_profiles != NULL)
++		{
++		SSL_CTX_set_tlsext_use_srtp(ctx, srtp_profiles);
++		}
++#endif
+ #endif 
+ 
+ #ifndef OPENSSL_NO_DH
+@@ -2198,6 +2218,55 @@ static int init_ssl_connection(SSL *con)
+ 		BIO_printf(bio_s_out,"Shared ciphers:%s\n",buf);
+ 	str=SSL_CIPHER_get_name(SSL_get_current_cipher(con));
+ 	BIO_printf(bio_s_out,"CIPHER is %s\n",(str != NULL)?str:"(NONE)");
++#ifndef OPENSSL_NO_SRTP
++	{
++	SRTP_PROTECTION_PROFILE *srtp_profile=SSL_get_selected_srtp_profile(con);
++
++	if(srtp_profile)
++	    {
++	    unsigned char *cmk,*smk,*cms,*sms;
++	    int cmkl,smkl,cmsl,smsl;
++	    int i;
++
++	    BIO_printf(bio_s_out,"SRTP Extension negotiated, profile=%s\n", srtp_profile->name);
++	    if(!SSL_get_srtp_key_info(con,&cmk,&cmkl,&smk,&smkl,&cms,&cmsl,&sms,&smsl))
++		{
++		BIO_printf(bio_s_out,"SRTP client master key (len=%d): ",cmkl);
++
++		for (i=0; i<cmkl;i++)
++		    {
++		    BIO_printf(bio_s_out,"%02X",cmk[i]);
++		    }
++		BIO_puts(bio_s_out,"\n");
++
++		BIO_printf(bio_s_out,"SRTP server master key (len=%d): ",smkl);
++
++		for (i=0; i<smkl;i++)
++		    {
++		    BIO_printf(bio_s_out,"%02X",smk[i]);
++		    }
++		BIO_puts(bio_s_out,"\n");
++
++		BIO_printf(bio_s_out,"SRTP client master salt (len=%d): ",cmsl);
++
++		for (i=0; i<cmsl;i++)
++		    {
++		    BIO_printf(bio_s_out,"%02X",cms[i]);
++		    }
++		BIO_puts(bio_s_out,"\n");
++
++		BIO_printf(bio_s_out,"SRTP server master salt (len=%d): ",smsl);
++
++		for (i=0; i<smkl;i++)
++		    {
++		    BIO_printf(bio_s_out,"%02X",smk[i]);
++		    }
++		BIO_puts(bio_s_out,"\n");
++		}
++	    }
++
++	}
++#endif
+ 	if (con->hit) BIO_printf(bio_s_out,"Reused session-id\n");
+ 	if (SSL_ctrl(con,SSL_CTRL_GET_FLAGS,0,NULL) &
+ 		TLS1_FLAGS_TLS_PADDING_BUG)
+diff --git a/crypto/stack/safestack.h b/crypto/stack/safestack.h
+index 891cb84..7fa6ada 100644
+--- a/crypto/stack/safestack.h
++++ b/crypto/stack/safestack.h
+@@ -1458,6 +1458,28 @@ DECLARE_SPECIAL_STACK_OF(OPENSSL_BLOCK, void)
+ #define sk_POLICY_MAPPING_sort(st) SKM_sk_sort(POLICY_MAPPING, (st))
+ #define sk_POLICY_MAPPING_is_sorted(st) SKM_sk_is_sorted(POLICY_MAPPING, (st))
+ 
++#define sk_SRTP_PROTECTION_PROFILE_new(cmp) SKM_sk_new(SRTP_PROTECTION_PROFILE, (cmp))
++#define sk_SRTP_PROTECTION_PROFILE_new_null() SKM_sk_new_null(SRTP_PROTECTION_PROFILE)
++#define sk_SRTP_PROTECTION_PROFILE_free(st) SKM_sk_free(SRTP_PROTECTION_PROFILE, (st))
++#define sk_SRTP_PROTECTION_PROFILE_num(st) SKM_sk_num(SRTP_PROTECTION_PROFILE, (st))
++#define sk_SRTP_PROTECTION_PROFILE_value(st, i) SKM_sk_value(SRTP_PROTECTION_PROFILE, (st), (i))
++#define sk_SRTP_PROTECTION_PROFILE_set(st, i, val) SKM_sk_set(SRTP_PROTECTION_PROFILE, (st), (i), (val))
++#define sk_SRTP_PROTECTION_PROFILE_zero(st) SKM_sk_zero(SRTP_PROTECTION_PROFILE, (st))
++#define sk_SRTP_PROTECTION_PROFILE_push(st, val) SKM_sk_push(SRTP_PROTECTION_PROFILE, (st), (val))
++#define sk_SRTP_PROTECTION_PROFILE_unshift(st, val) SKM_sk_unshift(SRTP_PROTECTION_PROFILE, (st), (val))
++#define sk_SRTP_PROTECTION_PROFILE_find(st, val) SKM_sk_find(SRTP_PROTECTION_PROFILE, (st), (val))
++#define sk_SRTP_PROTECTION_PROFILE_find_ex(st, val) SKM_sk_find_ex(SRTP_PROTECTION_PROFILE, (st), (val))
++#define sk_SRTP_PROTECTION_PROFILE_delete(st, i) SKM_sk_delete(SRTP_PROTECTION_PROFILE, (st), (i))
++#define sk_SRTP_PROTECTION_PROFILE_delete_ptr(st, ptr) SKM_sk_delete_ptr(SRTP_PROTECTION_PROFILE, (st), (ptr))
++#define sk_SRTP_PROTECTION_PROFILE_insert(st, val, i) SKM_sk_insert(SRTP_PROTECTION_PROFILE, (st), (val), (i))
++#define sk_SRTP_PROTECTION_PROFILE_set_cmp_func(st, cmp) SKM_sk_set_cmp_func(SRTP_PROTECTION_PROFILE, (st), (cmp))
++#define sk_SRTP_PROTECTION_PROFILE_dup(st) SKM_sk_dup(SRTP_PROTECTION_PROFILE, st)
++#define sk_SRTP_PROTECTION_PROFILE_pop_free(st, free_func) SKM_sk_pop_free(SRTP_PROTECTION_PROFILE, (st), (free_func))
++#define sk_SRTP_PROTECTION_PROFILE_shift(st) SKM_sk_shift(SRTP_PROTECTION_PROFILE, (st))
++#define sk_SRTP_PROTECTION_PROFILE_pop(st) SKM_sk_pop(SRTP_PROTECTION_PROFILE, (st))
++#define sk_SRTP_PROTECTION_PROFILE_sort(st) SKM_sk_sort(SRTP_PROTECTION_PROFILE, (st))
++#define sk_SRTP_PROTECTION_PROFILE_is_sorted(st) SKM_sk_is_sorted(SRTP_PROTECTION_PROFILE, (st))
++
+ #define sk_SSL_CIPHER_new(cmp) SKM_sk_new(SSL_CIPHER, (cmp))
+ #define sk_SSL_CIPHER_new_null() SKM_sk_new_null(SSL_CIPHER)
+ #define sk_SSL_CIPHER_free(st) SKM_sk_free(SSL_CIPHER, (st))
+diff --git a/include/openssl/srtp.h b/include/openssl/srtp.h
+new file mode 120000
+index 0000000..9800e4e
+--- /dev/null
++++ b/include/openssl/srtp.h
+@@ -0,0 +1 @@
++../../ssl/srtp.h
+\ No newline at end of file
+diff --git a/ssl/Makefile b/ssl/Makefile
+index 2b275fa..f870e80 100644
+--- a/ssl/Makefile
++++ b/ssl/Makefile
+@@ -25,7 +25,7 @@ LIBSRC=	\
+ 	s3_meth.c   s3_srvr.c s3_clnt.c  s3_lib.c  s3_enc.c s3_pkt.c s3_both.c \
+ 	s23_meth.c s23_srvr.c s23_clnt.c s23_lib.c          s23_pkt.c \
+ 	t1_meth.c   t1_srvr.c t1_clnt.c  t1_lib.c  t1_enc.c \
+-	d1_meth.c   d1_srvr.c d1_clnt.c  d1_lib.c  d1_pkt.c \
++	d1_meth.c   d1_srvr.c d1_clnt.c  d1_lib.c  d1_pkt.c d1_srtp.c \
+ 	d1_both.c d1_enc.c \
+ 	ssl_lib.c ssl_err2.c ssl_cert.c ssl_sess.c \
+ 	ssl_ciph.c ssl_stat.c ssl_rsa.c \
+@@ -36,7 +36,7 @@ LIBOBJ= \
+ 	s3_meth.o  s3_srvr.o  s3_clnt.o  s3_lib.o  s3_enc.o s3_pkt.o s3_both.o \
+ 	s23_meth.o s23_srvr.o s23_clnt.o s23_lib.o          s23_pkt.o \
+ 	t1_meth.o   t1_srvr.o t1_clnt.o  t1_lib.o  t1_enc.o \
+-	d1_meth.o   d1_srvr.o d1_clnt.o  d1_lib.o  d1_pkt.o \
++	d1_meth.o   d1_srvr.o d1_clnt.o  d1_lib.o  d1_pkt.o d1_srtp.o \
+ 	d1_both.o d1_enc.o \
+ 	ssl_lib.o ssl_err2.o ssl_cert.o ssl_sess.o \
+ 	ssl_ciph.o ssl_stat.o ssl_rsa.o \
+@@ -45,7 +45,7 @@ LIBOBJ= \
+ 
+ SRC= $(LIBSRC)
+ 
+-EXHEADER= ssl.h ssl2.h ssl3.h ssl23.h tls1.h dtls1.h kssl.h
++EXHEADER= ssl.h ssl2.h ssl3.h ssl23.h tls1.h dtls1.h kssl.h srtp.h
+ HEADER=	$(EXHEADER) ssl_locl.h kssl_lcl.h
+ 
+ ALL=    $(GENERAL) $(SRC) $(HEADER)
+@@ -242,6 +242,26 @@ d1_pkt.o: ../include/openssl/ssl3.h ../include/openssl/stack.h
+ d1_pkt.o: ../include/openssl/symhacks.h ../include/openssl/tls1.h
+ d1_pkt.o: ../include/openssl/x509.h ../include/openssl/x509_vfy.h d1_pkt.c
+ d1_pkt.o: ssl_locl.h
++d1_srtp.o: ../e_os.h ../include/openssl/asn1.h ../include/openssl/bio.h
++d1_srtp.o: ../include/openssl/bn.h ../include/openssl/buffer.h
++d1_srtp.o: ../include/openssl/comp.h ../include/openssl/crypto.h
++d1_srtp.o: ../include/openssl/dsa.h ../include/openssl/dtls1.h
++d1_srtp.o: ../include/openssl/e_os2.h ../include/openssl/ec.h
++d1_srtp.o: ../include/openssl/ecdh.h ../include/openssl/ecdsa.h
++d1_srtp.o: ../include/openssl/err.h ../include/openssl/evp.h
++d1_srtp.o: ../include/openssl/kssl.h ../include/openssl/lhash.h
++d1_srtp.o: ../include/openssl/obj_mac.h ../include/openssl/objects.h
++d1_srtp.o: ../include/openssl/opensslconf.h ../include/openssl/opensslv.h
++d1_srtp.o: ../include/openssl/ossl_typ.h ../include/openssl/pem.h
++d1_srtp.o: ../include/openssl/pem2.h ../include/openssl/pkcs7.h
++d1_srtp.o: ../include/openssl/pqueue.h
++d1_srtp.o: ../include/openssl/rsa.h ../include/openssl/safestack.h
++d1_srtp.o: ../include/openssl/sha.h ../include/openssl/ssl.h
++d1_srtp.o: ../include/openssl/ssl2.h ../include/openssl/ssl23.h
++d1_srtp.o: ../include/openssl/ssl3.h ../include/openssl/stack.h
++d1_srtp.o: ../include/openssl/symhacks.h ../include/openssl/tls1.h
++d1_srtp.o: ../include/openssl/x509.h ../include/openssl/x509_vfy.h d1_srtp.c
++d1_srtp.o: srtp.h ssl_locl.h
+ d1_srvr.o: ../e_os.h ../include/openssl/asn1.h ../include/openssl/bio.h
+ d1_srvr.o: ../include/openssl/bn.h ../include/openssl/buffer.h
+ d1_srvr.o: ../include/openssl/comp.h ../include/openssl/crypto.h
+diff --git a/ssl/d1_srtp.c b/ssl/d1_srtp.c
+new file mode 100644
+index 0000000..f9cbf44
+--- /dev/null
++++ b/ssl/d1_srtp.c
+@@ -0,0 +1,467 @@
++/**
++d1_srtp.c
++
++Copyright (C) 2006, Network Resonance, Inc.
++All Rights Reserved.
++
++ekr@networkresonance.com  Mon May 15 20:42:33 2006
++ */
++
++
++
++/* ssl/d1_srtp.c */
++/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
++ * All rights reserved.
++ *
++ * This package is an SSL implementation written
++ * by Eric Young (eay@cryptsoft.com).
++ * The implementation was written so as to conform with Netscapes SSL.
++ *
++ * This library is free for commercial and non-commercial use as long as
++ * the following conditions are aheared to.  The following conditions
++ * apply to all code found in this distribution, be it the RC4, RSA,
++ * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
++ * included with this distribution is covered by the same copyright terms
++ * except that the holder is Tim Hudson (tjh@cryptsoft.com).
++ *
++ * Copyright remains Eric Young's, and as such any Copyright notices in
++ * the code are not to be removed.
++ * If this package is used in a product, Eric Young should be given attribution
++ * as the author of the parts of the library used.
++ * This can be in the form of a textual message at program startup or
++ * in documentation (online or textual) provided with the package.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. All advertising materials mentioning features or use of this software
++ *    must display the following acknowledgement:
++ *    "This product includes cryptographic software written by
++ *     Eric Young (eay@cryptsoft.com)"
++ *    The word 'cryptographic' can be left out if the rouines from the library
++ *    being used are not cryptographic related :-).
++ * 4. If you include any Windows specific code (or a derivative thereof) from
++ *    the apps directory (application code) you must include an acknowledgement:
++ *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
++ *
++ * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * The licence and distribution terms for any publically available version or
++ * derivative of this code cannot be changed.  i.e. this code cannot simply be
++ * copied and put under another distribution licence
++ * [including the GNU Public Licence.]
++ */
++/* ====================================================================
++ * Copyright (c) 1998-2006 The OpenSSL Project.  All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in
++ *    the documentation and/or other materials provided with the
++ *    distribution.
++ *
++ * 3. All advertising materials mentioning features or use of this
++ *    software must display the following acknowledgment:
++ *    "This product includes software developed by the OpenSSL Project
++ *    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
++ *
++ * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
++ *    endorse or promote products derived from this software without
++ *    prior written permission. For written permission, please contact
++ *    openssl-core@openssl.org.
++ *
++ * 5. Products derived from this software may not be called "OpenSSL"
++ *    nor may "OpenSSL" appear in their names without prior written
++ *    permission of the OpenSSL Project.
++ *
++ * 6. Redistributions of any form whatsoever must retain the following
++ *    acknowledgment:
++ *    "This product includes software developed by the OpenSSL Project
++ *    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
++ * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
++ * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
++ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
++ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
++ * OF THE POSSIBILITY OF SUCH DAMAGE.
++ * ====================================================================
++ *
++ * This product includes cryptographic software written by Eric Young
++ * (eay@cryptsoft.com).  This product includes software written by Tim
++ * Hudson (tjh@cryptsoft.com).
++ *
++ */
++/*
++  Copyright (C) 2006, Network Resonance, Inc.
++  All Rights Reserved.
++
++  ekr@networkresonance.com
++*/
++
++#ifndef OPENSSL_NO_SRTP
++
++#include <stdio.h>
++#include <openssl/objects.h>
++#include "ssl_locl.h"
++#include "srtp.h"
++
++
++static SRTP_PROTECTION_PROFILE srtp_known_profiles[]=
++    {
++    {
++    "SRTP_AES128_CM_SHA1_80",
++    SRTP_AES128_CM_SHA1_80,
++    128,
++    112
++    },
++    {
++    "SRTP_AES128_CM_SHA1_32",
++    SRTP_AES128_CM_SHA1_32,
++    128,
++    112
++    },
++    {
++    "SRTP_NULL_SHA1_80",
++    SRTP_AES128_CM_SHA1_80,
++    128,
++    112
++    },
++    {
++    "SRTP_NULL_SHA1_32",
++    SRTP_AES128_CM_SHA1_32,
++    128,
++    112
++    },
++    {0}
++    };
++
++static int find_srtp_profile_by_name(char *profile_name,SRTP_PROTECTION_PROFILE **pptr,int len)
++    {
++    SRTP_PROTECTION_PROFILE *p;
++
++    p=srtp_known_profiles;
++    while(p->name)
++	{
++	if(!strncmp(p->name,profile_name,len))
++	    {
++	    *pptr=p;
++	    return 0;
++	    }
++
++	p++;
++	}
++
++    return 1;
++    }
++
++int find_srtp_profile_by_num(int profile_num,SRTP_PROTECTION_PROFILE **pptr)
++    {
++    SRTP_PROTECTION_PROFILE *p;
++
++    p=srtp_known_profiles;
++    while(p->name)
++	{
++	if(p->id==profile_num)
++	    {
++	    *pptr=p;
++	    return 0;
++	    }
++
++	p++;
++	}
++
++    return 1;
++    }
++
++static int ssl_ctx_make_profiles(const char *profiles_string,STACK_OF(SRTP_PROTECTION_PROFILE) **out)
++    {
++    STACK_OF(SRTP_PROTECTION_PROFILE) *profiles;
++
++    char *col;
++    char *ptr=(char *)profiles_string;
++
++    SRTP_PROTECTION_PROFILE *p;
++
++    if(!(profiles=sk_SRTP_PROTECTION_PROFILE_new_null()))
++	{
++	return 1;  // TODO: ERR
++	}
++
++    do
++	{
++	col=strchr(ptr,':');
++
++	if(!find_srtp_profile_by_name(ptr,&p,col-ptr))
++	    {
++	    sk_SRTP_PROTECTION_PROFILE_push(profiles,p);
++	    }
++	else
++	    {
++	    SSLerr(SSL_F_SSL_CTX_ENABLE_USE_SRTP,SSL_R_SRTP_UNKNOWN_PROTECTION_PROFILE);
++	    }
++
++	if(col) ptr=col+1;
++	} while (col);
++
++    *out=profiles;
++
++    return(0);
++    }
++
++int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx,const char *profiles)
++    {
++    return(ssl_ctx_make_profiles(profiles,&ctx->srtp_profiles));
++    }
++
++int SSL_set_tlsext_use_srtp(SSL *s,const char *profiles)
++    {
++    return(ssl_ctx_make_profiles(profiles,&s->srtp_profiles));
++    }
++
++
++STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(SSL *s)
++    {
++    if(s != NULL)
++	{
++	if(s->srtp_profiles != NULL)
++	    {
++	    return(s->srtp_profiles);
++	    }
++	else if((s->ctx != NULL) &&
++	    (s->ctx->srtp_profiles != NULL))
++	    {
++	    return(s->ctx->srtp_profiles);
++	    }
++	}
++
++    return(NULL);
++    }
++
++SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *s)
++    {
++    return(s->srtp_profile);
++    }
++
++int SSL_get_srtp_key_info(SSL *s,
++  unsigned char **client_write_master_key,  int *client_write_master_key_len,
++  unsigned char **server_write_master_key,  int *server_write_master_key_len,
++  unsigned char **client_write_master_salt, int *client_write_master_salt_len,
++  unsigned char **server_write_master_salt, int *server_write_master_salt_len)
++    {
++    int kl,sl;
++    unsigned char *ptr;
++
++    if(!s->srtp_profile)
++	return(1);
++    if(!s->srtp_key_block)
++	return(1);
++    if(!s->srtp_key_block_length)
++	return(1);
++
++    kl=s->srtp_profile->master_key_bits/8;
++    sl=s->srtp_profile->salt_bits/8;
++
++    if(((kl+sl)*2)!=s->srtp_key_block_length)
++	{
++	SSLerr(SSL_F_SSL_GET_SRTP_KEY_INFO,SSL_R_SRTP_KEY_LENGTH_INCONSISTENCY);
++	return(1);
++	}
++
++    ptr=s->srtp_key_block;
++    *client_write_master_key=ptr; *client_write_master_key_len=kl; ptr+=kl;
++    *server_write_master_key=ptr; *server_write_master_key_len=kl; ptr+=kl;
++    *client_write_master_salt=ptr; *client_write_master_salt_len=sl; ptr+=sl;
++    *server_write_master_salt=ptr; *server_write_master_salt_len=sl; ptr+=sl;
++
++    return(0);
++    }
++
++
++int ssl_add_clienthello_use_srtp_ext(SSL *s, unsigned char *p, int *len, int maxlen)
++    {
++    int ct=0;
++    int i;
++    STACK_OF(SRTP_PROTECTION_PROFILE) *clnt=0;
++    SRTP_PROTECTION_PROFILE *prof;
++
++    clnt=SSL_get_srtp_profiles(s);
++    ct=sk_SRTP_PROTECTION_PROFILE_num(clnt);
++
++    if(p)
++	{
++	if(ct==0)
++	    {
++	    SSLerr(SSL_F_SSL_ADD_CLIENTHELLO_USE_SRTP_EXT,SSL_R_EMPTY_SRTP_PROTECTION_PROFILE_LIST);
++	    return(1);
++	    }
++
++	if((ct*2) > maxlen)
++	    {
++	    SSLerr(SSL_F_SSL_ADD_CLIENTHELLO_USE_SRTP_EXT,SSL_R_SRTP_PROTECTION_PROFILE_LIST_TOO_LONG);
++	    return(1);
++	    }
++
++	for(i=0;i<ct;i++)
++	    {
++	    prof=sk_SRTP_PROTECTION_PROFILE_value(clnt,i);
++	    s2n(prof->id,p);
++	    }
++	}
++    *len=ct*2;
++
++    return(0);
++    }
++
++
++int ssl_parse_clienthello_use_srtp_ext(SSL *s, unsigned char *d, int len,int *al)
++    {
++    SRTP_PROTECTION_PROFILE *cprof,*sprof;
++    STACK_OF(SRTP_PROTECTION_PROFILE) *clnt=0,*srvr;
++    int i,j;
++    int id;
++    int ret;
++
++    if(len%2)
++	{
++	SSLerr(SSL_F_SSL_PARSE_CLIENTHELLO_USE_SRTP_EXT,SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
++	*al=SSL_AD_DECODE_ERROR;
++	return 1;
++	}
++
++    clnt=sk_SRTP_PROTECTION_PROFILE_new_null();
++
++    while(len)
++	{
++	n2s(d,id);
++	len-=2;
++
++	if(!find_srtp_profile_by_num(id,&cprof))
++	    {
++	    sk_SRTP_PROTECTION_PROFILE_push(clnt,cprof);
++	    }
++	else
++	    {
++	    ; // ERR
++	    }
++	}
++
++    srvr=SSL_get_srtp_profiles(s);
++
++    /* Pick our most preferred profile */
++    for(i=0;i<sk_SRTP_PROTECTION_PROFILE_num(srvr);i++)
++	{
++	sprof=sk_SRTP_PROTECTION_PROFILE_value(srvr,i);
++
++	for(j=0;j<sk_SRTP_PROTECTION_PROFILE_num(clnt);j++)
++	    {
++	    cprof=sk_SRTP_PROTECTION_PROFILE_value(clnt,j);
++
++	    if(cprof->id==sprof->id)
++		{
++		s->srtp_profile=sprof;
++		if(s->session) s->session->srtp_profile=sprof;
++		*al=0;
++		ret=0;
++		goto done;
++		}
++	    }
++	}
++
++    ret=0;
++
++done:
++    if(clnt) sk_SRTP_PROTECTION_PROFILE_free(clnt);
++
++    return(ret);
++    }
++
++int ssl_add_serverhello_use_srtp_ext(SSL *s, unsigned char *p, int *len, int maxlen)
++    {
++    if(p)
++	{
++	if(maxlen < 2)
++	    {
++	    SSLerr(SSL_F_SSL_ADD_SERVERHELLO_USE_SRTP_EXT,SSL_R_SRTP_PROTECTION_PROFILE_LIST_TOO_LONG);
++	    return(1);
++	    }
++
++	if(s->srtp_profile==0)
++	    {
++	    SSLerr(SSL_F_SSL_ADD_SERVERHELLO_USE_SRTP_EXT,SSL_R_USE_SRTP_NOT_NEGOTIATED);
++	    return(1);
++	    }
++
++	s2n(s->srtp_profile->id,p);
++	}
++    *len=2;
++
++    return(0);
++    }
++
++
++int ssl_parse_serverhello_use_srtp_ext(SSL *s, unsigned char *d, int len,int *al)
++    {
++    int id;
++    int i;
++    STACK_OF(SRTP_PROTECTION_PROFILE) *clnt;
++    SRTP_PROTECTION_PROFILE *prof;
++
++    if(len!=2)
++	{
++	SSLerr(SSL_F_SSL_PARSE_SERVERHELLO_USE_SRTP_EXT,SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
++	*al=SSL_AD_DECODE_ERROR;
++	return 1;
++	}
++
++    n2s(d,id);
++
++    clnt=SSL_get_srtp_profiles(s);
++
++    for(i=0;i<sk_SRTP_PROTECTION_PROFILE_num(clnt);i++)
++	{
++	prof=sk_SRTP_PROTECTION_PROFILE_value(clnt,i);
++
++	if(prof->id==id)
++	    {
++	    s->srtp_profile=prof;
++	    if(s->session) s->session->srtp_profile=prof;
++	    *al=0;
++	    return 0;
++	    }
++	}
++
++    SSLerr(SSL_F_SSL_PARSE_SERVERHELLO_USE_SRTP_EXT,SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
++    *al=SSL_AD_DECODE_ERROR;  /* TODO: Use a better error? */
++    return 1;
++    }
++
++
++#endif
+diff --git a/ssl/srtp.h b/ssl/srtp.h
+new file mode 100644
+index 0000000..f94715c
+--- /dev/null
++++ b/ssl/srtp.h
+@@ -0,0 +1,155 @@
++/* ssl/srtp.h */
++/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
++ * All rights reserved.
++ *
++ * This package is an SSL implementation written
++ * by Eric Young (eay@cryptsoft.com).
++ * The implementation was written so as to conform with Netscapes SSL.
++ *
++ * This library is free for commercial and non-commercial use as long as
++ * the following conditions are aheared to.  The following conditions
++ * apply to all code found in this distribution, be it the RC4, RSA,
++ * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
++ * included with this distribution is covered by the same copyright terms
++ * except that the holder is Tim Hudson (tjh@cryptsoft.com).
++ *
++ * Copyright remains Eric Young's, and as such any Copyright notices in
++ * the code are not to be removed.
++ * If this package is used in a product, Eric Young should be given attribution
++ * as the author of the parts of the library used.
++ * This can be in the form of a textual message at program startup or
++ * in documentation (online or textual) provided with the package.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. All advertising materials mentioning features or use of this software
++ *    must display the following acknowledgement:
++ *    "This product includes cryptographic software written by
++ *     Eric Young (eay@cryptsoft.com)"
++ *    The word 'cryptographic' can be left out if the rouines from the library
++ *    being used are not cryptographic related :-).
++ * 4. If you include any Windows specific code (or a derivative thereof) from
++ *    the apps directory (application code) you must include an acknowledgement:
++ *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
++ *
++ * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * The licence and distribution terms for any publically available version or
++ * derivative of this code cannot be changed.  i.e. this code cannot simply be
++ * copied and put under another distribution licence
++ * [including the GNU Public Licence.]
++ */
++/* ====================================================================
++ * Copyright (c) 1998-2006 The OpenSSL Project.  All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in
++ *    the documentation and/or other materials provided with the
++ *    distribution.
++ *
++ * 3. All advertising materials mentioning features or use of this
++ *    software must display the following acknowledgment:
++ *    "This product includes software developed by the OpenSSL Project
++ *    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
++ *
++ * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
++ *    endorse or promote products derived from this software without
++ *    prior written permission. For written permission, please contact
++ *    openssl-core@openssl.org.
++ *
++ * 5. Products derived from this software may not be called "OpenSSL"
++ *    nor may "OpenSSL" appear in their names without prior written
++ *    permission of the OpenSSL Project.
++ *
++ * 6. Redistributions of any form whatsoever must retain the following
++ *    acknowledgment:
++ *    "This product includes software developed by the OpenSSL Project
++ *    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
++ * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
++ * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
++ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
++ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
++ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
++ * OF THE POSSIBILITY OF SUCH DAMAGE.
++ * ====================================================================
++ *
++ * This product includes cryptographic software written by Eric Young
++ * (eay@cryptsoft.com).  This product includes software written by Tim
++ * Hudson (tjh@cryptsoft.com).
++ *
++ */
++/*
++  Copyright (C) 2006, Network Resonance, Inc.
++  All Rights Reserved.
++
++  ekr@networkresonance.com
++*/
++
++#ifndef HEADER_D1_SRTP_H
++#define HEADER_D1_SRTP_H
++
++#ifdef  __cplusplus
++extern "C" {
++#endif
++
++
++#define SRTP_AES128_CM_SHA1_80 0x0001
++#define SRTP_AES128_CM_SHA1_32 0x0002
++#define SRTP_AES128_F8_SHA1_80 0x0003
++#define SRTP_AES128_F8_SHA1_32 0x0004
++#define SRTP_NULL_SHA1_80      0x0005
++#define SRTP_NULL_SHA1_32      0x0006
++
++int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx, const char *profiles);
++int SSL_set_tlsext_use_srtp(SSL *ctx, const char *profiles);
++SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *s);
++
++STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(SSL *ssl);
++SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *s);
++int SSL_get_srtp_key_info(SSL *s,
++  unsigned char **client_write_master_key,  int *client_write_master_key_len,
++  unsigned char **server_write_master_key,  int *server_write_master_key_len,
++  unsigned char **client_write_master_salt, int *client_write_master_salt_len,
++  unsigned char **server_write_master_salt, int *server_write_master_salt_len);
++
++int ssl_add_clienthello_use_srtp_ext(SSL *s, unsigned char *p, int *len, int maxlen);
++int ssl_parse_clienthello_use_srtp_ext(SSL *s, unsigned char *d, int len,int *al);
++int ssl_add_serverhello_use_srtp_ext(SSL *s, unsigned char *p, int *len, int maxlen);
++int ssl_parse_serverhello_use_srtp_ext(SSL *s, unsigned char *d, int len,int *al);
++
++#ifdef  __cplusplus
++}
++#endif
++
++#endif
++
+diff --git a/ssl/ssl.h b/ssl/ssl.h
+index e4c3f65..0b8ef36 100644
+--- a/ssl/ssl.h
++++ b/ssl/ssl.h
+@@ -170,6 +170,18 @@
+ extern "C" {
+ #endif
+ 
++#ifndef OPENSSL_NO_SRTP
++typedef struct srtp_protection_profile_st
++    {
++    const char *name;
++    unsigned long id;
++    int master_key_bits;
++    int salt_bits;
++    } SRTP_PROTECTION_PROFILE;
++
++DECLARE_STACK_OF(SRTP_PROTECTION_PROFILE);
++#endif
++
+ /* SSLeay version number for ASN.1 encoding of the session information */
+ /* Version 0 - initial version
+  * Version 1 - added the optional peer certificate
+@@ -436,6 +448,7 @@ typedef struct ssl_method_st
+  *	ECPointFormatList [ 7 ] OCTET STRING,     -- optional EC point format list from TLS extension
+  *	PSK_identity_hint [ 8 ] EXPLICIT OCTET STRING, -- optional PSK identity hint
+  *	PSK_identity [ 9 ] EXPLICIT OCTET STRING -- optional PSK identity
++ *	SRTP_profile [ 12 ] EXPLICIT INTEGER    -- the profile value
+  *	}
+  * Look in ssl/ssl_asn1.c for more details
+  * I'm using EXPLICIT tags so I can read the damn things using asn1parse :-).
+@@ -511,6 +524,9 @@ typedef struct ssl_session_st
+ 	unsigned char *tlsext_tick;	/* Session ticket */
+ 	size_t	tlsext_ticklen;		/* Session ticket length */	
+ 	long tlsext_tick_lifetime_hint;	/* Session lifetime hint in seconds */
++#ifndef OPENSSL_NO_SRTP
++	SRTP_PROTECTION_PROFILE *srtp_profile;
++#endif
+ #endif
+ 	} SSL_SESSION;
+ 
+@@ -867,6 +883,10 @@ struct ssl_ctx_st
+ 	struct ssl3_buf_freelist_st *wbuf_freelist;
+ 	struct ssl3_buf_freelist_st *rbuf_freelist;
+ #endif
++
++#ifndef OPENSSL_NO_SRTP
++	STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles;  /* What we'll do */
++#endif
+ 	};
+ 
+ #define SSL_SESS_CACHE_OFF			0x0000
+@@ -1177,6 +1197,14 @@ struct ssl_st
+ 	void *tls_session_secret_cb_arg;
+ 
+ 	SSL_CTX * initial_ctx; /* initial ctx, used to store sessions */
++
++#ifndef OPENSSL_NO_SRTP
++	STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles;  /* What we'll do */
++	SRTP_PROTECTION_PROFILE *srtp_profile;             /* What's been chosen */
++	unsigned char *srtp_key_block;
++	int srtp_key_block_length;
++#endif
++
+ #define session_ctx initial_ctx
+ #else
+ #define session_ctx ctx
+@@ -1192,6 +1220,7 @@ struct ssl_st
+ #include <openssl/tls1.h> /* This is mostly sslv3 with a few tweaks */
+ #include <openssl/dtls1.h> /* Datagram TLS */
+ #include <openssl/ssl23.h>
++#include <openssl/srtp.h>
+ 
+ #ifdef  __cplusplus
+ extern "C" {
+@@ -1924,10 +1953,12 @@ void ERR_load_SSL_strings(void);
+ #define SSL_F_SSL3_WRITE_PENDING			 159
+ #define SSL_F_SSL_ADD_CLIENTHELLO_RENEGOTIATE_EXT	 298
+ #define SSL_F_SSL_ADD_CLIENTHELLO_TLSEXT		 277
++#define SSL_F_SSL_ADD_CLIENTHELLO_USE_SRTP_EXT		 306
+ #define SSL_F_SSL_ADD_DIR_CERT_SUBJECTS_TO_STACK	 215
+ #define SSL_F_SSL_ADD_FILE_CERT_SUBJECTS_TO_STACK	 216
+ #define SSL_F_SSL_ADD_SERVERHELLO_RENEGOTIATE_EXT	 299
+ #define SSL_F_SSL_ADD_SERVERHELLO_TLSEXT		 278
++#define SSL_F_SSL_ADD_SERVERHELLO_USE_SRTP_EXT		 307
+ #define SSL_F_SSL_BAD_METHOD				 160
+ #define SSL_F_SSL_BYTES_TO_CIPHER_LIST			 161
+ #define SSL_F_SSL_CERT_DUP				 221
+@@ -1944,6 +1975,7 @@ void ERR_load_SSL_strings(void);
+ #define SSL_F_SSL_CREATE_CIPHER_LIST			 166
+ #define SSL_F_SSL_CTRL					 232
+ #define SSL_F_SSL_CTX_CHECK_PRIVATE_KEY			 168
++#define SSL_F_SSL_CTX_ENABLE_USE_SRTP			 304
+ #define SSL_F_SSL_CTX_NEW				 169
+ #define SSL_F_SSL_CTX_SET_CIPHER_LIST			 269
+ #define SSL_F_SSL_CTX_SET_CLIENT_CERT_ENGINE		 290
+@@ -1967,13 +1999,16 @@ void ERR_load_SSL_strings(void);
+ #define SSL_F_SSL_GET_PREV_SESSION			 217
+ #define SSL_F_SSL_GET_SERVER_SEND_CERT			 182
+ #define SSL_F_SSL_GET_SIGN_PKEY				 183
++#define SSL_F_SSL_GET_SRTP_KEY_INFO			 305
+ #define SSL_F_SSL_INIT_WBIO_BUFFER			 184
+ #define SSL_F_SSL_LOAD_CLIENT_CA_FILE			 185
+ #define SSL_F_SSL_NEW					 186
+ #define SSL_F_SSL_PARSE_CLIENTHELLO_RENEGOTIATE_EXT	 300
+ #define SSL_F_SSL_PARSE_CLIENTHELLO_TLSEXT		 302
++#define SSL_F_SSL_PARSE_CLIENTHELLO_USE_SRTP_EXT	 308
+ #define SSL_F_SSL_PARSE_SERVERHELLO_RENEGOTIATE_EXT	 301
+ #define SSL_F_SSL_PARSE_SERVERHELLO_TLSEXT		 303
++#define SSL_F_SSL_PARSE_SERVERHELLO_USE_SRTP_EXT	 309
+ #define SSL_F_SSL_PEEK					 270
+ #define SSL_F_SSL_PREPARE_CLIENTHELLO_TLSEXT		 281
+ #define SSL_F_SSL_PREPARE_SERVERHELLO_TLSEXT		 282
+@@ -2053,6 +2088,7 @@ void ERR_load_SSL_strings(void);
+ #define SSL_R_BAD_RSA_MODULUS_LENGTH			 121
+ #define SSL_R_BAD_RSA_SIGNATURE				 122
+ #define SSL_R_BAD_SIGNATURE				 123
++#define SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST		 346
+ #define SSL_R_BAD_SSL_FILETYPE				 124
+ #define SSL_R_BAD_SSL_SESSION_ID_LENGTH			 125
+ #define SSL_R_BAD_STATE					 126
+@@ -2091,6 +2127,7 @@ void ERR_load_SSL_strings(void);
+ #define SSL_R_ECC_CERT_SHOULD_HAVE_RSA_SIGNATURE	 322
+ #define SSL_R_ECC_CERT_SHOULD_HAVE_SHA1_SIGNATURE	 323
+ #define SSL_R_ECGROUP_TOO_LARGE_FOR_CIPHER		 310
++#define SSL_R_EMPTY_SRTP_PROTECTION_PROFILE_LIST	 347
+ #define SSL_R_ENCRYPTED_LENGTH_TOO_LONG			 150
+ #define SSL_R_ERROR_GENERATING_TMP_RSA_KEY		 282
+ #define SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST		 151
+@@ -2206,6 +2243,9 @@ void ERR_load_SSL_strings(void);
+ #define SSL_R_SESSION_ID_CONTEXT_UNINITIALIZED		 277
+ #define SSL_R_SHORT_READ				 219
+ #define SSL_R_SIGNATURE_FOR_NON_SIGNING_CERTIFICATE	 220
++#define SSL_R_SRTP_KEY_LENGTH_INCONSISTENCY		 348
++#define SSL_R_SRTP_PROTECTION_PROFILE_LIST_TOO_LONG	 349
++#define SSL_R_SRTP_UNKNOWN_PROTECTION_PROFILE		 350
+ #define SSL_R_SSL23_DOING_SESSION_ID_REUSE		 221
+ #define SSL_R_SSL2_CONNECTION_ID_TOO_LONG		 299
+ #define SSL_R_SSL3_EXT_INVALID_ECPOINTFORMAT		 321
+@@ -2285,6 +2325,7 @@ void ERR_load_SSL_strings(void);
+ #define SSL_R_UNSUPPORTED_PROTOCOL			 258
+ #define SSL_R_UNSUPPORTED_SSL_VERSION			 259
+ #define SSL_R_UNSUPPORTED_STATUS_TYPE			 329
++#define SSL_R_USE_SRTP_NOT_NEGOTIATED			 351
+ #define SSL_R_WRITE_BIO_NOT_SET				 260
+ #define SSL_R_WRONG_CIPHER_RETURNED			 261
+ #define SSL_R_WRONG_MESSAGE_TYPE			 262
+diff --git a/ssl/ssl_asn1.c b/ssl/ssl_asn1.c
+index 2870997..3121692 100644
+--- a/ssl/ssl_asn1.c
++++ b/ssl/ssl_asn1.c
+@@ -89,6 +89,10 @@
+ #include <openssl/objects.h>
+ #include <openssl/x509.h>
+ 
++#ifndef OPENSSL_NO_SRTP
++extern int find_srtp_profile_by_num(int profile_num,SRTP_PROTECTION_PROFILE **pptr);
++#endif
++
+ typedef struct ssl_session_asn1_st
+ 	{
+ 	ASN1_INTEGER version;
+@@ -114,6 +118,11 @@ typedef struct ssl_session_asn1_st
+ 	ASN1_OCTET_STRING psk_identity_hint;
+ 	ASN1_OCTET_STRING psk_identity;
+ #endif /* OPENSSL_NO_PSK */
++#ifndef OPENSSL_NO_TLSEXT
++#ifndef OPENSSL_NO_SRTP
++	ASN1_INTEGER srtp_profile;
++#endif /* OPENSSL_NO_SRTP */
++#endif /* OPENSSL_NO_TLSEXT */
+ 	} SSL_SESSION_ASN1;
+ 
+ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
+@@ -125,6 +134,10 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
+ #ifndef OPENSSL_NO_TLSEXT
+ 	int v6=0,v9=0,v10=0;
+ 	unsigned char ibuf6[LSIZE2];
++#ifndef OPENSSL_NO_SRTP
++	int v12=0;
++	unsigned char ibuf7[LSIZE2];
++#endif
+ #endif
+ #ifndef OPENSSL_NO_COMP
+ 	unsigned char cbuf;
+@@ -267,6 +280,17 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
+ 		a.psk_identity.data=(unsigned char *)(in->psk_identity);
+ 		}
+ #endif /* OPENSSL_NO_PSK */
++#ifndef OPENSSL_NO_TLSEXT
++#ifndef OPENSSL_NO_SRTP
++	if (in->srtp_profile)
++		{
++		a.srtp_profile.length=LSIZE2;
++		a.srtp_profile.type=V_ASN1_INTEGER;
++		a.srtp_profile.data=ibuf7;
++		ASN1_INTEGER_set(&(a.srtp_profile),in->srtp_profile->id);
++		}
++#endif /* OPENSSL_NO_SRTP */
++#endif /* OPENSSL_NO_TLSEXT */
+ 
+ 	M_ASN1_I2D_len(&(a.version),		i2d_ASN1_INTEGER);
+ 	M_ASN1_I2D_len(&(a.ssl_version),	i2d_ASN1_INTEGER);
+@@ -307,6 +331,12 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
+ 	if (in->psk_identity)
+         	M_ASN1_I2D_len_EXP_opt(&(a.psk_identity), i2d_ASN1_OCTET_STRING,8,v8);
+ #endif /* OPENSSL_NO_PSK */
++#ifndef OPENSSL_NO_TLSEXT
++#ifndef OPENSSL_NO_SRTP
++	if (in->srtp_profile)
++		M_ASN1_I2D_len_EXP_opt(&(a.srtp_profile),i2d_ASN1_INTEGER,12,v12);
++#endif /* OPENSSL_NO_SRTP */
++#endif /* OPENSSL_NO_TLSEXT */
+ 
+ 	M_ASN1_I2D_seq_total();
+ 
+@@ -351,6 +381,12 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
+ 	if (in->compress_meth)
+         	M_ASN1_I2D_put_EXP_opt(&(a.comp_id), i2d_ASN1_OCTET_STRING,11,v11);
+ #endif
++#ifndef OPENSSL_NO_TLSEXT
++#ifndef OPENSSL_NO_SRTP
++	if (in->srtp_profile)
++		M_ASN1_I2D_put_EXP_opt(&(a.srtp_profile), i2d_ASN1_INTEGER,12,v12);
++#endif /* OPENSSL_NO_SRTP */
++#endif /* OPENSSL_NO_TLSEXT */
+ 	M_ASN1_I2D_finish();
+ 	}
+ 
+@@ -588,6 +624,20 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp,
+ 		os.data = NULL;
+ 		}
+ #endif
++#ifndef OPENSSL_NO_TLSEXT
++#ifndef OPENSSL_NO_SRTP
++	ai.length=0;
++	M_ASN1_D2I_get_EXP_opt(aip,d2i_ASN1_INTEGER,12);
++	if (ai.data != NULL)
++		{
++		ret->srtp_profile = NULL;
++		(void) find_srtp_profile_by_num(ASN1_INTEGER_get(aip), &(ret->srtp_profile));
++		OPENSSL_free(ai.data); ai.data=NULL; ai.length=0;
++		}
++	else
++		ret->srtp_profile = NULL;
++#endif /* OPENSSL_NO_SRTP */
++#endif /* OPENSSL_NO_TLSEXT */
+ 
+ 	M_ASN1_D2I_Finish(a,SSL_SESSION_free,SSL_F_D2I_SSL_SESSION);
+ 	}
+diff --git a/ssl/ssl_err.c b/ssl/ssl_err.c
+index 0eed464..7bca1e4 100644
+--- a/ssl/ssl_err.c
++++ b/ssl/ssl_err.c
+@@ -179,10 +179,12 @@ static ERR_STRING_DATA SSL_str_functs[]=
+ {ERR_FUNC(SSL_F_SSL3_WRITE_PENDING),	"SSL3_WRITE_PENDING"},
+ {ERR_FUNC(SSL_F_SSL_ADD_CLIENTHELLO_RENEGOTIATE_EXT),	"SSL_ADD_CLIENTHELLO_RENEGOTIATE_EXT"},
+ {ERR_FUNC(SSL_F_SSL_ADD_CLIENTHELLO_TLSEXT),	"SSL_ADD_CLIENTHELLO_TLSEXT"},
++{ERR_FUNC(SSL_F_SSL_ADD_CLIENTHELLO_USE_SRTP_EXT),	"SSL_ADD_CLIENTHELLO_USE_SRTP_EXT"},
+ {ERR_FUNC(SSL_F_SSL_ADD_DIR_CERT_SUBJECTS_TO_STACK),	"SSL_add_dir_cert_subjects_to_stack"},
+ {ERR_FUNC(SSL_F_SSL_ADD_FILE_CERT_SUBJECTS_TO_STACK),	"SSL_add_file_cert_subjects_to_stack"},
+ {ERR_FUNC(SSL_F_SSL_ADD_SERVERHELLO_RENEGOTIATE_EXT),	"SSL_ADD_SERVERHELLO_RENEGOTIATE_EXT"},
+ {ERR_FUNC(SSL_F_SSL_ADD_SERVERHELLO_TLSEXT),	"SSL_ADD_SERVERHELLO_TLSEXT"},
++{ERR_FUNC(SSL_F_SSL_ADD_SERVERHELLO_USE_SRTP_EXT),	"SSL_ADD_SERVERHELLO_USE_SRTP_EXT"},
+ {ERR_FUNC(SSL_F_SSL_BAD_METHOD),	"SSL_BAD_METHOD"},
+ {ERR_FUNC(SSL_F_SSL_BYTES_TO_CIPHER_LIST),	"SSL_BYTES_TO_CIPHER_LIST"},
+ {ERR_FUNC(SSL_F_SSL_CERT_DUP),	"SSL_CERT_DUP"},
+@@ -199,6 +201,7 @@ static ERR_STRING_DATA SSL_str_functs[]=
+ {ERR_FUNC(SSL_F_SSL_CREATE_CIPHER_LIST),	"SSL_CREATE_CIPHER_LIST"},
+ {ERR_FUNC(SSL_F_SSL_CTRL),	"SSL_ctrl"},
+ {ERR_FUNC(SSL_F_SSL_CTX_CHECK_PRIVATE_KEY),	"SSL_CTX_check_private_key"},
++{ERR_FUNC(SSL_F_SSL_CTX_ENABLE_USE_SRTP),	"SSL_CTX_ENABLE_USE_SRTP"},
+ {ERR_FUNC(SSL_F_SSL_CTX_NEW),	"SSL_CTX_new"},
+ {ERR_FUNC(SSL_F_SSL_CTX_SET_CIPHER_LIST),	"SSL_CTX_set_cipher_list"},
+ {ERR_FUNC(SSL_F_SSL_CTX_SET_CLIENT_CERT_ENGINE),	"SSL_CTX_set_client_cert_engine"},
+@@ -222,13 +225,16 @@ static ERR_STRING_DATA SSL_str_functs[]=
+ {ERR_FUNC(SSL_F_SSL_GET_PREV_SESSION),	"SSL_GET_PREV_SESSION"},
+ {ERR_FUNC(SSL_F_SSL_GET_SERVER_SEND_CERT),	"SSL_GET_SERVER_SEND_CERT"},
+ {ERR_FUNC(SSL_F_SSL_GET_SIGN_PKEY),	"SSL_GET_SIGN_PKEY"},
++{ERR_FUNC(SSL_F_SSL_GET_SRTP_KEY_INFO),	"SSL_GET_SRTP_KEY_INFO"},
+ {ERR_FUNC(SSL_F_SSL_INIT_WBIO_BUFFER),	"SSL_INIT_WBIO_BUFFER"},
+ {ERR_FUNC(SSL_F_SSL_LOAD_CLIENT_CA_FILE),	"SSL_load_client_CA_file"},
+ {ERR_FUNC(SSL_F_SSL_NEW),	"SSL_new"},
+ {ERR_FUNC(SSL_F_SSL_PARSE_CLIENTHELLO_RENEGOTIATE_EXT),	"SSL_PARSE_CLIENTHELLO_RENEGOTIATE_EXT"},
+ {ERR_FUNC(SSL_F_SSL_PARSE_CLIENTHELLO_TLSEXT),	"SSL_PARSE_CLIENTHELLO_TLSEXT"},
++{ERR_FUNC(SSL_F_SSL_PARSE_CLIENTHELLO_USE_SRTP_EXT),	"SSL_PARSE_CLIENTHELLO_USE_SRTP_EXT"},
+ {ERR_FUNC(SSL_F_SSL_PARSE_SERVERHELLO_RENEGOTIATE_EXT),	"SSL_PARSE_SERVERHELLO_RENEGOTIATE_EXT"},
+ {ERR_FUNC(SSL_F_SSL_PARSE_SERVERHELLO_TLSEXT),	"SSL_PARSE_SERVERHELLO_TLSEXT"},
++{ERR_FUNC(SSL_F_SSL_PARSE_SERVERHELLO_USE_SRTP_EXT),	"SSL_PARSE_SERVERHELLO_USE_SRTP_EXT"},
+ {ERR_FUNC(SSL_F_SSL_PEEK),	"SSL_peek"},
+ {ERR_FUNC(SSL_F_SSL_PREPARE_CLIENTHELLO_TLSEXT),	"SSL_PREPARE_CLIENTHELLO_TLSEXT"},
+ {ERR_FUNC(SSL_F_SSL_PREPARE_SERVERHELLO_TLSEXT),	"SSL_PREPARE_SERVERHELLO_TLSEXT"},
+@@ -311,6 +317,7 @@ static ERR_STRING_DATA SSL_str_reasons[]=
+ {ERR_REASON(SSL_R_BAD_RSA_MODULUS_LENGTH),"bad rsa modulus length"},
+ {ERR_REASON(SSL_R_BAD_RSA_SIGNATURE)     ,"bad rsa signature"},
+ {ERR_REASON(SSL_R_BAD_SIGNATURE)         ,"bad signature"},
++{ERR_REASON(SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST),"bad srtp protection profile list"},
+ {ERR_REASON(SSL_R_BAD_SSL_FILETYPE)      ,"bad ssl filetype"},
+ {ERR_REASON(SSL_R_BAD_SSL_SESSION_ID_LENGTH),"bad ssl session id length"},
+ {ERR_REASON(SSL_R_BAD_STATE)             ,"bad state"},
+@@ -349,6 +356,7 @@ static ERR_STRING_DATA SSL_str_reasons[]=
+ {ERR_REASON(SSL_R_ECC_CERT_SHOULD_HAVE_RSA_SIGNATURE),"ecc cert should have rsa signature"},
+ {ERR_REASON(SSL_R_ECC_CERT_SHOULD_HAVE_SHA1_SIGNATURE),"ecc cert should have sha1 signature"},
+ {ERR_REASON(SSL_R_ECGROUP_TOO_LARGE_FOR_CIPHER),"ecgroup too large for cipher"},
++{ERR_REASON(SSL_R_EMPTY_SRTP_PROTECTION_PROFILE_LIST),"empty srtp protection profile list"},
+ {ERR_REASON(SSL_R_ENCRYPTED_LENGTH_TOO_LONG),"encrypted length too long"},
+ {ERR_REASON(SSL_R_ERROR_GENERATING_TMP_RSA_KEY),"error generating tmp rsa key"},
+ {ERR_REASON(SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST),"error in received cipher list"},
+@@ -464,6 +472,9 @@ static ERR_STRING_DATA SSL_str_reasons[]=
+ {ERR_REASON(SSL_R_SESSION_ID_CONTEXT_UNINITIALIZED),"session id context uninitialized"},
+ {ERR_REASON(SSL_R_SHORT_READ)            ,"short read"},
+ {ERR_REASON(SSL_R_SIGNATURE_FOR_NON_SIGNING_CERTIFICATE),"signature for non signing certificate"},
++{ERR_REASON(SSL_R_SRTP_KEY_LENGTH_INCONSISTENCY),"srtp key length inconsistency"},
++{ERR_REASON(SSL_R_SRTP_PROTECTION_PROFILE_LIST_TOO_LONG),"srtp protection profile list too long"},
++{ERR_REASON(SSL_R_SRTP_UNKNOWN_PROTECTION_PROFILE),"srtp unknown protection profile"},
+ {ERR_REASON(SSL_R_SSL23_DOING_SESSION_ID_REUSE),"ssl23 doing session id reuse"},
+ {ERR_REASON(SSL_R_SSL2_CONNECTION_ID_TOO_LONG),"ssl2 connection id too long"},
+ {ERR_REASON(SSL_R_SSL3_EXT_INVALID_ECPOINTFORMAT),"ssl3 ext invalid ecpointformat"},
+@@ -543,6 +554,7 @@ static ERR_STRING_DATA SSL_str_reasons[]=
+ {ERR_REASON(SSL_R_UNSUPPORTED_PROTOCOL)  ,"unsupported protocol"},
+ {ERR_REASON(SSL_R_UNSUPPORTED_SSL_VERSION),"unsupported ssl version"},
+ {ERR_REASON(SSL_R_UNSUPPORTED_STATUS_TYPE),"unsupported status type"},
++{ERR_REASON(SSL_R_USE_SRTP_NOT_NEGOTIATED),"use srtp not negotiated"},
+ {ERR_REASON(SSL_R_WRITE_BIO_NOT_SET)     ,"write bio not set"},
+ {ERR_REASON(SSL_R_WRONG_CIPHER_RETURNED) ,"wrong cipher returned"},
+ {ERR_REASON(SSL_R_WRONG_MESSAGE_TYPE)    ,"wrong message type"},
+diff --git a/ssl/ssl_lib.c b/ssl/ssl_lib.c
+index 3157f20..e7828b3 100644
+--- a/ssl/ssl_lib.c
++++ b/ssl/ssl_lib.c
+@@ -586,6 +586,17 @@ void SSL_free(SSL *s)
+ 		kssl_ctx_free(s->kssl_ctx);
+ #endif	/* OPENSSL_NO_KRB5 */
+ 
++#ifndef OPENSSL_NO_SRTP
++	if (s->srtp_profiles)
++	    sk_SRTP_PROTECTION_PROFILE_free(s->srtp_profiles);
++	if(s->srtp_key_block)
++	    {
++	    OPENSSL_cleanse(s->srtp_key_block,s->srtp_key_block_length);
++	    OPENSSL_free(s->srtp_key_block);
++	    s->srtp_key_block=0;
++	    }
++#endif
++
+ 	OPENSSL_free(s);
+ 	}
+ 
+@@ -1790,6 +1801,11 @@ void SSL_CTX_free(SSL_CTX *a)
+ 		ssl_buf_freelist_free(a->rbuf_freelist);
+ #endif
+ 
++#ifndef OPENSSL_NO_SRTP
++	if (a->srtp_profiles)
++		sk_SRTP_PROTECTION_PROFILE_free(a->srtp_profiles);
++#endif
++
+ 	OPENSSL_free(a);
+ 	}
+ 
+diff --git a/ssl/ssl_sess.c b/ssl/ssl_sess.c
+index 8e5d8a0..5a8e503 100644
+--- a/ssl/ssl_sess.c
++++ b/ssl/ssl_sess.c
+@@ -218,6 +218,11 @@ SSL_SESSION *SSL_SESSION_new(void)
+ 	ss->psk_identity_hint=NULL;
+ 	ss->psk_identity=NULL;
+ #endif
++#ifndef OPENSSL_NO_TLSEXT
++#ifndef OPENSSL_NO_SRTP
++	ss->srtp_profile = NULL;
++#endif
++#endif
+ 	return(ss);
+ 	}
+ 
+diff --git a/ssl/t1_enc.c b/ssl/t1_enc.c
+index 9719541..a07c55d 100644
+--- a/ssl/t1_enc.c
++++ b/ssl/t1_enc.c
+@@ -561,6 +561,10 @@ int tls1_setup_key_block(SSL *s)
+ #ifdef KSSL_DEBUG
+ 	printf ("tls1_setup_key_block()\n");
+ #endif	/* KSSL_DEBUG */
++#ifndef OPENSSL_NO_SRTP
++	int srtp_bytes=0;
++	int non_srtp_num;
++#endif
+ 
+ 	if (s->s3->tmp.key_block_length != 0)
+ 		return(1);
+@@ -580,13 +584,28 @@ int tls1_setup_key_block(SSL *s)
+ 
+ 	ssl3_cleanup_key_block(s);
+ 
++#ifndef OPENSSL_NO_SRTP
++	non_srtp_num=num;
++
++	if (s->srtp_profile)
++		{
++		srtp_bytes = 2 * ((s->srtp_profile->master_key_bits + s->srtp_profile->salt_bits) / 8);
++		}
++
++	num += srtp_bytes;
++#endif
++
+ 	if ((p1=(unsigned char *)OPENSSL_malloc(num)) == NULL)
+ 		{
+ 		SSLerr(SSL_F_TLS1_SETUP_KEY_BLOCK,ERR_R_MALLOC_FAILURE);
+ 		goto err;
+ 		}
+ 
++#ifndef OPENSSL_NO_SRTP
+ 	s->s3->tmp.key_block_length=num;
++#else
++	s->s3->tmp.key_block_length=non_srtp_num;
++#endif
+ 	s->s3->tmp.key_block=p1;
+ 
+ 	if ((p2=(unsigned char *)OPENSSL_malloc(num)) == NULL)
+@@ -636,6 +655,25 @@ err:
+ 		OPENSSL_cleanse(p2,num);
+ 		OPENSSL_free(p2);
+ 		}
++#ifndef OPENSSL_NO_SRTP
++	if (srtp_bytes)
++		{
++		if (s->srtp_key_block)
++			{
++			OPENSSL_cleanse(s->srtp_key_block, s->srtp_key_block_length);
++			OPENSSL_free(s->srtp_key_block);
++			s->srtp_key_block = 0;
++			}
++		if (!(s->srtp_key_block = OPENSSL_malloc(srtp_bytes)))
++			goto err;
++		memcpy(s->srtp_key_block, p1+non_srtp_num, srtp_bytes);
++		s->srtp_key_block_length = srtp_bytes;
++
++		OPENSSL_cleanse(p1+non_srtp_num, srtp_bytes);
++
++		num = non_srtp_num;
++		}
++#endif
+ 	return(ret);
+ 	}
+ 
+diff --git a/ssl/t1_lib.c b/ssl/t1_lib.c
+index e8bc34c..286b275 100644
+--- a/ssl/t1_lib.c
++++ b/ssl/t1_lib.c
+@@ -116,6 +116,10 @@
+ #include <openssl/ocsp.h>
+ #include "ssl_locl.h"
+ 
++#ifndef OPENSSL_NO_SRTP
++#include "srtp.h"
++#endif
++
+ const char tls1_version_str[]="TLSv1" OPENSSL_VERSION_PTEXT;
+ 
+ #ifndef OPENSSL_NO_TLSEXT
+@@ -494,6 +498,31 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *p, unsigned cha
+ 			i2d_X509_EXTENSIONS(s->tlsext_ocsp_exts, &ret);
+ 		}
+ 
++#ifndef OPENSSL_NO_SRTP
++	if(SSL_get_srtp_profiles(s))
++		{
++		int el;
++
++		if(ssl_add_clienthello_use_srtp_ext(s, 0, &el, 0))
++		    {
++			SSLerr(SSL_F_SSL_ADD_CLIENTHELLO_TLSEXT, ERR_R_INTERNAL_ERROR);
++			return NULL;
++		    }
++
++		if((limit - p - 4 - el) < 0) return NULL;
++
++		s2n(TLSEXT_TYPE_use_srtp,ret);
++		s2n(el,ret);
++
++		if(ssl_add_clienthello_use_srtp_ext(s, ret, &el, el))
++		    {
++			SSLerr(SSL_F_SSL_ADD_CLIENTHELLO_TLSEXT, ERR_R_INTERNAL_ERROR);
++			return NULL;
++		    }
++		ret += el;
++		}
++#endif
++
+ 	if ((extdatalen = ret-p-2)== 0) 
+ 		return p;
+ 
+@@ -578,6 +607,32 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *p, unsigned cha
+ 		s2n(0,ret);
+ 		}
+ 
++#ifndef OPENSSL_NO_SRTP
++	if(s->srtp_profile)
++		{
++		int el;
++
++		if(ssl_add_serverhello_use_srtp_ext(s, 0, &el, 0))
++		    {
++			SSLerr(SSL_F_SSL_ADD_SERVERHELLO_TLSEXT, ERR_R_INTERNAL_ERROR);
++			return NULL;
++		    }
++
++		if((limit - p - 4 - el) < 0) return NULL;
++
++		s2n(TLSEXT_TYPE_use_srtp,ret);
++		s2n(el,ret);
++
++		if(ssl_add_serverhello_use_srtp_ext(s, ret, &el, el))
++		    {
++			SSLerr(SSL_F_SSL_ADD_SERVERHELLO_TLSEXT, ERR_R_INTERNAL_ERROR);
++			return NULL;
++		    }
++		ret += el;
++		}
++
++#endif
++
+ 	if (s->tlsext_status_expected)
+ 		{ 
+ 		if ((long)(limit - ret - 4) < 0) return NULL; 
+@@ -858,6 +913,13 @@ int ssl_parse_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char *d, in
+ 				return 0;
+ 			renegotiate_seen = 1;
+ 			}
++#ifndef OPENSSL_NO_SRTP
++		else if (type == TLSEXT_TYPE_use_srtp)
++			{
++			if(ssl_parse_clienthello_use_srtp_ext(s, data, size, al))
++				return 0;
++			}
++#endif
+ 		else if (type == TLSEXT_TYPE_status_request &&
+ 		         s->version != DTLS1_VERSION && s->ctx->tlsext_status_cb)
+ 			{
+@@ -1116,6 +1178,13 @@ int ssl_parse_serverhello_tlsext(SSL *s, unsigned char **p, unsigned char *d, in
+ 				return 0;
+ 			renegotiate_seen = 1;
+ 			}
++#ifndef OPENSSL_NO_SRTP
++		else if (type == TLSEXT_TYPE_use_srtp)
++			{
++			if(ssl_parse_serverhello_use_srtp_ext(s, data, size, al))
++				return 0;
++			}
++#endif
+ 		data+=size;		
+ 		}
+ 
+diff --git a/ssl/tls1.h b/ssl/tls1.h
+index b3cc8f0..27fd1ef 100644
+--- a/ssl/tls1.h
++++ b/ssl/tls1.h
+@@ -216,6 +216,11 @@ extern "C" {
+ #define TLSEXT_ECPOINTFORMAT_ansiX962_compressed_char2	2
+ #define TLSEXT_ECPOINTFORMAT_last			2
+ 
++#ifndef OPENSSL_NO_SRTP
++/* draft-ietf-avt-dtls-srtp */
++#define TLSEXT_TYPE_use_srtp                    0x8001
++#endif
++
+ #ifndef OPENSSL_NO_TLSEXT
+ 
+ #define TLSEXT_MAXLEN_host_name 255
+-- 
+1.7.0
+

@@ -16,7 +16,7 @@ do_target_me_harder_pciutils_build() {
     cp -a "${CT_SRC_DIR}/pciutils-${CT_PCIUTILS_VERSION}" "${CT_BUILD_DIR}/build-pciutils-target"
     CT_Pushd "${CT_BUILD_DIR}/build-pciutils-target"
     
-    CT_DoExecLog ALL make \
+    CT_DoExecLog ALL make ${JOBSFLAGS} \
         PREFIX=/usr MANDIR=/usr/share/man STRIP= \
         CROSS_COMPILE=${CT_TARGET}- HOST=${CT_TARGET} RELEASE=2.6.y.z \
         OPT="-g -Os"

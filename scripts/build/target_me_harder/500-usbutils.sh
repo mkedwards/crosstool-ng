@@ -28,7 +28,7 @@ do_target_me_harder_usbutils_build() {
         --mandir=/usr/share/man                                 \
         --infodir=/usr/share/info                               \
         --prefix=/usr
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make \
         DESTDIR="${CT_SYSROOT_DIR}"                             \
         pkgconfigdir=/usr/lib/pkgconfig                         \

@@ -47,7 +47,7 @@ do_debug_dmalloc_build() {
         "${extra_config[@]}"
 
     CT_DoLog EXTRA "Building dmalloc"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing dmalloc"
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" installincs installlib

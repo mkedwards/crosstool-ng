@@ -42,7 +42,7 @@ do_debug_cgreen_build() {
         --prefix=/usr/preen
 
     CT_DoLog EXTRA "Building cgreen"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing cgreen"
     CT_DoExecLog ALL make DESTDIR="${CT_DEBUGROOT_DIR}" install

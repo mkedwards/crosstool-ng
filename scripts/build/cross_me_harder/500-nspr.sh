@@ -30,7 +30,7 @@ do_cross_me_harder_nspr_build() {
     CC="${CT_HOST}-gcc"                                         \
     CT_DoExecLog CFG                                            \
     CPPFLAGS="-I${CT_PREFIX_DIR}/include"                       \
-    LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}" \
+    LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}/lib" \
     ./configure                                                 \
             --prefix="${CT_PREFIX_DIR}"                         \
             --enable-optimize=-Os                               \
@@ -38,7 +38,7 @@ do_cross_me_harder_nspr_build() {
             --with-pthreads                                     \
             --enable-ipv6                                       \
             "${host_extra_config[@]}"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep
@@ -72,7 +72,7 @@ do_cross_me_harder_nspr_build() {
             --with-pthreads                                     \
             --enable-ipv6                                       \
             "${target_extra_config[@]}"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
     CT_Popd
 

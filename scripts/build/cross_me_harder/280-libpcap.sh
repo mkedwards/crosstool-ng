@@ -28,7 +28,7 @@ do_cross_me_harder_libpcap_build() {
             --with-pcap=linux                                   \
             --with-libnl
     CT_DoExecLog ALL \
-    make                                                        \
+    make ${JOBSFLAGS}                                           \
             INCLS="-I. -I${CT_PREFIX_DIR}/include"              \
             all
     CT_DoExecLog ALL \
@@ -61,7 +61,7 @@ do_cross_me_harder_libpcap_build() {
             --with-flex="${CT_TARGET}-flex"                     \
             --with-pcap=linux                                   \
             --with-libnl
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
     rm -f "${CT_SYSROOT_DIR}/usr/bin/pcap-config"
     CT_Popd

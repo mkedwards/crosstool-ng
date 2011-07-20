@@ -42,7 +42,7 @@ do_attr() {
     # --enable-shared because the install-lib step breaks without it
 
     CT_DoLog EXTRA "Building attr"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing attr"
     CT_DoExecLog ALL make install-lib install-dev install
@@ -83,7 +83,7 @@ do_attr_target() {
         --enable-static
 
     CT_DoLog EXTRA "Building attr"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing attr"
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install-lib install-dev install

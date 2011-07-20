@@ -22,7 +22,7 @@ do_cross_me_harder_protobuf_build() {
             --build=${CT_BUILD}                                 \
             --target=${CT_TARGET}                               \
             --prefix="${CT_PREFIX_DIR}"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep
@@ -47,7 +47,7 @@ do_cross_me_harder_protobuf_build() {
         --prefix=/usr                                           \
         --with-protoc=${CT_PREFIX_DIR}/bin/${CT_TARGET}-protoc  \
         --enable-tls
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
     CT_Popd
     CT_EndStep

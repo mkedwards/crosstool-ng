@@ -19,7 +19,7 @@ do_debug_latencytop_build() {
     CT_DoExecLog ALL \
         PKG_CONFIG="${CT_TARGET}-pkg-config --define-variable=prefix=${CT_SYSROOT_DIR}/usr" \
         HOST_TUPLE="${CT_TARGET}" \
-        make
+        make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing latencytop"
     mkdir -p "${CT_DEBUGROOT_DIR}"/usr/sbin

@@ -28,7 +28,7 @@ do_xmlrpcpp() {
     CT_Pushd "${CT_BUILD_DIR}/build-xmlrpcpp/xmlrpc++"
 
     CT_DoLog EXTRA "Building xmlrpcpp"
-    CT_DoExecLog ALL make                                       \
+    CT_DoExecLog ALL make ${JOBSFLAGS}                          \
     CXX="${CT_HOST}-g++"                                        \
     prefix="${CT_PREFIX_DIR}"                                   \
     all
@@ -54,7 +54,7 @@ do_xmlrpcpp_target() {
     CT_Pushd "${CT_BUILD_DIR}/build-xmlrpcpp-for-target/xmlrpc++"
 
     CT_DoLog EXTRA "Building xmlrpcpp"
-    CT_DoExecLog ALL make                                       \
+    CT_DoExecLog ALL make ${JOBSFLAGS}                          \
     CXX="${CT_TARGET}-g++"                                      \
     prefix=/usr                                                 \
     all

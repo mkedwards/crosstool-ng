@@ -19,7 +19,7 @@ do_debug_procps_build() {
     CT_Pushd "${CT_BUILD_DIR}/build-procps"
 
     CT_DoLog EXTRA "Building procps"
-    CT_DoExecLog ALL make \
+    CT_DoExecLog ALL make ${JOBSFLAGS} \
     CC="${CT_TARGET}-gcc"                                       \
     AR="${CT_TARGET}-ar"                                        \
     RANLIB="${CT_TARGET}-ranlib"                                \

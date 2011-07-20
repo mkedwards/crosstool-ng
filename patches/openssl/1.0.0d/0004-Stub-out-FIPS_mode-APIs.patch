@@ -1,0 +1,58 @@
+From dd92658cac2e1459fbf7c87a1f5bf28807c788ac Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Mon, 19 Jul 2010 14:42:23 -0700
+Subject: [PATCH] Stub out FIPS_mode APIs
+
+---
+ ssl/Makefile  |    3 +++
+ ssl/no_fips.c |   10 ++++++++++
+ 2 files changed, 13 insertions(+), 0 deletions(-)
+ create mode 100644 ssl/no_fips.c
+
+diff --git a/ssl/Makefile b/ssl/Makefile
+index f870e80..b9dcbe1 100644
+--- a/ssl/Makefile
++++ b/ssl/Makefile
+@@ -27,6 +27,7 @@ LIBSRC=	\
+ 	t1_meth.c   t1_srvr.c t1_clnt.c  t1_lib.c  t1_enc.c \
+ 	d1_meth.c   d1_srvr.c d1_clnt.c  d1_lib.c  d1_pkt.c d1_srtp.c \
+ 	d1_both.c d1_enc.c \
++	no_fips.c \
+ 	ssl_lib.c ssl_err2.c ssl_cert.c ssl_sess.c \
+ 	ssl_ciph.c ssl_stat.c ssl_rsa.c \
+ 	ssl_asn1.c ssl_txt.c ssl_algs.c \
+@@ -38,6 +39,7 @@ LIBOBJ= \
+ 	t1_meth.o   t1_srvr.o t1_clnt.o  t1_lib.o  t1_enc.o \
+ 	d1_meth.o   d1_srvr.o d1_clnt.o  d1_lib.o  d1_pkt.o d1_srtp.o \
+ 	d1_both.o d1_enc.o \
++	no_fips.o \
+ 	ssl_lib.o ssl_err2.o ssl_cert.o ssl_sess.o \
+ 	ssl_ciph.o ssl_stat.o ssl_rsa.o \
+ 	ssl_asn1.o ssl_txt.o ssl_algs.o \
+@@ -301,6 +303,7 @@ kssl.o: ../include/openssl/ssl23.h ../include/openssl/ssl3.h
+ kssl.o: ../include/openssl/stack.h ../include/openssl/symhacks.h
+ kssl.o: ../include/openssl/tls1.h ../include/openssl/x509.h
+ kssl.o: ../include/openssl/x509_vfy.h kssl.c kssl_lcl.h
++no_fips.o: no_fips.c
+ s23_clnt.o: ../e_os.h ../include/openssl/asn1.h ../include/openssl/bio.h
+ s23_clnt.o: ../include/openssl/buffer.h ../include/openssl/comp.h
+ s23_clnt.o: ../include/openssl/crypto.h ../include/openssl/dsa.h
+diff --git a/ssl/no_fips.c b/ssl/no_fips.c
+new file mode 100644
+index 0000000..a664b46
+--- /dev/null
++++ b/ssl/no_fips.c
+@@ -0,0 +1,10 @@
++int FIPS_mode_set(int onoff)
++{
++    return 0;
++}
++
++int FIPS_mode(void)
++{
++    return 0;
++}
++
+-- 
+1.7.0
+

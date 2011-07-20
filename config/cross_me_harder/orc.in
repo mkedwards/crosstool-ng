@@ -1,0 +1,21 @@
+# orc
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "orc version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config ORC_V_0_4_14
+    bool
+    prompt "0.4.14 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config ORC_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "0.4.14" if ORC_V_0_4_14

@@ -1,0 +1,56 @@
+From 403abeac933ba9195436256bee8b9a0d4ac12b35 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Tue, 22 Feb 2011 17:40:58 +0000
+Subject: [PATCH] Modify shlibsign wrapper for cross-compilation
+
+---
+ mozilla/security/nss/cmd/shlibsign/sign.sh |   18 ++++++++----------
+ 1 files changed, 8 insertions(+), 10 deletions(-)
+ mode change 100644 => 100755 mozilla/security/nss/cmd/shlibsign/sign.sh
+
+diff --git a/mozilla/security/nss/cmd/shlibsign/sign.sh b/mozilla/security/nss/cmd/shlibsign/sign.sh
+old mode 100644
+new mode 100755
+index 853a36c..fdbf36c
+--- a/mozilla/security/nss/cmd/shlibsign/sign.sh
++++ b/mozilla/security/nss/cmd/shlibsign/sign.sh
+@@ -1,4 +1,8 @@
+ #!/bin/sh
++if [ ! -e "${SHLIBSIGN}" ]; then
++    export SHLIBSIGN="${2}/shlibsign"
++fi
++
+ case "${3}" in
+ WIN*)
+     if echo "${PATH}" | grep -c \; >/dev/null; then
+@@ -18,23 +22,17 @@ WIN*)
+         PATH=${ARG1}/lib:${ARG1}/bin:${ARG4}:${PATH}
+     fi
+     export PATH
+-    echo "${2}"/shlibsign -v -i "${5}"
+-    "${2}"/shlibsign -v -i "${5}"
++    echo "${SHLIBSIGN}" -v -i "${5}"
++    "${SHLIBSIGN}" -v -i "${5}"
+     ;;
+ *)
+     LIBPATH=`(cd "${1}"/lib; pwd)`:`(cd "${4}"; pwd)`:$LIBPATH
+     export LIBPATH
+     SHLIB_PATH=${1}/lib:${4}:$SHLIB_PATH
+     export SHLIB_PATH
+-    LD_LIBRARY_PATH=${1}/lib:${4}:$LD_LIBRARY_PATH
+-    export LD_LIBRARY_PATH
+-    DYLD_LIBRARY_PATH=${1}/lib:${4}:$DYLD_LIBRARY_PATH
+-    export DYLD_LIBRARY_PATH
+-    LIBRARY_PATH=${1}/lib:${4}:$LIBRARY_PATH
+-    export LIBRARY_PATH
+     ADDON_PATH=${1}/lib:${4}:$ADDON_PATH
+     export ADDON_PATH
+-    echo "${2}"/shlibsign -v -i "${5}"
+-    "${2}"/shlibsign -v -i "${5}"
++    echo "${SHLIBSIGN}" -v -i "${5}"
++    "${SHLIBSIGN}" -v -i "${5}"
+     ;;
+ esac
+-- 
+1.7.0.4
+

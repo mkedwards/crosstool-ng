@@ -26,7 +26,7 @@ do_debug_foobar_build() {
     #     --host=${CT_TARGET}                                 \
     #     --prefix=/usr                                       \
     #     --foobar-options
-    # CT_DoExecLog ALL make
+    # CT_DoExecLog ALL make ${JOBSFLAGS}
     # CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
     # CT_Popd
     :

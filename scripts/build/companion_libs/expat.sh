@@ -45,7 +45,7 @@ do_expat() {
     # --enable-shared because dbus builds a shared library linked against expat
 
     CT_DoLog EXTRA "Building expat"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing expat"
     CT_DoExecLog ALL make install
@@ -82,7 +82,7 @@ do_expat_target() {
         --enable-static
 
     CT_DoLog EXTRA "Building expat"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing expat"
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install

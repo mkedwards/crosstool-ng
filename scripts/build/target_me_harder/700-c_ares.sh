@@ -29,7 +29,7 @@ do_target_me_harder_c_ares_build() {
         --infodir=/usr/share/info                               \
         --prefix=/usr                                           \
         --with-random=/dev/urandom
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
     CT_Popd
     CT_EndStep

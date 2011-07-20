@@ -19,14 +19,14 @@ do_cross_me_harder_glib_build() {
     PCRE_CFLAGS="`pkg-config --cflags libpcre`"                 \
     PCRE_LIBS="`(pkg-config --libs libpcre && pkg-config --libs-only-L libpcre | sed -e 's/-L/-Wl,-rpath=/g') | tr '\n' ' '`" \
     CPPFLAGS="-I${CT_PREFIX_DIR}/include"                       \
-    LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}" \
+    LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}/lib" \
     "${CT_SRC_DIR}/glib-${CT_GLIB_VERSION}/configure"           \
             --build=${CT_BUILD}                                 \
             --target=${CT_TARGET}                               \
             --prefix="${CT_PREFIX_DIR}"                         \
             --with-pcre=system                                  \
             --with-threads=posix
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep
@@ -52,7 +52,7 @@ do_cross_me_harder_glib_build() {
         --disable-man                                           \
         --with-pcre=system                                      \
         --with-threads=posix
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
     CT_Popd
     CT_EndStep

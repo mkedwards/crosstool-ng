@@ -20,7 +20,8 @@ do_companion_tools_intltool_build() {
     CT_DoExecLog CFG \
     "${CT_SRC_DIR}/intltool-${CT_INTLTOOL_VERSION}/configure" \
         --prefix="${CT_BUILDTOOLS_PREFIX_DIR}"
-    CT_DoExecLog ALL make
+
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep

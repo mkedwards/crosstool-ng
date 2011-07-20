@@ -34,7 +34,7 @@ do_debug_tcpdump_build() {
             --prefix="${CT_PREFIX_DIR}"                         \
             --enable-ipv6                                       \
             --disable-smb
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep
@@ -61,7 +61,7 @@ do_debug_tcpdump_build() {
             --with-flex="${CT_TARGET}-flex"                     \
             --enable-ipv6                                       \
             --disable-smb
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make DESTDIR="${CT_DEBUGROOT_DIR}" install
     CT_Popd
     CT_EndStep

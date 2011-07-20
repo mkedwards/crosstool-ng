@@ -1,0 +1,21 @@
+# openssl
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "openssl version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config OPENSSL_V_1_0_0d
+    bool
+    prompt "1.0.0d (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config OPENSSL_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.0.0d" if OPENSSL_V_1_0_0d

@@ -27,7 +27,7 @@ do_cross_me_harder_flex_build() {
             --prefix="${CT_PREFIX_DIR}"                 \
             --disable-nls                               \
             --disable-rpath
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep
@@ -41,7 +41,7 @@ do_cross_me_harder_flex_build() {
             --prefix="${CT_PREFIX_DIR}"                 \
             --disable-nls                               \
             --disable-rpath
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep
@@ -53,7 +53,7 @@ do_cross_me_harder_flex_build() {
     CT_DoExecLog CFG \
     "${CT_SRC_DIR}/flex-${CT_FLEX_VERSION}/configure"   \
         --prefix="${CT_BUILDTOOLS_PREFIX_DIR}"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep
@@ -75,7 +75,7 @@ do_cross_me_harder_flex_build() {
         --prefix=/usr                                           \
         --disable-nls                                           \
         --disable-rpath
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
     CT_Popd
     CT_EndStep

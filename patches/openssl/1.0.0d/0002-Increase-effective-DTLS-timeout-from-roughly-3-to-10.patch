@@ -1,0 +1,25 @@
+From 2a4143a5ce8c2e81d7c43ca34532a08149cb2541 Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Sun, 18 Jul 2010 22:24:23 -0700
+Subject: [PATCH] Increase effective DTLS timeout from roughly 3 to 10 seconds
+
+---
+ ssl/dtls1.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/ssl/dtls1.h b/ssl/dtls1.h
+index 2900d1d..c79844c 100644
+--- a/ssl/dtls1.h
++++ b/ssl/dtls1.h
+@@ -258,7 +258,7 @@ typedef struct dtls1_record_data_st
+ #define DTLS1_TMO_READ_COUNT                      2
+ #define DTLS1_TMO_WRITE_COUNT                     2
+ 
+-#define DTLS1_TMO_ALERT_COUNT                     12
++#define DTLS1_TMO_ALERT_COUNT                     45
+ 
+ #ifdef  __cplusplus
+ }
+-- 
+1.7.0
+

@@ -26,7 +26,7 @@ do_cross_me_harder_bison_build() {
             --prefix="${CT_PREFIX_DIR}"                 \
             --disable-nls                               \
             --disable-rpath
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep
@@ -40,7 +40,7 @@ do_cross_me_harder_bison_build() {
             --prefix="${CT_PREFIX_DIR}"                 \
             --disable-nls                               \
             --disable-rpath
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep
@@ -52,7 +52,7 @@ do_cross_me_harder_bison_build() {
     CT_DoExecLog CFG \
     "${CT_SRC_DIR}/bison-${CT_BISON_VERSION}/configure" \
         --prefix="${CT_BUILDTOOLS_PREFIX_DIR}"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep
@@ -74,7 +74,7 @@ do_cross_me_harder_bison_build() {
         --prefix=/usr                                           \
         --disable-nls                                           \
         --disable-rpath
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
     CT_Popd
     CT_EndStep

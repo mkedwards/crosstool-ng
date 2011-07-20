@@ -43,7 +43,7 @@ do_pcre() {
     # --enable-shared because glib builds a shared library linked against pcre
 
     CT_DoLog EXTRA "Building pcre"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing pcre"
     CT_DoExecLog ALL make install
@@ -82,7 +82,7 @@ do_pcre_target() {
         --enable-static
 
     CT_DoLog EXTRA "Building pcre"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing pcre"
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install

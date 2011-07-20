@@ -31,7 +31,7 @@ do_cross_me_harder_util_linux_build() {
             --build=${CT_BUILD}                                 \
             --prefix="${CT_PREFIX_DIR}"                         \
             --disable-wall
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep
@@ -53,7 +53,7 @@ do_cross_me_harder_util_linux_build() {
         --infodir=/usr/share/info                               \
         --prefix=/usr                                           \
         --disable-wall
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
     CT_Popd
     CT_EndStep

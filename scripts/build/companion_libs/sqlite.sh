@@ -42,7 +42,7 @@ do_sqlite() {
     # --enable-shared because nspr builds a shared library linked against sqlite
 
     CT_DoLog EXTRA "Building sqlite"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing sqlite"
     CT_DoExecLog ALL make install
@@ -79,7 +79,7 @@ do_sqlite_target() {
         --enable-static
 
     CT_DoLog EXTRA "Building sqlite"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing sqlite"
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install

@@ -60,7 +60,7 @@ do_ncurses() {
         --without-ada
 
     CT_DoLog EXTRA "Building ncurses"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing ncurses"
     CT_DoExecLog ALL make install
@@ -121,7 +121,7 @@ do_ncurses_target() {
         "${ncurses_target_opts[@]}"
 
     CT_DoLog EXTRA "Building ncurses"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing ncurses"
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install

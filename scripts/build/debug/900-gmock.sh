@@ -38,7 +38,7 @@ do_debug_gmock_build() {
         --enable-tls
 
     CT_DoLog EXTRA "Building gmock"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing gmock"
     CT_DoExecLog ALL make DESTDIR="${CT_DEBUGROOT_DIR}" install

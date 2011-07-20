@@ -1,0 +1,460 @@
+From 291f8ee5efa0ef7e64010c31dbb3270f58f35769 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Mon, 18 Apr 2011 03:13:48 +0000
+Subject: [PATCH 6/7] Add SSL_COMP_free_compression_methods()
+
+---
+ Makefile               |   59 ++++++++++++++++++++-------------------
+ crypto/comp/c_zlib.c   |   10 ++++++-
+ crypto/comp/comp.h     |    1 +
+ crypto/comp/comp_err.c |    1 +
+ crypto/opensslconf.h   |   21 +++++++++-----
+ crypto/symhacks.h      |    2 +
+ ssl/ssl.h              |    2 +
+ ssl/ssl_ciph.c         |   71 +++++++++++++++++++++++++++++++++++++++++++----
+ ssl/ssltest.c          |    3 ++
+ tools/c_rehash         |    4 +-
+ util/ssleay.num        |    2 +
+ 11 files changed, 130 insertions(+), 46 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 5b918c4..a9579ad 100644
+--- a/Makefile
++++ b/Makefile
+@@ -11,11 +11,11 @@ SHLIB_VERSION_NUMBER=1.0.0
+ SHLIB_VERSION_HISTORY=
+ SHLIB_MAJOR=1
+ SHLIB_MINOR=0.0
+-SHLIB_EXT=
+-PLATFORM=dist
+-OPTIONS= no-gmp no-jpake no-krb5 no-md2 no-rc5 no-rfc3779 no-shared no-store no-zlib no-zlib-dynamic static-engine
+-CONFIGURE_ARGS=dist
+-SHLIB_TARGET=
++SHLIB_EXT=.so.$(SHLIB_MAJOR).$(SHLIB_MINOR)
++PLATFORM=linux-elf-Os
++OPTIONS=--prefix=/usr enable-shared enable-zlib-dynamic no-gmp no-jpake no-krb5 no-md2 no-rc5 no-rfc3779 no-store no-static-engine
++CONFIGURE_ARGS=--prefix=/usr linux-elf-Os shared zlib-dynamic
++SHLIB_TARGET=linux-shared
+ 
+ # HERE indicates where this Makefile lives.  This can be used to indicate
+ # where sub-Makefiles are expected to be.  Currently has very limited usage,
+@@ -26,10 +26,10 @@ HERE=.
+ # for, say, /usr/ and yet have everything installed to /tmp/somedir/usr/.
+ # Normally it is left empty.
+ INSTALL_PREFIX=
+-INSTALLTOP=/usr/local/ssl
++INSTALLTOP=/usr
+ 
+ # Do not edit this manually. Use Configure --openssldir=DIR do change this!
+-OPENSSLDIR=/usr/local/ssl
++OPENSSLDIR=/usr/ssl
+ 
+ # NO_IDEA - Define to build without the IDEA algorithm
+ # NO_RC4  - Define to build without the RC4 algorithm
+@@ -59,20 +59,21 @@ OPENSSLDIR=/usr/local/ssl
+ # equal 4.
+ # PKCS1_CHECK - pkcs1 tests.
+ 
+-CC= cc
+-CFLAG= -O
++CROSS_COMPILE= i686-cm-linux-
++CC= $(CROSS_COMPILE)gcc
++CFLAG= -fPIC -DOPENSSL_PIC -DZLIB_SHARED -DZLIB -DOPENSSL_THREADS -D_REENTRANT -DDSO_DLFCN -DHAVE_DLFCN_H -DPURIFY -DL_ENDIAN -DTERMIO -g -Os -fomit-frame-pointer -Wall -DOPENSSL_BN_ASM_PART_WORDS -DOPENSSL_IA32_SSE2 -DOPENSSL_BN_ASM_MONT -DSHA1_ASM -DSHA256_ASM -DSHA512_ASM -DMD5_ASM -DRMD160_ASM -DAES_ASM -DWHIRLPOOL_ASM
+ DEPFLAG= -DOPENSSL_NO_GMP -DOPENSSL_NO_JPAKE -DOPENSSL_NO_MD2 -DOPENSSL_NO_RC5 -DOPENSSL_NO_RFC3779 -DOPENSSL_NO_STORE
+ PEX_LIBS= 
+-EX_LIBS= 
++EX_LIBS= -ldl
+ EXE_EXT= 
+ ARFLAGS= 
+-AR= ar $(ARFLAGS) r
+-RANLIB= /usr/bin/ranlib
+-NM= nm
++AR= $(CROSS_COMPILE)ar $(ARFLAGS) r
++RANLIB= $(CROSS_COMPILE)ranlib
++NM= $(CROSS_COMPILE)nm
+ PERL= /usr/bin/perl
+ TAR= tar
+ TARFLAGS= --no-recursion
+-MAKEDEPPROG=makedepend
++MAKEDEPPROG= $(CROSS_COMPILE)gcc
+ LIBDIR=lib
+ 
+ # We let the C compiler driver to take care of .s files. This is done in
+@@ -88,20 +89,20 @@ ASFLAG=$(CFLAG)
+ PROCESSOR= 
+ 
+ # CPUID module collects small commonly used assembler snippets
+-CPUID_OBJ= mem_clr.o
+-BN_ASM= bn_asm.o
+-DES_ENC= des_enc.o fcrypt_b.o
+-AES_ENC= aes_core.o aes_cbc.o
+-BF_ENC= bf_enc.o
++CPUID_OBJ= x86cpuid.o
++BN_ASM= bn-586.o co-586.o x86-mont.o
++DES_ENC= des-586.o crypt586.o
++AES_ENC= aes-586.o
++BF_ENC= bf-586.o
+ CAST_ENC= c_enc.o
+-RC4_ENC= rc4_enc.o rc4_skey.o
+-RC5_ENC= rc5_enc.o
+-MD5_ASM_OBJ= 
+-SHA1_ASM_OBJ= 
+-RMD160_ASM_OBJ= 
+-WP_ASM_OBJ= wp_block.o
+-CMLL_ENC= camellia.o cmll_misc.o cmll_cbc.o
+-PERLASM_SCHEME= 
++RC4_ENC= rc4-586.o
++RC5_ENC= rc5-586.o
++MD5_ASM_OBJ= md5-586.o
++SHA1_ASM_OBJ= sha1-586.o sha256-586.o sha512-586.o
++RMD160_ASM_OBJ= rmd-586.o
++WP_ASM_OBJ= wp_block.o wp-mmx.o
++CMLL_ENC= cmll-x86.o
++PERLASM_SCHEME= elf
+ 
+ # KRB5 stuff
+ KRB5_INCLUDES=
+@@ -148,8 +149,8 @@ WDIRS=  windows
+ LIBS=   libcrypto.a libssl.a
+ SHARED_CRYPTO=libcrypto$(SHLIB_EXT)
+ SHARED_SSL=libssl$(SHLIB_EXT)
+-SHARED_LIBS=
+-SHARED_LIBS_LINK_EXTS=
++SHARED_LIBS=$(SHARED_CRYPTO) $(SHARED_SSL)
++SHARED_LIBS_LINK_EXTS=.so.$(SHLIB_MAJOR) .so
+ SHARED_LDFLAGS=
+ 
+ GENERAL=        Makefile
+diff --git a/crypto/comp/c_zlib.c b/crypto/comp/c_zlib.c
+index 8adf35f..8146282 100644
+--- a/crypto/comp/c_zlib.c
++++ b/crypto/comp/c_zlib.c
+@@ -341,6 +341,7 @@ static int zz_uncompress (Bytef *dest, uLongf *destLen, const Bytef *source,
+ COMP_METHOD *COMP_zlib(void)
+ 	{
+ 	COMP_METHOD *meth = &zlib_method_nozlib;
++	COMP_METHOD *meth_copy;
+ 
+ #ifdef ZLIB_SHARED
+ 	if (!zlib_loaded)
+@@ -410,7 +411,14 @@ COMP_METHOD *COMP_zlib(void)
+ err:	
+ #endif
+ 
+-	return(meth);
++	meth_copy = (COMP_METHOD*)OPENSSL_malloc(sizeof(COMP_METHOD));
++	if(!meth_copy)
++		{
++		COMPerr(COMP_F_COMP_ZLIB, ERR_R_MALLOC_FAILURE);
++		return 0;
++		}
++	memcpy(meth_copy,meth,sizeof(COMP_METHOD));
++	return(meth_copy);
+ 	}
+ 
+ void COMP_zlib_cleanup(void)
+diff --git a/crypto/comp/comp.h b/crypto/comp/comp.h
+index 4b405c7..1b1e22c 100644
+--- a/crypto/comp/comp.h
++++ b/crypto/comp/comp.h
+@@ -68,6 +68,7 @@ void ERR_load_COMP_strings(void);
+ #define COMP_F_BIO_ZLIB_NEW				 100
+ #define COMP_F_BIO_ZLIB_READ				 101
+ #define COMP_F_BIO_ZLIB_WRITE				 102
++#define COMP_F_COMP_ZLIB				 103
+ 
+ /* Reason codes. */
+ #define COMP_R_ZLIB_DEFLATE_ERROR			 99
+diff --git a/crypto/comp/comp_err.c b/crypto/comp/comp_err.c
+index 661c94c..464b129 100644
+--- a/crypto/comp/comp_err.c
++++ b/crypto/comp/comp_err.c
+@@ -74,6 +74,7 @@ static ERR_STRING_DATA COMP_str_functs[]=
+ {ERR_FUNC(COMP_F_BIO_ZLIB_NEW),	"BIO_ZLIB_NEW"},
+ {ERR_FUNC(COMP_F_BIO_ZLIB_READ),	"BIO_ZLIB_READ"},
+ {ERR_FUNC(COMP_F_BIO_ZLIB_WRITE),	"BIO_ZLIB_WRITE"},
++{ERR_FUNC(COMP_F_COMP_ZLIB),	"COMP_ZLIB"},
+ {0,NULL}
+ 	};
+ 
+diff --git a/crypto/opensslconf.h b/crypto/opensslconf.h
+index c21b391..323c2eb 100644
+--- a/crypto/opensslconf.h
++++ b/crypto/opensslconf.h
+@@ -29,8 +29,11 @@
+ 
+ #endif /* OPENSSL_DOING_MAKEDEPEND */
+ 
+-#ifndef OPENSSL_NO_DYNAMIC_ENGINE
+-# define OPENSSL_NO_DYNAMIC_ENGINE
++#ifndef OPENSSL_THREADS
++# define OPENSSL_THREADS
++#endif
++#ifndef OPENSSL_NO_STATIC_ENGINE
++# define OPENSSL_NO_STATIC_ENGINE
+ #endif
+ 
+ /* The OPENSSL_NO_* macros are also defined as NO_* if the application
+@@ -61,6 +64,8 @@
+ # endif
+ #endif
+ 
++#define OPENSSL_CPUID_OBJ
++
+ /* crypto/opensslconf.h.in */
+ 
+ /* Generate 80386 code? */
+@@ -68,8 +73,8 @@
+ 
+ #if !(defined(VMS) || defined(__VMS)) /* VMS uses logical names instead */
+ #if defined(HEADER_CRYPTLIB_H) && !defined(OPENSSLDIR)
+-#define ENGINESDIR "/usr/local/ssl/lib/engines"
+-#define OPENSSLDIR "/usr/local/ssl"
++#define ENGINESDIR "/usr/lib/engines"
++#define OPENSSLDIR "/usr/ssl"
+ #endif
+ #endif
+ 
+@@ -121,7 +126,7 @@
+ 
+ #if defined(HEADER_BN_H) && !defined(CONFIG_HEADER_BN_H)
+ #define CONFIG_HEADER_BN_H
+-#undef BN_LLONG
++#define BN_LLONG
+ 
+ /* Should we define BN_DIV2W here? */
+ 
+@@ -135,7 +140,7 @@
+ #define CONFIG_HEADER_RC4_LOCL_H
+ /* if this is defined data[i] is used instead of *data, this is a %20
+  * speedup on x86 */
+-#undef RC4_INDEX
++#define RC4_INDEX
+ #endif
+ 
+ #if defined(HEADER_BF_LOCL_H) && !defined(CONFIG_HEADER_BF_LOCL_H)
+@@ -149,14 +154,14 @@
+ /* the following is tweaked from a config script, that is why it is a
+  * protected undef/define */
+ #ifndef DES_PTR
+-#undef DES_PTR
++#define DES_PTR
+ #endif
+ 
+ /* This helps C compiler generate the correct code for multiple functional
+  * units.  It reduces register dependancies at the expense of 2 more
+  * registers */
+ #ifndef DES_RISC1
+-#undef DES_RISC1
++#define DES_RISC1
+ #endif
+ 
+ #ifndef DES_RISC2
+diff --git a/crypto/symhacks.h b/crypto/symhacks.h
+index 3fd4a81..24787a7 100644
+--- a/crypto/symhacks.h
++++ b/crypto/symhacks.h
+@@ -176,6 +176,8 @@
+ #define SSL_CTX_set_default_passwd_cb_userdata  SSL_CTX_set_def_passwd_cb_ud
+ #undef SSL_COMP_get_compression_methods
+ #define SSL_COMP_get_compression_methods	SSL_COMP_get_compress_methods
++#undef SSL_COMP_free_compression_methods
++#define SSL_COMP_free_compression_methods	SSL_COMP_free_compress_methods
+ 
+ #undef ssl_add_clienthello_renegotiate_ext
+ #define ssl_add_clienthello_renegotiate_ext	ssl_add_clienthello_reneg_ext
+diff --git a/ssl/ssl.h b/ssl/ssl.h
+index 0b8ef36..2d592e6 100644
+--- a/ssl/ssl.h
++++ b/ssl/ssl.h
+@@ -1818,12 +1818,14 @@ const COMP_METHOD *SSL_get_current_expansion(SSL *s);
+ const char *SSL_COMP_get_name(const COMP_METHOD *comp);
+ STACK_OF(SSL_COMP) *SSL_COMP_get_compression_methods(void);
+ int SSL_COMP_add_compression_method(int id,COMP_METHOD *cm);
++void SSL_COMP_free_compression_methods(void);
+ #else
+ const void *SSL_get_current_compression(SSL *s);
+ const void *SSL_get_current_expansion(SSL *s);
+ const char *SSL_COMP_get_name(const void *comp);
+ void *SSL_COMP_get_compression_methods(void);
+ int SSL_COMP_add_compression_method(int id,void *cm);
++void SSL_COMP_free_compression_methods(void);
+ #endif
+ 
+ /* TLS extensions functions */
+diff --git a/ssl/ssl_ciph.c b/ssl/ssl_ciph.c
+index a8ce186..771f25c 100644
+--- a/ssl/ssl_ciph.c
++++ b/ssl/ssl_ciph.c
+@@ -405,7 +405,13 @@ void ssl_load_ciphers(void)
+ 		}		
+ 
+ 	}
++
+ #ifndef OPENSSL_NO_COMP
++static void sk_comp_free(SSL_COMP *comp)
++	{
++	CRYPTO_free(comp->method);
++	OPENSSL_free(comp);
++	}
+ 
+ static int sk_comp_cmp(const SSL_COMP * const *a,
+ 			const SSL_COMP * const *b)
+@@ -436,16 +442,37 @@ static void load_builtin_compressions(void)
+ 				if (comp != NULL)
+ 					{
+ 					comp->method=COMP_zlib();
+-					if (comp->method
+-						&& comp->method->type == NID_undef)
++					if (!comp->method)
++						{
++						/* Tolerate a NULL from COMP_zlib(); */
++						/* leave ssl_comp_methods empty. */
+ 						OPENSSL_free(comp);
++						}
++					else if (comp->method->type == NID_undef)
++						{
++						/* Leave ssl_comp_methods empty. */
++						sk_comp_free(comp);
++						}
+ 					else
+ 						{
+ 						comp->id=SSL_COMP_ZLIB_IDX;
+ 						comp->name=comp->method->name;
+-						sk_SSL_COMP_push(ssl_comp_methods,comp);
++						if (!sk_SSL_COMP_push(ssl_comp_methods,comp))
++							{
++							/* malloc failure (see below) */
++							sk_comp_free(comp);
++							sk_SSL_COMP_free(ssl_comp_methods);
++							ssl_comp_methods=NULL;
++							}
+ 						}
+ 					}
++				else
++					{
++					/* Caller will interpret ssl_comp_methods==NULL */
++					/* as a malloc failure */
++					sk_SSL_COMP_free(ssl_comp_methods);
++					ssl_comp_methods=NULL;
++					}
+ 				}
+ 			MemCheck_on();
+ 			}
+@@ -1669,10 +1696,15 @@ SSL_COMP *ssl3_comp_find(STACK_OF(SSL_COMP) *sk, int n)
+ 	}
+ 
+ #ifdef OPENSSL_NO_COMP
++void SSL_COMP_free_compression_methods(void)
++	{
++	}
++
+ void *SSL_COMP_get_compression_methods(void)
+ 	{
+ 	return NULL;
+ 	}
++
+ int SSL_COMP_add_compression_method(int id, void *cm)
+ 	{
+ 	return 1;
+@@ -1683,6 +1715,19 @@ const char *SSL_COMP_get_name(const void *comp)
+ 	return NULL;
+ 	}
+ #else
++void SSL_COMP_free_compression_methods(void)
++	{
++	CRYPTO_w_lock(CRYPTO_LOCK_SSL);
++	if (ssl_comp_methods != NULL)
++		{
++		MemCheck_off();
++		sk_SSL_COMP_pop_free(ssl_comp_methods, sk_comp_free);
++		ssl_comp_methods = NULL;
++		MemCheck_on();
++		}
++	CRYPTO_w_unlock(CRYPTO_LOCK_SSL);
++	}
++
+ STACK_OF(SSL_COMP) *SSL_COMP_get_compression_methods(void)
+ 	{
+ 	load_builtin_compressions();
+@@ -1710,13 +1755,27 @@ int SSL_COMP_add_compression_method(int id, COMP_METHOD *cm)
+ 
+ 	MemCheck_off();
+ 	comp=(SSL_COMP *)OPENSSL_malloc(sizeof(SSL_COMP));
++	if (!comp)
++		{
++		MemCheck_on();
++		SSLerr(SSL_F_SSL_COMP_ADD_COMPRESSION_METHOD,ERR_R_MALLOC_FAILURE);
++		return(1);
++		}
+ 	comp->id=id;
+-	comp->method=cm;
++	comp->method=(COMP_METHOD *)OPENSSL_malloc(sizeof(COMP_METHOD));
++	if (!comp->method)
++		{
++		OPENSSL_free(comp);
++		MemCheck_on();
++		SSLerr(SSL_F_SSL_COMP_ADD_COMPRESSION_METHOD,ERR_R_MALLOC_FAILURE);
++		return(1);
++		}
++	memcpy(comp->method,cm,sizeof(COMP_METHOD));
+ 	load_builtin_compressions();
+ 	if (ssl_comp_methods
+ 		&& sk_SSL_COMP_find(ssl_comp_methods,comp) >= 0)
+ 		{
+-		OPENSSL_free(comp);
++		sk_comp_free(comp);
+ 		MemCheck_on();
+ 		SSLerr(SSL_F_SSL_COMP_ADD_COMPRESSION_METHOD,SSL_R_DUPLICATE_COMPRESSION_ID);
+ 		return(1);
+@@ -1724,7 +1783,7 @@ int SSL_COMP_add_compression_method(int id, COMP_METHOD *cm)
+ 	else if ((ssl_comp_methods == NULL)
+ 		|| !sk_SSL_COMP_push(ssl_comp_methods,comp))
+ 		{
+-		OPENSSL_free(comp);
++		sk_comp_free(comp);
+ 		MemCheck_on();
+ 		SSLerr(SSL_F_SSL_COMP_ADD_COMPRESSION_METHOD,ERR_R_MALLOC_FAILURE);
+ 		return(1);
+diff --git a/ssl/ssltest.c b/ssl/ssltest.c
+index 0bb4fa4..2511379 100644
+--- a/ssl/ssltest.c
++++ b/ssl/ssltest.c
+@@ -1015,6 +1015,9 @@ end:
+ #ifndef OPENSSL_NO_ENGINE
+ 	ENGINE_cleanup();
+ #endif
++#ifndef OPENSSL_NO_COMP
++	SSL_COMP_free_compression_methods();
++#endif
+ 	CRYPTO_cleanup_all_ex_data();
+ 	ERR_free_strings();
+ 	ERR_remove_thread_state(NULL);
+diff --git a/tools/c_rehash b/tools/c_rehash
+index 6a20011..82e6662 100644
+--- a/tools/c_rehash
++++ b/tools/c_rehash
+@@ -6,8 +6,8 @@
+ 
+ my $openssl;
+ 
+-my $dir = "/usr/local/ssl";
+-my $prefix = "/usr/local/ssl";
++my $dir = "/usr/ssl";
++my $prefix = "/usr";
+ 
+ if(defined $ENV{OPENSSL}) {
+ 	$openssl = $ENV{OPENSSL};
+diff --git a/util/ssleay.num b/util/ssleay.num
+index 15a58e7..38d6c18 100755
+--- a/util/ssleay.num
++++ b/util/ssleay.num
+@@ -259,3 +259,5 @@ SSL_set_session_secret_cb               307	EXIST::FUNCTION:
+ SSL_set_session_ticket_ext_cb           308	EXIST::FUNCTION:
+ SSL_set1_param                          309	EXIST::FUNCTION:
+ SSL_CTX_set1_param                      310	EXIST::FUNCTION:
++SSL_COMP_free_compression_methods       311	EXIST:!VMS:FUNCTION:COMP
++SSL_COMP_free_compress_methods          311	EXIST:VMS:FUNCTION:COMP
+-- 
+1.7.0.4
+

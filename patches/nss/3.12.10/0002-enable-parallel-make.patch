@@ -1,0 +1,124 @@
+From 5e9badcea16251cf62faa0c95e2bef2f5735d180 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Fri, 8 Apr 2011 22:19:31 +0000
+Subject: [PATCH] enable parallel make
+
+---
+ mozilla/security/coreconf/UNIX.mk            |    2 +-
+ mozilla/security/coreconf/mkdepend/Makefile  |    2 +-
+ mozilla/security/coreconf/nsinstall/Makefile |    2 +-
+ mozilla/security/coreconf/rules.mk           |    9 ++++-----
+ mozilla/security/coreconf/ruleset.mk         |    2 +-
+ mozilla/security/nss/cmd/shlibsign/Makefile  |    2 +-
+ 6 files changed, 9 insertions(+), 10 deletions(-)
+
+diff --git a/mozilla/security/coreconf/UNIX.mk b/mozilla/security/coreconf/UNIX.mk
+index 5853170..7f1f95e 100644
+--- a/mozilla/security/coreconf/UNIX.mk
++++ b/mozilla/security/coreconf/UNIX.mk
+@@ -92,5 +92,5 @@ else
+ endif
+ 
+ define MAKE_OBJDIR
+-if test ! -d $(@D); then rm -rf $(@D); $(NSINSTALL) -D $(@D); fi
++if test ! -d $(@D); then $(NSINSTALL) -D $(@D); fi
+ endef
+diff --git a/mozilla/security/coreconf/mkdepend/Makefile b/mozilla/security/coreconf/mkdepend/Makefile
+index ab280e6..5d1b8ea 100644
+--- a/mozilla/security/coreconf/mkdepend/Makefile
++++ b/mozilla/security/coreconf/mkdepend/Makefile
+@@ -88,6 +88,6 @@ DEFINES += -DINCLUDEDIR=\"/usr/include\" -DOBJSUFFIX=\".$(OBJ_SUFFIX)\"
+ 
+ # Redefine MAKE_OBJDIR for just this directory
+ define MAKE_OBJDIR
+-if test ! -d $(@D); then rm -rf $(@D); mkdir $(@D); fi
++if test ! -d $(@D); then mkdir -p $(@D); fi
+ endef
+ 
+diff --git a/mozilla/security/coreconf/nsinstall/Makefile b/mozilla/security/coreconf/nsinstall/Makefile
+index c794890..bb614a6 100644
+--- a/mozilla/security/coreconf/nsinstall/Makefile
++++ b/mozilla/security/coreconf/nsinstall/Makefile
+@@ -69,6 +69,6 @@ include $(DEPTH)/coreconf/rules.mk
+ 
+ # Redefine MAKE_OBJDIR for just this directory
+ define MAKE_OBJDIR
+-if test ! -d $(@D); then rm -rf $(@D); mkdir $(@D); fi
++if test ! -d $(@D); then mkdir -p $(@D); fi
+ endef
+ 
+diff --git a/mozilla/security/coreconf/rules.mk b/mozilla/security/coreconf/rules.mk
+index 01b4fc2..82ce9af 100644
+--- a/mozilla/security/coreconf/rules.mk
++++ b/mozilla/security/coreconf/rules.mk
+@@ -528,7 +528,6 @@ endif
+ $(JAVA_DESTPATH) $(JAVA_DESTPATH)/$(PACKAGE) $(JMCSRCDIR)::
+ 	@if test ! -d $@; then	    \
+ 		echo Creating $@;   \
+-		rm -rf $@;	    \
+ 		$(NSINSTALL) -D $@; \
+ 	fi
+ 
+@@ -795,7 +794,7 @@ $(PUBLIC_EXPORT_DIR)::
+ export:: $(PUBLIC_EXPORT_DIR) 
+ 
+ export:: $(EXPORTS) 
+-	$(INSTALL) -m 444 $^ $(PUBLIC_EXPORT_DIR)
++	$(NSINSTALL) -t -m 444 $^ $(PUBLIC_EXPORT_DIR)
+ 
+ export:: $(BUILT_SRCS)
+ endif
+@@ -814,7 +813,7 @@ $(PRIVATE_EXPORT_DIR)::
+ private_export:: $(PRIVATE_EXPORT_DIR)
+ 
+ private_export:: $(PRIVATE_EXPORTS) 
+-	$(INSTALL) -m 444 $^ $(PRIVATE_EXPORT_DIR)
++	$(NSINSTALL) -t -m 444 $^ $(PRIVATE_EXPORT_DIR)
+ else
+ private_export:: 
+ 	@echo There are no private exports.;
+@@ -865,7 +864,7 @@ $(SOURCE_RELEASE_XP_DIR)/include::
+ release_export:: $(SOURCE_RELEASE_XP_DIR)/include
+ 
+ release_export:: $(EXPORTS)
+-	$(INSTALL) -m 444 $^ $(SOURCE_RELEASE_XP_DIR)/include
++	$(NSINSTALL) -t -m 444 $^ $(SOURCE_RELEASE_XP_DIR)/include
+ endif
+ 
+ 
+@@ -990,5 +989,5 @@ $(filter $(OBJDIR)/%$(OBJ_SUFFIX),$(OBJS)): $(OBJDIR)/%$(OBJ_SUFFIX): $(DUMMY_DE
+ # Fake targets.  Always run these rules, even if a file/directory with that
+ # name already exists.
+ #
+-.PHONY: all all_platforms alltags boot clean clobber clobber_all export install libs program realclean release $(OBJDIR) $(DIRS)
++.PHONY: all all_platforms alltags boot clean clobber clobber_all export install libs private_export program realclean release $(OBJDIR) $(DIRS)
+ 
+diff --git a/mozilla/security/coreconf/ruleset.mk b/mozilla/security/coreconf/ruleset.mk
+index c083378..d8fe38e 100644
+--- a/mozilla/security/coreconf/ruleset.mk
++++ b/mozilla/security/coreconf/ruleset.mk
+@@ -166,7 +166,7 @@ ifeq (,$(filter-out WIN%,$(OS_TARGET)))
+     MAKE_OBJDIR = $(INSTALL) -D $(OBJDIR)
+ else
+     define MAKE_OBJDIR
+-	if test ! -d $(@D); then rm -rf $(@D); $(NSINSTALL) -D $(@D); fi
++	if test ! -d $(@D); then $(NSINSTALL) -D $(@D); fi
+     endef
+ endif
+ 
+diff --git a/mozilla/security/nss/cmd/shlibsign/Makefile b/mozilla/security/nss/cmd/shlibsign/Makefile
+index 892a2db..72869d2 100644
+--- a/mozilla/security/nss/cmd/shlibsign/Makefile
++++ b/mozilla/security/nss/cmd/shlibsign/Makefile
+@@ -109,7 +109,7 @@ include ../platrules.mk
+ 
+ SRCDIR = $(call core_abspath,.)
+ 
+-%.chk: %.$(DLL_SUFFIX) 
++%.chk: %.$(DLL_SUFFIX) $(OBJDIR)/shlibsign
+ ifeq ($(OS_TARGET), OS2)
+ 	cd $(OBJDIR) ; cmd.exe /c $(SRCDIR)/sign.cmd $(DIST) \
+ 	$(call core_abspath,$(OBJDIR)) $(OS_TARGET) \
+-- 
+1.7.0.4
+

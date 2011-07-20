@@ -1,0 +1,21 @@
+# nss
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "nss version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config NSS_V_3_12_10
+    bool
+    prompt "3.12.10 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config NSS_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "3.12.10" if NSS_V_3_12_10

@@ -21,7 +21,7 @@ do_companion_tools_libtool_build() {
     CT_DoExecLog CFG \
     "${CT_SRC_DIR}/libtool-${CT_LIBTOOL_VERSION}/configure" \
         --prefix="${CT_BUILDTOOLS_PREFIX_DIR}"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep
@@ -51,7 +51,7 @@ do_companion_tools_libtool_build_for_target() {
         --enable-static
 
     CT_DoLog EXTRA "Building libtool for the target"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing libtool for the target"
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install

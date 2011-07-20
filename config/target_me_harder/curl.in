@@ -1,0 +1,21 @@
+# curl
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "curl version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config CURL_V_7_21_6
+    bool
+    prompt "7.21.6 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config CURL_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "7.21.6" if CURL_V_7_21_6

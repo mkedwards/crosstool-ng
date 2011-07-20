@@ -17,7 +17,7 @@ do_cross_me_harder_dbus_build() {
     
     CT_DoExecLog CFG \
     CPPFLAGS="-I${CT_PREFIX_DIR}/include"                       \
-    LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}" \
+    LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}/lib" \
     "${CT_SRC_DIR}/dbus-${CT_DBUS_VERSION}/configure"           \
             --build=${CT_BUILD}                                 \
             --target=${CT_TARGET}                               \
@@ -26,7 +26,7 @@ do_cross_me_harder_dbus_build() {
             --without-x                                         \
             --with-init-scripts=none                            \
             --with-xml=expat
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep
@@ -56,7 +56,7 @@ do_cross_me_harder_dbus_build() {
         --without-x                                             \
         --with-init-scripts=slackware                           \
         --with-xml=expat
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
     CT_Popd
     CT_EndStep

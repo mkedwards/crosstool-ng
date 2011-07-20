@@ -46,7 +46,7 @@ do_acl() {
     CT_DoLog EXTRA "Building acl"
     CT_DoExecLog ALL                                            \
     CPPFLAGS="-I${CT_PREFIX_DIR}/include"                       \
-    make
+    make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing acl"
     CT_DoExecLog ALL make install-lib install-dev install
@@ -87,7 +87,7 @@ do_acl_target() {
         --enable-static
 
     CT_DoLog EXTRA "Building acl"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing acl"
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install-lib install-dev install

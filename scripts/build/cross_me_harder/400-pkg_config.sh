@@ -20,7 +20,7 @@ do_cross_me_harder_pkg_config_build() {
     "${CT_SRC_DIR}/pkg-config-${CT_PKG_CONFIG_VERSION}/configure" \
             --prefix="${CT_PREFIX_DIR}"                           \
             --with-pc-path="${CT_PREFIX_DIR}"/lib/pkgconfig
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep
@@ -35,7 +35,7 @@ do_cross_me_harder_pkg_config_build() {
             --program-prefix=${CT_TARGET}-              \
             --prefix="${CT_PREFIX_DIR}"                 \
             --with-pc-path="${CT_SYSROOT_DIR}"/usr/lib/pkgconfig
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
     CT_Popd
     CT_EndStep

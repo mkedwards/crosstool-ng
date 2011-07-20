@@ -39,7 +39,7 @@ do_debug_oprofile_build() {
         --prefix=/usr
 
     CT_DoLog EXTRA "Building oprofile"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing oprofile"
     CT_DoExecLog ALL make DESTDIR="${CT_DEBUGROOT_DIR}" install
