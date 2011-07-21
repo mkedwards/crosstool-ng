@@ -20,7 +20,7 @@ do_companion_tools_cmake_build() {
 
     CT_DoExecLog CFG "${CT_SRC_DIR}/cmake-${CT_CMAKE_VERSION}/bootstrap" \
                      --prefix="${CT_BUILDTOOLS_PREFIX_DIR}" \
-                     --mandir=share/man
+                     --mandir=/share/man
 
     CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make install
