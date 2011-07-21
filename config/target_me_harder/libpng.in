@@ -1,0 +1,21 @@
+# libpng
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "libpng version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LIBPNG_V_1_5_4
+    bool
+    prompt "1.5.4 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config LIBPNG_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.5.4" if LIBPNG_V_1_5_4

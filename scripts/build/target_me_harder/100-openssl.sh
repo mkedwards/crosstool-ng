@@ -24,7 +24,13 @@ do_target_me_harder_openssl_build() {
     esac
 
     CT_DoExecLog CFG \
-    CROSS_COMPILE=${CT_TARGET}- ./Configure --prefix=/usr linux-${linux_subtype}-Os shared zlib-dynamic
+    CROSS_COMPILE=${CT_TARGET}-                            \
+    ./Configure                                            \
+    --prefix=/usr                                          \
+    --openssldir=/usr/share                                \
+    linux-${linux_subtype}-Os                              \
+    shared                                                 \
+    zlib-dynamic                                           \
 
     CT_DoExecLog ALL make
     CT_DoExecLog ALL make INSTALL_PREFIX="${CT_SYSROOT_DIR}" install

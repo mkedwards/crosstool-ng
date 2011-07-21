@@ -1,0 +1,43 @@
+# libjpeg-turbo
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "libjpeg-turbo version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LIBJPEG_TURBO_V_trunk
+    bool
+    prompt "trunk (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+config LIBJPEG_TURBO_V_1_1_x
+    bool
+    prompt "1.1.x (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config LIBJPEG_TURBO_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "trunk" if LIBJPEG_TURBO_V_trunk
+    default "1.1.x" if LIBJPEG_TURBO_V_1_1_x
+
+config LIBJPEG_TURBO_REVISION
+    string
+    prompt "Revision to use"
+    default "HEAD"
+    help
+      Enter the revision of trunk/branch you want to use.
+      Default is HEAD.
+      
+      A revision argument can be one of:
+          NUMBER       revision number
+          '{' DATE '}' revision at start of the date (*)
+          'HEAD'       latest in repository
+      
+      (*) If you want to use a date, please use ISO-8601 formats if
+          at all possible.
