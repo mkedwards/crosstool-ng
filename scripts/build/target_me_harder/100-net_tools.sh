@@ -18,7 +18,7 @@ do_target_me_harder_net_tools_build() {
     
     touch config.h
 
-    CT_DoExecLog ALL make ${JOBSFLAGS} \
+    CT_DoExecLog ALL make \
         CC=${CT_TARGET}-gcc AR=${CT_TARGET}-ar RANLIB=${CT_TARGET}-ranlib \
         COPTS="-D_GNU_SOURCE -Wall -g -Os"
 

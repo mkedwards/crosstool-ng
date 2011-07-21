@@ -38,7 +38,7 @@ do_zlib() {
     # --enable-shared because later steps may build a shared library linked against zlib
 
     CT_DoLog EXTRA "Building zlib"
-    CT_DoExecLog ALL make ${JOBSFLAGS}
+    CT_DoExecLog ALL make
 
     CT_DoLog EXTRA "Installing zlib"
     CT_DoExecLog ALL make install

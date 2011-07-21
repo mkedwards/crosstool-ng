@@ -35,7 +35,7 @@ do_debug_duma_build() {
     libs="${libs# }"
     CT_DoLog EXTRA "Building libraries '${libs}'"
     CT_DoExecLog ALL                    \
-    make ${JOBSFLAGS}                   \
+    make                                \
          HOSTCC="${CT_BUILD}-gcc"       \
          CC="${CT_TARGET}-gcc"          \
          CXX="${CT_TARGET}-gcc"         \
