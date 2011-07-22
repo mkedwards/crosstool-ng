@@ -1,6 +1,21 @@
 # Build script for libjpeg-turbo
 
 do_target_me_harder_libjpeg_turbo_get() {
+    local bz2file="libjpeg-turbo-${CT_LIBJPEG_TURBO_VERSION}.tar.bz2"
+
+    if [ -f "${CT_TARBALLS_DIR}/${bz2file}" ]; then
+        CT_DoLog DEBUG "Already have 'libjpeg-turbo-${CT_LIBJPEG_TURBO_VERSION}'"
+        return 0
+    fi
+
+    if [    -f "${CT_LOCAL_TARBALLS_DIR}/${bz2file}"                \
+         -a "${CT_FORCE_DOWNLOAD}" != "y"                           \
+       ]; then
+        CT_DoLog DEBUG "Got 'libjpeg-turbo-${CT_LIBJPEG_TURBO_VERSION}' from local storage"
+        CT_DoExecLog ALL ln -s "${CT_LOCAL_TARBALLS_DIR}/${bz2file}" "${CT_TARBALLS_DIR}/${bz2file}"
+        return 0
+    fi
+
     CT_MktempDir tmp_dir
     CT_Pushd "${tmp_dir}"
 
@@ -15,8 +30,8 @@ do_target_me_harder_libjpeg_turbo_get() {
 
     # Compress libjpeg-turbo
     CT_DoExecLog ALL mv libjpeg-turbo "libjpeg-turbo-${CT_LIBJPEG_TURBO_VERSION}"
-    CT_DoExecLog ALL tar cjf "libjpeg-turbo-${CT_LIBJPEG_TURBO_VERSION}.tar.bz2" "libjpeg-turbo-${CT_LIBJPEG_TURBO_VERSION}"
-    CT_DoExecLog ALL mv -f "libjpeg-turbo-${CT_LIBJPEG_TURBO_VERSION}.tar.bz2" "${CT_TARBALLS_DIR}"
+    CT_DoExecLog ALL tar cjf "${bz2file}" "libjpeg-turbo-${CT_LIBJPEG_TURBO_VERSION}"
+    CT_DoExecLog ALL mv -f "${bz2file}" "${CT_TARBALLS_DIR}"
 
     CT_Popd
 
@@ -25,10 +40,8 @@ do_target_me_harder_libjpeg_turbo_get() {
 
     if [ "${CT_SAVE_TARBALLS}" = "y" ]; then
         CT_DoLog EXTRA "Saving 'libjpeg-turbo-${CT_LIBJPEG_TURBO_VERSION}' to local storage"
-        for file in "libjpeg-turbo-${CT_LIBJPEG_TURBO_VERSION}.tar.bz2"; do
-            CT_DoExecLog ALL mv -f "${CT_TARBALLS_DIR}/${file}" "${CT_LOCAL_TARBALLS_DIR}"
-            CT_DoExecLog ALL ln -s "${CT_LOCAL_TARBALLS_DIR}/${file}" "${CT_TARBALLS_DIR}/${file}"
-        done
+        CT_DoExecLog ALL mv -f "${CT_TARBALLS_DIR}/${bz2file}" "${CT_LOCAL_TARBALLS_DIR}"
+        CT_DoExecLog ALL ln -s "${CT_LOCAL_TARBALLS_DIR}/${bz2file}" "${CT_TARBALLS_DIR}/${bz2file}"
     fi
 }
 
