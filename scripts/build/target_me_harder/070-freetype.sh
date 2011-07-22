@@ -42,12 +42,12 @@ do_target_me_harder_freetype_build() {
 
     CT_Pushd "${CT_SYSROOT_DIR}"
     patch -p1 <<"EOF"
---- usr/lib/pkgconfig/freetype2.pc
-+++ usr/lib/pkgconfig/freetype2.pc
+--- sysroot/usr/lib/pkgconfig/freetype2.pc
++++ sysroot/usr/lib/pkgconfig/freetype2.pc
 @@ -9,4 +9,3 @@
  Requires:
 -Libs: -L${libdir} -lfreetype
--Libs.private: -lz 
+-Libs.private: -lz  
 +Libs: -L${libdir} -lfreetype -lz
  Cflags: -I${includedir}/freetype2 -I${includedir}
 EOF
