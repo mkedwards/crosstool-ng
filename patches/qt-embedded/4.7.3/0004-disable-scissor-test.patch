@@ -1,0 +1,26 @@
+From 923958ffe6bf7d6fa7fabe4666021d952994c21b Mon Sep 17 00:00:00 2001
+From: Michael Edwards <michaedw@cisco.com>
+Date: Mon, 7 Feb 2011 16:32:09 -0800
+Subject: [PATCH] disable scissor test
+
+---
+ .../gl2paintengineex/qpaintengineex_opengl2.cpp    |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
+
+diff --git a/src/opengl/gl2paintengineex/qpaintengineex_opengl2.cpp b/src/opengl/gl2paintengineex/qpaintengineex_opengl2.cpp
+index b613aab..d098fb7 100644
+--- a/src/opengl/gl2paintengineex/qpaintengineex_opengl2.cpp
++++ b/src/opengl/gl2paintengineex/qpaintengineex_opengl2.cpp
+@@ -90,9 +90,7 @@
+ 
+ QT_BEGIN_NAMESPACE
+ 
+-#if defined(Q_OS_SYMBIAN)
+ #define QT_GL_NO_SCISSOR_TEST
+-#endif
+ 
+ #if defined(Q_WS_WIN)
+ extern Q_GUI_EXPORT bool qt_cleartype_enabled;
+-- 
+1.7.1.rc2
+

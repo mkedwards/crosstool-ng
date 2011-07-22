@@ -1,0 +1,27 @@
+From 683187ea4f27bc3222a58d3bb94f334e32670c86 Mon Sep 17 00:00:00 2001
+From: Kurt Taylor <kurt.taylor@linaro.org>
+Date: Fri, 18 Feb 2011 14:30:03 +0000
+Subject: [PATCH] PulseAudio: added IT block to fix thumb conditional instruction build error messages
+
+See: http://pulseaudio.org/ticket/914
+
+Tweaked-By: Arun Raghavan <arun.raghavan@collabora.co.uk>
+---
+ src/pulsecore/svolume_arm.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/src/pulsecore/svolume_arm.c b/src/pulsecore/svolume_arm.c
+index 3973e51..c2830cf 100644
+--- a/src/pulsecore/svolume_arm.c
++++ b/src/pulsecore/svolume_arm.c
+@@ -39,6 +39,7 @@
+ 
+ #define MOD_INC() \
+     " subs  r0, r6, %2              \n\t" \
++    " itt cs                        \n\t" \
+     " addcs r0, %1                  \n\t" \
+     " movcs r6, r0                  \n\t"
+ 
+-- 
+1.7.4.1
+

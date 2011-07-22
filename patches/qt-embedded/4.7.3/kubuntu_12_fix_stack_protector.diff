@@ -1,0 +1,41 @@
+Description: There should be no reason to disable stack protector unless one
+ is building with an ancient version of GCC.
+Author: Kees Cook <kees@ubuntu.com>
+Bug-Ubuntu: https://launchpad.net/bugs/538237
+
+Index: qt-everywhere-opensource-src-4.7.2/mkspecs/qws/linux-lsb-g++/qmake.conf
+===================================================================
+--- qt-everywhere-opensource-src-4.7.2.orig/mkspecs/qws/linux-lsb-g++/qmake.conf	2011-03-02 18:02:37.637309450 +0000
++++ qt-everywhere-opensource-src-4.7.2/mkspecs/qws/linux-lsb-g++/qmake.conf	2011-03-02 18:02:43.327309452 +0000
+@@ -12,11 +12,10 @@
+ # modifications to g++.conf
+ QMAKE_CC                = lsbcc
+ QMAKE_CXX		= lsbc++
+-QMAKE_CFLAGS		= -pipe -DQT_LINUXBASE -fno-stack-protector
++QMAKE_CFLAGS		= -pipe -DQT_LINUXBASE
+ QMAKE_CXXFLAGS          = $$QMAKE_CFLAGS
+ QMAKE_LINK              = lsbc++
+ QMAKE_LINK_SHLIB        = lsbc++
+-QMAKE_LFLAGS		+= -fno-stack-protector
+ 
+ load(qt_config)
+ 
+Index: qt-everywhere-opensource-src-4.7.2/src/3rdparty/javascriptcore/JavaScriptCore/JavaScriptCore.pri
+===================================================================
+--- qt-everywhere-opensource-src-4.7.2.orig/src/3rdparty/javascriptcore/JavaScriptCore/JavaScriptCore.pri	2011-03-02 18:02:37.667309450 +0000
++++ qt-everywhere-opensource-src-4.7.2/src/3rdparty/javascriptcore/JavaScriptCore/JavaScriptCore.pri	2011-03-02 18:02:43.337309452 +0000
+@@ -58,14 +58,6 @@
+     DEFINES+=ENABLE_YARR=0
+ }
+ 
+-# Rules when JIT enabled (not disabled)
+-!contains(DEFINES, ENABLE_JIT=0) {
+-    linux*-g++*:greaterThan(QT_GCC_MAJOR_VERSION,3):greaterThan(QT_GCC_MINOR_VERSION,0) {
+-        QMAKE_CXXFLAGS += -fno-stack-protector
+-        QMAKE_CFLAGS += -fno-stack-protector
+-    }
+-}
+-
+ wince* {
+     INCLUDEPATH += $$QT_SOURCE_TREE/src/3rdparty/ce-compat
+     SOURCES += $$QT_SOURCE_TREE/src/3rdparty/ce-compat/ce_time.c

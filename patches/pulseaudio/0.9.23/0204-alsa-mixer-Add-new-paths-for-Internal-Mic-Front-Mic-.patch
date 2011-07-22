@@ -1,0 +1,522 @@
+From 9030819690d9f98b2c8aac5796a7c2faaa41dadb Mon Sep 17 00:00:00 2001
+From: David Henningsson <david.henningsson@canonical.com>
+Date: Wed, 5 Jan 2011 13:27:53 +0100
+Subject: [PATCH 4/6] alsa-mixer: Add new paths for Internal Mic, Front Mic, Rear Mic and Dock Mic
+
+Signed-off-by: David Henningsson <david.henningsson@canonical.com>
+---
+ src/Makefile.am                                    |    5 +-
+ .../alsa/mixer/paths/analog-input-dock-mic.conf    |   79 +++++++++++++++++++
+ .../alsa/mixer/paths/analog-input-front-mic.conf   |   79 +++++++++++++++++++
+ .../mixer/paths/analog-input-internal-mic.conf     |   80 +++++++++++++++-----
+ .../alsa/mixer/paths/analog-input-mic.conf.common  |   74 +++++--------------
+ .../alsa/mixer/paths/analog-input-rear-mic.conf    |   79 +++++++++++++++++++
+ src/modules/alsa/mixer/profile-sets/default.conf   |    4 +-
+ 7 files changed, 321 insertions(+), 79 deletions(-)
+ create mode 100644 src/modules/alsa/mixer/paths/analog-input-dock-mic.conf
+ create mode 100644 src/modules/alsa/mixer/paths/analog-input-front-mic.conf
+ create mode 100644 src/modules/alsa/mixer/paths/analog-input-rear-mic.conf
+
+diff --git a/src/Makefile.am b/src/Makefile.am
+index ec301da..05ec250 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -120,9 +120,12 @@ ALSA_PATHS = \
+ 		modules/alsa/mixer/paths/analog-input.conf \
+ 		modules/alsa/mixer/paths/analog-input.conf.common \
+ 		modules/alsa/mixer/paths/analog-input-fm.conf \
+-		modules/alsa/mixer/paths/analog-input-internal-mic.conf \
+ 		modules/alsa/mixer/paths/analog-input-linein.conf \
+ 		modules/alsa/mixer/paths/analog-input-mic.conf \
++		modules/alsa/mixer/paths/analog-input-dock-mic.conf \
++		modules/alsa/mixer/paths/analog-input-front-mic.conf \
++		modules/alsa/mixer/paths/analog-input-internal-mic.conf \
++		modules/alsa/mixer/paths/analog-input-rear-mic.conf \
+ 		modules/alsa/mixer/paths/analog-input-mic.conf.common \
+ 		modules/alsa/mixer/paths/analog-input-mic-line.conf \
+ 		modules/alsa/mixer/paths/analog-input-tvtuner.conf \
+diff --git a/src/modules/alsa/mixer/paths/analog-input-dock-mic.conf b/src/modules/alsa/mixer/paths/analog-input-dock-mic.conf
+new file mode 100644
+index 0000000..df8567e
+--- /dev/null
++++ b/src/modules/alsa/mixer/paths/analog-input-dock-mic.conf
+@@ -0,0 +1,79 @@
++# This file is part of PulseAudio.
++#
++# PulseAudio is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Lesser General Public License as
++# published by the Free Software Foundation; either version 2.1 of the
++# License, or (at your option) any later version.
++#
++# PulseAudio is distributed in the hope that it will be useful, but
++# WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++# General Public License for more details.
++#
++# You should have received a copy of the GNU Lesser General Public License
++# along with PulseAudio; if not, write to the Free Software Foundation,
++# Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
++
++; For devices where a 'Dock Mic' or 'Dock Mic Boost' element exists
++;
++; See analog-output.conf.common for an explanation on the directives
++
++[General]
++priority = 80
++name = analog-input-microphone-dock
++
++[Element Dock Mic Boost]
++required-any = any
++switch = select
++volume = merge
++override-map.1 = all
++override-map.2 = all-left,all-right
++
++[Option Dock Mic Boost:on]
++name = input-boost-on
++
++[Option Dock Mic Boost:off]
++name = input-boost-off
++
++[Element Dock Mic]
++required-any = any
++switch = mute
++volume = merge
++override-map.1 = all
++override-map.2 = all-left,all-right
++
++[Element Capture]
++switch = mute
++volume = merge
++override-map.1 = all
++override-map.2 = all-left,all-right
++
++[Element Input Source]
++enumeration = select
++
++[Option Input Source:Dock Mic]
++name = analog-input-microphone-dock
++
++[Element Capture Source]
++enumeration = select
++
++[Option Capture Source:Dock Mic]
++name = analog-input-microphone-dock
++
++[Element Mic]
++switch = off
++volume = off
++
++[Element Internal Mic]
++switch = off
++volume = off
++
++[Element Front Mic]
++switch = off
++volume = off
++
++[Element Rear Mic]
++switch = off
++volume = off
++
++.include analog-input-mic.conf.common
+diff --git a/src/modules/alsa/mixer/paths/analog-input-front-mic.conf b/src/modules/alsa/mixer/paths/analog-input-front-mic.conf
+new file mode 100644
+index 0000000..516b487
+--- /dev/null
++++ b/src/modules/alsa/mixer/paths/analog-input-front-mic.conf
+@@ -0,0 +1,79 @@
++# This file is part of PulseAudio.
++#
++# PulseAudio is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Lesser General Public License as
++# published by the Free Software Foundation; either version 2.1 of the
++# License, or (at your option) any later version.
++#
++# PulseAudio is distributed in the hope that it will be useful, but
++# WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++# General Public License for more details.
++#
++# You should have received a copy of the GNU Lesser General Public License
++# along with PulseAudio; if not, write to the Free Software Foundation,
++# Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
++
++; For devices where a 'Front Mic' or 'Front Mic Boost' element exists
++;
++; See analog-output.conf.common for an explanation on the directives
++
++[General]
++priority = 90
++name = analog-input-microphone-front
++
++[Element Front Mic Boost]
++required-any = any
++switch = select
++volume = merge
++override-map.1 = all
++override-map.2 = all-left,all-right
++
++[Option Front Mic Boost:on]
++name = input-boost-on
++
++[Option Front Mic Boost:off]
++name = input-boost-off
++
++[Element Front Mic]
++required-any = any
++switch = mute
++volume = merge
++override-map.1 = all
++override-map.2 = all-left,all-right
++
++[Element Capture]
++switch = mute
++volume = merge
++override-map.1 = all
++override-map.2 = all-left,all-right
++
++[Element Input Source]
++enumeration = select
++
++[Option Input Source:Front Mic]
++name = analog-input-microphone-front
++
++[Element Capture Source]
++enumeration = select
++
++[Option Capture Source:Front Mic]
++name = analog-input-microphone-front
++
++[Element Mic]
++switch = off
++volume = off
++
++[Element Internal Mic]
++switch = off
++volume = off
++
++[Element Rear Mic]
++switch = off
++volume = off
++
++[Element Dock Mic]
++switch = off
++volume = off
++
++.include analog-input-mic.conf.common
+diff --git a/src/modules/alsa/mixer/paths/analog-input-internal-mic.conf b/src/modules/alsa/mixer/paths/analog-input-internal-mic.conf
+index 70cd512..3e45bcf 100644
+--- a/src/modules/alsa/mixer/paths/analog-input-internal-mic.conf
++++ b/src/modules/alsa/mixer/paths/analog-input-internal-mic.conf
+@@ -14,54 +14,94 @@
+ # along with PulseAudio; if not, write to the Free Software Foundation,
+ # Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
+ 
+-; For devices where a 'Internal Mic' element exists
++; For devices where a 'Internal Mic' or 'Internal Mic Boost' element exists
++; 'Int Mic' and 'Int Mic Boost' are for compatibility with kernels < 2.6.38
+ ;
+ ; See analog-output.conf.common for an explanation on the directives
+ 
+ [General]
+-priority = 90
+-name = analog-input-microphone
++priority = 89
++name = analog-input-microphone-internal
+ 
+-[Element Capture]
+-switch = mute
++[Element Internal Mic Boost]
++required-any = any
++switch = select
+ volume = merge
+ override-map.1 = all
+ override-map.2 = all-left,all-right
+ 
+-[Element Mic]
+-switch = off
+-volume = off
++[Option Internal Mic Boost:on]
++name = input-boost-on
++
++[Option Internal Mic Boost:off]
++name = input-boost-off
++
++[Element Int Mic Boost]
++required-any = any
++switch = select
++volume = merge
++override-map.1 = all
++override-map.2 = all-left,all-right
++
++[Option Int Mic Boost:on]
++name = input-boost-on
++
++[Option Int Mic Boost:off]
++name = input-boost-off
++
+ 
+ [Element Internal Mic]
+-required = any
++required-any = any
+ switch = mute
+ volume = merge
+ override-map.1 = all
+ override-map.2 = all-left,all-right
+ 
+-[Element Line]
+-switch = off
+-volume = off
++[Element Int Mic]
++required-any = any
++switch = mute
++volume = merge
++override-map.1 = all
++override-map.2 = all-left,all-right
+ 
+-[Element Aux]
+-switch = off
+-volume = off
++[Element Capture]
++switch = mute
++volume = merge
++override-map.1 = all
++override-map.2 = all-left,all-right
++
++[Element Input Source]
++enumeration = select
++
++[Option Input Source:Internal Mic]
++name = analog-input-microphone-internal
++
++[Option Input Source:Int Mic]
++name = analog-input-microphone-internal
+ 
+-[Element Video]
++[Element Capture Source]
++enumeration = select
++
++[Option Capture Source:Internal Mic]
++name = analog-input-microphone-internal
++
++[Option Capture Source:Int Mic]
++name = analog-input-microphone-internal
++
++[Element Mic]
+ switch = off
+ volume = off
+ 
+-[Element Mic/Line]
++[Element Dock Mic]
+ switch = off
+ volume = off
+ 
+-[Element TV Tuner]
++[Element Front Mic]
+ switch = off
+ volume = off
+ 
+-[Element FM]
++[Element Rear Mic]
+ switch = off
+ volume = off
+ 
+-.include analog-input.conf.common
+ .include analog-input-mic.conf.common
+diff --git a/src/modules/alsa/mixer/paths/analog-input-mic.conf.common b/src/modules/alsa/mixer/paths/analog-input-mic.conf.common
+index 9bddd48..1ffe59f 100644
+--- a/src/modules/alsa/mixer/paths/analog-input-mic.conf.common
++++ b/src/modules/alsa/mixer/paths/analog-input-mic.conf.common
+@@ -18,64 +18,26 @@
+ ;
+ ; See analog-output.conf.common for an explanation on the directives
+ 
+-;;; 'Mic Select'
++[Element Line]
++switch = off
++volume = off
+ 
+-[Element Mic Select]
+-enumeration = select
++[Element Aux]
++switch = off
++volume = off
+ 
+-[Option Mic Select:Mic1]
+-name = input-microphone
+-priority = 20
++[Element Video]
++switch = off
++volume = off
+ 
+-[Option Mic Select:Mic2]
+-name = input-microphone
+-priority = 19
++[Element Mic/Line]
++switch = off
++volume = off
+ 
+-;;; Various Boosts
++[Element TV Tuner]
++switch = off
++volume = off
+ 
+-[Element Mic Boost (+20dB)]
+-switch = select
+-volume = merge
+-
+-[Option Mic Boost (+20dB):on]
+-name = input-boost-on
+-
+-[Option Mic Boost (+20dB):off]
+-name = input-boost-off
+-
+-[Element Mic Boost]
+-switch = select
+-volume = merge
+-
+-[Option Mic Boost:on]
+-name = input-boost-on
+-
+-[Option Mic Boost:off]
+-name = input-boost-off
+-
+-[Element Front Mic Boost]
+-switch = select
+-
+-[Option Front Mic Boost:on]
+-name = input-boost-on
+-
+-[Option Front Mic Boost:off]
+-name = input-boost-off
+-
+-[Element Rear Mic Boost]
+-switch = select
+-
+-[Option Rear Mic Boost:on]
+-name = input-boost-on
+-
+-[Option Rear Mic Boost:off]
+-name = input-boost-off
+-
+-[Element Int Mic Boost]
+-switch = select
+-
+-[Option Int Mic Boost:on]
+-name = input-boost-on
+-
+-[Option Int Mic Boost:off]
+-name = input-boost-off
++[Element FM]
++switch = off
++volume = off
+diff --git a/src/modules/alsa/mixer/paths/analog-input-rear-mic.conf b/src/modules/alsa/mixer/paths/analog-input-rear-mic.conf
+new file mode 100644
+index 0000000..45f7730
+--- /dev/null
++++ b/src/modules/alsa/mixer/paths/analog-input-rear-mic.conf
+@@ -0,0 +1,79 @@
++# This file is part of PulseAudio.
++#
++# PulseAudio is free software; you can redistribute it and/or modify
++# it under the terms of the GNU Lesser General Public License as
++# published by the Free Software Foundation; either version 2.1 of the
++# License, or (at your option) any later version.
++#
++# PulseAudio is distributed in the hope that it will be useful, but
++# WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++# General Public License for more details.
++#
++# You should have received a copy of the GNU Lesser General Public License
++# along with PulseAudio; if not, write to the Free Software Foundation,
++# Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
++
++; For devices where a 'Rear Mic' or 'Rear Mic Boost' element exists
++;
++; See analog-output.conf.common for an explanation on the directives
++
++[General]
++priority = 89
++name = analog-input-microphone-rear
++
++[Element Rear Mic Boost]
++required-any = any
++switch = select
++volume = merge
++override-map.1 = all
++override-map.2 = all-left,all-right
++
++[Option Rear Mic Boost:on]
++name = input-boost-on
++
++[Option Rear Mic Boost:off]
++name = input-boost-off
++
++[Element Rear Mic]
++required-any = any
++switch = mute
++volume = merge
++override-map.1 = all
++override-map.2 = all-left,all-right
++
++[Element Capture]
++switch = mute
++volume = merge
++override-map.1 = all
++override-map.2 = all-left,all-right
++
++[Element Input Source]
++enumeration = select
++
++[Option Input Source:Rear Mic]
++name = analog-input-microphone-rear
++
++[Element Capture Source]
++enumeration = select
++
++[Option Capture Source:Rear Mic]
++name = analog-input-microphone-rear
++
++[Element Mic]
++switch = off
++volume = off
++
++[Element Internal Mic]
++switch = off
++volume = off
++
++[Element Front Mic]
++switch = off
++volume = off
++
++[Element Dock Mic]
++switch = off
++volume = off
++
++.include analog-input-mic.conf.common
+diff --git a/src/modules/alsa/mixer/profile-sets/default.conf b/src/modules/alsa/mixer/profile-sets/default.conf
+index 5d352f1..24a8d98 100644
+--- a/src/modules/alsa/mixer/profile-sets/default.conf
++++ b/src/modules/alsa/mixer/profile-sets/default.conf
+@@ -63,14 +63,14 @@ auto-profiles = yes
+ device-strings = hw:%f
+ channel-map = mono
+ paths-output = analog-output analog-output-speaker analog-output-desktop-speaker analog-output-headphones analog-output-headphones-2 analog-output-mono analog-output-lfe-on-mono
+-paths-input = analog-input analog-input-mic analog-input-linein analog-input-aux analog-input-video analog-input-tvtuner analog-input-fm analog-input-mic-line
++paths-input = analog-input-front-mic analog-input-rear-mic analog-input-internal-mic analog-input-dock-mic analog-input analog-input-mic analog-input-linein analog-input-aux analog-input-video analog-input-tvtuner analog-input-fm analog-input-mic-line
+ priority = 1
+ 
+ [Mapping analog-stereo]
+ device-strings = front:%f hw:%f
+ channel-map = left,right
+ paths-output = analog-output analog-output-speaker analog-output-desktop-speaker analog-output-headphones analog-output-headphones-2 analog-output-mono analog-output-lfe-on-mono
+-paths-input = analog-input analog-input-mic analog-input-linein analog-input-aux analog-input-video analog-input-tvtuner analog-input-fm analog-input-mic-line
++paths-input = analog-input-front-mic analog-input-rear-mic analog-input-internal-mic analog-input-dock-mic analog-input analog-input-mic analog-input-linein analog-input-aux analog-input-video analog-input-tvtuner analog-input-fm analog-input-mic-line
+ priority = 10
+ 
+ [Mapping analog-surround-40]
+-- 
+1.7.1
+

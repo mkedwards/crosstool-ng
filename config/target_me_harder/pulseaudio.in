@@ -1,0 +1,21 @@
+# pulseaudio
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "pulseaudio version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config PULSEAUDIO_V_0_9_23
+    bool
+    prompt "0.9.23 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config PULSEAUDIO_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "0.9.23" if PULSEAUDIO_V_0_9_23

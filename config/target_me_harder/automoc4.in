@@ -1,0 +1,21 @@
+# automoc4
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "automoc4 version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config AUTOMOC4_V_0_9_88
+    bool
+    prompt "0.9.88 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config AUTOMOC4_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "0.9.88" if AUTOMOC4_V_0_9_88

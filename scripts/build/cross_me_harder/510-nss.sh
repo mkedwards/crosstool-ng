@@ -93,7 +93,6 @@ do_cross_me_harder_nss_build() {
     CT_Pushd "security/dbm"
     CT_DoExecLog ALL                                            \
     PKG_CONFIG="${CT_TARGET}-pkg-config --define-variable=prefix=${CT_SYSROOT_DIR}/usr" \
-    PKG_CONFIG_LIBDIR=${CT_SYSROOT_DIR}/usr/lib/pkgconfig       \
     make                                                        \
             NSPR_INCLUDE_DIR="${CT_SYSROOT_DIR}/usr/include/nspr" \
             NSPR_LIB_DIR="${CT_SYSROOT_DIR}/usr/lib"            \
@@ -118,7 +117,6 @@ do_cross_me_harder_nss_build() {
     CT_DoExecLog ALL                                            \
     SHLIBSIGN="${CT_PREFIX_DIR}/bin/shlibsign"                  \
     PKG_CONFIG="${CT_TARGET}-pkg-config --define-variable=prefix=${CT_SYSROOT_DIR}/usr" \
-    PKG_CONFIG_LIBDIR=${CT_SYSROOT_DIR}/usr/lib/pkgconfig       \
     make                                                        \
             USE_SYSTEM_ZLIB=1                                   \
             NSS_USE_SYSTEM_SQLITE=1                             \

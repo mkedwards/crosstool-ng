@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 106
+/svn/umi/!svn/ver/73658/branches/CTBU-Gen2-functional-parity/MonoLake-foreign/opensource-core/dummy-opengl
+END
+libEGL.c
+K 25
+svn:wc:ra_dav:version-url
+V 115
+/svn/umi/!svn/ver/73656/branches/CTBU-Gen2-functional-parity/MonoLake-foreign/opensource-core/dummy-opengl/libEGL.c
+END
+libGLESv2.c
+K 25
+svn:wc:ra_dav:version-url
+V 118
+/svn/umi/!svn/ver/73656/branches/CTBU-Gen2-functional-parity/MonoLake-foreign/opensource-core/dummy-opengl/libGLESv2.c
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 115
+/svn/umi/!svn/ver/73658/branches/CTBU-Gen2-functional-parity/MonoLake-foreign/opensource-core/dummy-opengl/Makefile
+END

@@ -1,0 +1,122 @@
+From 925b51abf5219c9a81e78456ffc4488df5ece793 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld4.cisco.com>
+Date: Mon, 18 Jul 2011 20:23:36 +0000
+Subject: [PATCH] Add configs for TI SoC with GPU
+
+---
+ mkspecs/qws/linux-ti-g++/qmake.conf      |   53 ++++++++++++++++++++++++++++++
+ mkspecs/qws/linux-ti-g++/qplatformdefs.h |   42 +++++++++++++++++++++++
+ 2 files changed, 95 insertions(+), 0 deletions(-)
+ create mode 100644 mkspecs/qws/linux-ti-g++/qmake.conf
+ create mode 100644 mkspecs/qws/linux-ti-g++/qplatformdefs.h
+
+diff --git a/mkspecs/qws/linux-ti-g++/qmake.conf b/mkspecs/qws/linux-ti-g++/qmake.conf
+new file mode 100644
+index 0000000..55a3a40
+--- /dev/null
++++ b/mkspecs/qws/linux-ti-g++/qmake.conf
+@@ -0,0 +1,53 @@
++#
++# qmake configuration for building with linux-g++
++#
++
++include(../../common/g++.conf)
++include(../../common/linux.conf)
++include(../../common/qws.conf)
++
++QMAKE_CCFLAGS		= -g -Os -fno-strict-volatile-bitfields
++QMAKE_CXXFLAGS		= -g -Os -fno-strict-volatile-bitfields
++QMAKE_LFLAGS		= -Wl,-rpath-link,$(BUILD_ROOT)/qt-embedded/lib
++
++QMAKE_CC		= $(HOST_TUPLE)-gcc
++QMAKE_CXX		= $(HOST_TUPLE)-g++
++QMAKE_LINK		= $(HOST_TUPLE)-g++
++QMAKE_LINK_SHLIB	= $(HOST_TUPLE)-g++
++QMAKE_LINK_C		= $(HOST_TUPLE)-gcc
++QMAKE_LINK_C_SHLIB	= $(HOST_TUPLE)-gcc
++
++
++QMAKE_INCDIR          = $(CTBU_SYSROOT)/usr/include
++QMAKE_LIBDIR          = $(CTBU_SYSROOT)/usr/lib
++QMAKE_INCDIR_X11      = 
++QMAKE_LIBDIR_X11      = 
++QMAKE_INCDIR_QT       = $$[QT_INSTALL_HEADERS]
++QMAKE_LIBDIR_QT       = $$[QT_INSTALL_LIBS]
++QMAKE_INCDIR_OPENGL   = 
++QMAKE_LIBDIR_OPENGL   = 
++QMAKE_INCDIR_OPENGL_ES1 = 
++QMAKE_LIBDIR_OPENGL_ES1 = 
++QMAKE_INCDIR_OPENGL_ES1CL = 
++QMAKE_LIBDIR_OPENGL_ES1CL = 
++QMAKE_INCDIR_OPENGL_ES2 = 
++QMAKE_LIBDIR_OPENGL_ES2 = 
++QMAKE_INCDIR_EGL      = 
++QMAKE_LIBDIR_EGL      =
++QMAKE_INCDIR_OPENVG   = 
++QMAKE_LIBDIR_OPENVG   =
++QMAKE_INCDIR_DIRECTFB = $(CTBU_SYSROOT)/usr/include/directfb
++QMAKE_LIBDIR_DIRECTFB = 
++
++QMAKE_LIBS_EGL        = -lEGL
++QMAKE_LIBS_OPENGL_ES2 = -lGLESv2
++QMAKE_LIBS_OPENVG     = -lOpenVGU -lOpenVG
++QMAKE_LIBS_DIRECTFB   = -ldirectfb -lfusion -ldirect -lz
++
++QMAKE_AR              = $(HOST_TUPLE)-ar cqs
++QMAKE_OBJCOPY         = $(HOST_TUPLE)-objcopy
++QMAKE_STRIP           = $(HOST_TUPLE)-strip
++
++DEFINES += QT_QWS_CLIENTBLIT QT_NO_QWS_CURSOR
++
++load(qt_config)
+diff --git a/mkspecs/qws/linux-ti-g++/qplatformdefs.h b/mkspecs/qws/linux-ti-g++/qplatformdefs.h
+new file mode 100644
+index 0000000..b0551e5
+--- /dev/null
++++ b/mkspecs/qws/linux-ti-g++/qplatformdefs.h
+@@ -0,0 +1,42 @@
++/****************************************************************************
++**
++** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
++** All rights reserved.
++** Contact: Nokia Corporation (qt-info@nokia.com)
++**
++** This file is part of the qmake spec of the Qt Toolkit.
++**
++** $QT_BEGIN_LICENSE:LGPL$
++** No Commercial Usage
++** This file contains pre-release code and may not be distributed.
++** You may use this file in accordance with the terms and conditions
++** contained in the Technology Preview License Agreement accompanying
++** this package.
++**
++** GNU Lesser General Public License Usage
++** Alternatively, this file may be used under the terms of the GNU Lesser
++** General Public License version 2.1 as published by the Free Software
++** Foundation and appearing in the file LICENSE.LGPL included in the
++** packaging of this file.  Please review the following information to
++** ensure the GNU Lesser General Public License version 2.1 requirements
++** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
++**
++** In addition, as a special exception, Nokia gives you certain additional
++** rights.  These rights are described in the Nokia Qt LGPL Exception
++** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
++**
++** If you have questions regarding the use of this file, please contact
++** Nokia at qt-info@nokia.com.
++**
++**
++**
++**
++**
++**
++**
++**
++** $QT_END_LICENSE$
++**
++****************************************************************************/
++
++#include "../../linux-g++/qplatformdefs.h"
+-- 
+1.7.0.4
+

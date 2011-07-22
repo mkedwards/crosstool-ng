@@ -1,0 +1,42 @@
+From ec42862d626bce3b89ffbfd5954f547e5451f4fd Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Sun, 13 Mar 2011 22:55:11 +0000
+Subject: [PATCH] add -nostrip option to configure
+
+---
+ configure |   12 ++++++++++++
+ 1 files changed, 12 insertions(+), 0 deletions(-)
+
+diff --git a/configure b/configure
+index ae4ffa5..cc665d9 100755
+--- a/configure
++++ b/configure
+@@ -628,6 +628,7 @@ MIN_DBUS_1_VERSION=0.93
+ 
+ # initalize internal variables
+ CFG_CONFIGURE_EXIT_ON_ERROR=yes
++CFG_NOSTRIP=no
+ CFG_PROFILE=no
+ CFG_EXCEPTIONS=unspecified
+ CFG_GUI=auto # (yes|no|auto)
+@@ -1414,6 +1415,17 @@ while [ "$#" -gt 0 ]; do
+             UNKNOWN_OPT=yes
+         fi
+         ;;
++    nostrip)
++        if [ "$VAL" = "yes" ]; then
++            CFG_NOSTRIP=yes
++	    QMakeVar add QMAKE_CFLAGS -g
++	    QMakeVar add QMAKE_CXXFLAGS -g
++	    QMakeVar add QMAKE_LFLAGS -g
++            QMAKE_VARS="$QMAKE_VARS CONFIG+=nostrip"
++        else
++            UNKNOWN_OPT=yes
++        fi
++        ;;
+     profile)
+         if [ "$VAL" = "yes" ]; then
+             CFG_PROFILE=yes
+-- 
+1.7.0.4
+

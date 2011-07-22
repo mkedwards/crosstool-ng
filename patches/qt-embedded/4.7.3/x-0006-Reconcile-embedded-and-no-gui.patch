@@ -1,0 +1,27 @@
+From 039f758adba557fd59c5e7792a44576be5de7295 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld4.cisco.com>
+Date: Tue, 19 Jul 2011 23:47:59 +0000
+Subject: [PATCH] Reconcile embedded and no-gui
+
+---
+ tools/tools.pro |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/tools/tools.pro b/tools/tools.pro
+index 8f23fe4..66ac930 100644
+--- a/tools/tools.pro
++++ b/tools/tools.pro
+@@ -37,7 +37,9 @@ embedded:SUBDIRS += kmap2qmap
+ contains(QT_CONFIG, dbus):SUBDIRS += qdbus
+ # We don't need these command line utilities on embedded platforms.
+ !wince*:!symbian:contains(QT_CONFIG, xmlpatterns): SUBDIRS += xmlpatterns xmlpatternsvalidator
+-embedded: SUBDIRS += makeqpf
++!contains(QT_CONFIG, no-gui) {
++    embedded: SUBDIRS += makeqpf
++}
+ 
+ !wince*:!cross_compile:SUBDIRS += qdoc3
+ 
+-- 
+1.7.0.4
+

@@ -1,0 +1,22 @@
+--- pulseaudio-0.9.22+stable-queue-18-geb966.orig/src/Makefile.in
++++ pulseaudio-0.9.22+stable-queue-18-geb966/src/Makefile.in
+@@ -3015,7 +3015,7 @@
+ 	pulse/volume.c pulse/volume.h pulse/xmalloc.c pulse/xmalloc.h \
+ 	$(am__append_25)
+ libpulse_la_CFLAGS = $(AM_CFLAGS) $(DBUS_CFLAGS) $(am__append_26)
+-libpulse_la_LIBADD = $(AM_LIBADD) $(WINSOCK_LIBS) $(LTLIBICONV) libpulsecommon-@PA_MAJORMINORMICRO@.la
++libpulse_la_LIBADD = $(AM_LIBADD) $(WINSOCK_LIBS) $(LTLIBICONV) libpulsecommon-@PA_MAJORMINORMICRO@.la $(DBUS_LIBS)
+ libpulse_la_LDFLAGS = $(AM_LDFLAGS) $(VERSIONING_LDFLAGS) \
+ 	-version-info $(LIBPULSE_VERSION_INFO) $(am__append_27)
+ libpulse_simple_la_SOURCES = pulse/simple.c pulse/simple.h
+--- pulseaudio-0.9.22+stable-queue-18-geb966.orig/src/Makefile.am
++++ pulseaudio-0.9.22+stable-queue-18-geb966/src/Makefile.am
+@@ -780,7 +780,7 @@
+ 		pulse/xmalloc.c pulse/xmalloc.h
+ 
+ libpulse_la_CFLAGS = $(AM_CFLAGS) $(DBUS_CFLAGS)
+-libpulse_la_LIBADD = $(AM_LIBADD) $(WINSOCK_LIBS) $(LTLIBICONV) libpulsecommon-@PA_MAJORMINORMICRO@.la
++libpulse_la_LIBADD = $(AM_LIBADD) $(WINSOCK_LIBS) $(LTLIBICONV) libpulsecommon-@PA_MAJORMINORMICRO@.la $(DBUS_LIBS)
+ libpulse_la_LDFLAGS = $(AM_LDFLAGS) $(VERSIONING_LDFLAGS) -version-info $(LIBPULSE_VERSION_INFO)
+ 
+ if HAVE_X11

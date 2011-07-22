@@ -1,0 +1,44 @@
+From 729223d4c2c8e56e1e4bf838ee9aa11d36f2d90a Mon Sep 17 00:00:00 2001
+From: David Henningsson <david.henningsson@canonical.com>
+Date: Mon, 20 Dec 2010 11:13:37 +0100
+Subject: [PATCH 1/6] alsa-mixer: Add a few well-known descriptions
+
+Add front mic, rear mic, and docking line-in. These are likely to be
+present on modern hda chips, for reference see
+linux-2.6/sound/pci/hda/hda_codec.c:hda_get_input_pin_label
+
+Signed-off-by: David Henningsson <david.henningsson@canonical.com>
+---
+ src/modules/alsa/alsa-mixer.c |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
+
+diff --git a/src/modules/alsa/alsa-mixer.c b/src/modules/alsa/alsa-mixer.c
+index 1ede8cf..eb50ae2 100644
+--- a/src/modules/alsa/alsa-mixer.c
++++ b/src/modules/alsa/alsa-mixer.c
+@@ -1701,8 +1701,11 @@ static int option_verify(pa_alsa_option *o) {
+         { "input",                     N_("Input") },
+         { "input-docking",             N_("Docking Station Input") },
+         { "input-docking-microphone",  N_("Docking Station Microphone") },
++        { "input-docking-linein",      N_("Docking Station Line-In") },
+         { "input-linein",              N_("Line-In") },
+         { "input-microphone",          N_("Microphone") },
++        { "input-microphone-front",    N_("Front Microphone") },
++        { "input-microphone-rear",     N_("Rear Microphone") },
+         { "input-microphone-external", N_("External Microphone") },
+         { "input-microphone-internal", N_("Internal Microphone") },
+         { "input-radio",               N_("Radio") },
+@@ -1776,6 +1779,10 @@ static int path_verify(pa_alsa_path *p) {
+     static const struct description_map well_known_descriptions[] = {
+         { "analog-input",               N_("Analog Input") },
+         { "analog-input-microphone",    N_("Analog Microphone") },
++        { "analog-input-microphone-front",    N_("Front Microphone") },
++        { "analog-input-microphone-rear",     N_("Rear Microphone") },
++        { "analog-input-microphone-dock",     N_("Docking Station Microphone") },
++        { "analog-input-microphone-internal", N_("Internal Microphone") },
+         { "analog-input-linein",        N_("Analog Line-In") },
+         { "analog-input-radio",         N_("Analog Radio") },
+         { "analog-input-video",         N_("Analog Video") },
+-- 
+1.7.1
+

@@ -1,0 +1,13 @@
+Index: qt-everywhere-opensource-src-4.7.2/src/gui/itemviews/qtreeview.cpp
+===================================================================
+--- qt-everywhere-opensource-src-4.7.2.orig/src/gui/itemviews/qtreeview.cpp	2011-03-02 18:05:06.627309504 +0000
++++ qt-everywhere-opensource-src-4.7.2/src/gui/itemviews/qtreeview.cpp	2011-03-02 18:09:54.057309612 +0000
+@@ -3223,7 +3223,7 @@
+         return defaultItemHeight;
+     if (viewItems.isEmpty())
+         return 0;
+-    const QModelIndex &index = viewItems.at(item).index;
++    QModelIndex index = viewItems.at(item).index;
+     int height = viewItems.at(item).height;
+     if (height <= 0 && index.isValid()) {
+         height = q_func()->indexRowSizeHint(index);

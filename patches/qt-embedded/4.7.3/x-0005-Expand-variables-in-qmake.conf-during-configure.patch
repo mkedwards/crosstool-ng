@@ -1,0 +1,25 @@
+From 5b7324d6301c30a2b4f426ca54e58dfd2fae3b8d Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld4.cisco.com>
+Date: Tue, 19 Jul 2011 21:14:35 +0000
+Subject: [PATCH] Expand variables in qmake.conf during configure
+
+---
+ configure |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/configure b/configure
+index cc665d9..ca1ae6b 100755
+--- a/configure
++++ b/configure
+@@ -122,7 +122,7 @@ getQMakeConf1()
+             getQMakeConf1 "$conf_file"
+         ;;
+         *)
+-            echo "$line"
++            echo "$line" | $PERL -pe 's/\$\(([^)]+)\)/$ENV{$1}/g'
+         ;;
+     esac; done < "$1"
+ }
+-- 
+1.7.0.4
+

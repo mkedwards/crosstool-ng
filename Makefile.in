@@ -209,7 +209,7 @@ install-bin: $(DESTDIR)$(BINDIR)
 # is the goal of the install-lib rule to install the lib/ directory...
 install-lib: uninstall-lib $(DESTDIR)$(LIBDIR) install-lib-main install-lib-samples
 
-LIB_SUB_DIR := config contrib kconfig patches scripts
+LIB_SUB_DIR := config contrib kconfig patches scripts dummy-opengl-es2
 $(patsubst %,install-lib-%-copy,$(LIB_SUB_DIR)): $(DESTDIR)$(LIBDIR)
 	@echo "  INSTDIR '$(patsubst install-lib-%-copy,%,$(@))/'"
 	@tar cf - --exclude='*.sh.in' $(patsubst install-lib-%-copy,%,$(@)) \

@@ -1,0 +1,21 @@
+# alsa-utils
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "alsa-utils version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config ALSA_UTILS_V_1_0_24_2
+    bool
+    prompt "1.0.24.2 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config ALSA_UTILS_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.0.24.2" if ALSA_UTILS_V_1_0_24_2

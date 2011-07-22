@@ -1,0 +1,22 @@
+Description: Don't make the std:: symbols in webkit public.
+Solution based on the work of Mike Hommey in the gtk webkit package.
+Author: Sune Vuorela <debian@pusling.com>
+
+--- a/src/3rdparty/webkit/WebKit.pri
++++ b/src/3rdparty/webkit/WebKit.pri
+@@ -54,6 +54,7 @@ symbian {
+ } else {
+     INCLUDEPATH += $$OUTPUT_DIR/include/QtWebKit
+ }
++QMAKE_LFLAGS += -Wl,--version-script,$$BASE_DIR/symbols.filter
+ 
+ CONFIG -= warn_on
+ *-g++*:QMAKE_CXXFLAGS += -Wall -Wreturn-type -fno-strict-aliasing -Wcast-align -Wchar-subscripts -Wformat-security -Wreturn-type -Wno-unused-parameter -Wno-sign-compare -Wno-switch -Wno-switch-enum -Wundef -Wmissing-noreturn -Winit-self
+--- /dev/null
++++ b/src/3rdparty/webkit/symbols.filter
+@@ -0,0 +1,5 @@
++{
++local:
++_ZSt*;
++_ZNSt*;
++};

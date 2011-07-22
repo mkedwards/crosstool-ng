@@ -15,7 +15,12 @@ ac_cv_func_strncmp_works=yes
 ac_cv_func_vsnprintf_c99=yes
 ac_cv_have_abstract_sockets=no
 ac_cv_have_abstract_sockets=no
+ac_cv_lib_formw___new_form=yes
+ac_cv_lib_panelw___new_panel=yes
+ac_cv_lib_menuw___new_menu=yes
 ac_cv_linux_vers=2
+ac_cv_prog_ncursesw5_config=no
+ac_cv_prog_ncurses5_config=no
 ac_cv_sys_largefile_CFLAGS="-D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
 ac_cv_sys_largefile_LDFLAGS=""
 ac_cv_sys_largefile_LIBS=""

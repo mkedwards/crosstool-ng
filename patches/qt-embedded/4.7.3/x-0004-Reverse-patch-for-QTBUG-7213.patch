@@ -1,0 +1,38 @@
+From 854a7a72303e37774f932a16c4a7164b592aca83 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Thu, 17 Mar 2011 09:52:07 +0000
+Subject: [PATCH] Reverse patch for QTBUG-7213.
+
+See http://qt.gitorious.org/+qt-kinetic-developers/qt/kinetic/commit/9baeb2fc297a7a30bb467ea0d1986c7fecea2e58
+---
+ src/opengl/qgl.cpp |    7 +++----
+ 1 files changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/src/opengl/qgl.cpp b/src/opengl/qgl.cpp
+index 1939656..7cf28af 100644
+--- a/src/opengl/qgl.cpp
++++ b/src/opengl/qgl.cpp
+@@ -2437,10 +2437,7 @@ QGLTexture* QGLContextPrivate::bindTexture(const QImage &image, GLenum target, G
+     GLuint pixel_type;
+     if (QGLExtensions::glExtensions() & QGLExtensions::BGRATextureFormat) {
+         externalFormat = GL_BGRA;
+-        if (QGLFormat::openGLVersionFlags() & QGLFormat::OpenGL_Version_1_2)
+-            pixel_type = GL_UNSIGNED_INT_8_8_8_8_REV;
+-        else
+-            pixel_type = GL_UNSIGNED_BYTE;
++        pixel_type = GL_UNSIGNED_INT_8_8_8_8_REV;
+     } else {
+         externalFormat = GL_RGBA;
+         pixel_type = GL_UNSIGNED_BYTE;
+@@ -2522,6 +2519,8 @@ QGLTexture* QGLContextPrivate::bindTexture(const QImage &image, GLenum target, G
+     // OpenGL/ES requires that the internal and external formats be
+     // identical.
+     internalFormat = externalFormat;
++    if (pixel_type == GL_UNSIGNED_INT_8_8_8_8_REV)
++        pixel_type = GL_UNSIGNED_BYTE;
+ #endif
+ #ifdef QGL_BIND_TEXTURE_DEBUG
+     printf(" - uploading, image.format=%d, externalFormat=0x%x, internalFormat=0x%x, pixel_type=0x%x\n",
+-- 
+1.7.0.4
+

@@ -1,0 +1,28 @@
+From: Elimar Riesebieter <riesebie@lxtec.de>
+Subject: Fix typos in aplay.c and aseqnet.c
+diff --git a/aplay/aplay.c b/aplay/aplay.c
+index c7c82a1..e2122dd 100644
+--- a/aplay/aplay.c
++++ b/aplay/aplay.c
+@@ -203,7 +203,7 @@ _("Usage: %s [OPTION]... [FILE]...\n"
+ 			printf(" %s", s);
+ 	}
+ 	printf(_("\nSome of these may not be available on selected hardware\n"));
+-	printf(_("The availabled format shortcuts are:\n"));
++	printf(_("The available format shortcuts are:\n"));
+ 	printf(_("-f cd (16 bit little endian, 44100, stereo)\n"));
+ 	printf(_("-f cdr (16 bit big endian, 44100, stereo)\n"));
+ 	printf(_("-f dat (16 bit little endian, 48000, stereo)\n"));
+diff --git a/seq/aseqnet/aseqnet.c b/seq/aseqnet/aseqnet.c
+index e071ad9..70a1cfd 100644
+--- a/seq/aseqnet/aseqnet.c
++++ b/seq/aseqnet/aseqnet.c
+@@ -167,7 +167,7 @@ static void usage(void)
+ 	printf(_("  server mode: aseqnet [-options]\n"));
+ 	printf(_("  client mode: aseqnet [-options] server_host\n"));
+ 	printf(_("options:\n"));
+-	printf(_("  -p,--port # : sepcify TCP port (digit or service name)\n"));
++	printf(_("  -p,--port # : specify TCP port (digit or service name)\n"));
+ 	printf(_("  -s,--source addr : read from given addr (client:port)\n"));
+ 	printf(_("  -d,--dest addr : write to given addr (client:port)\n"));
+ 	printf(_("  -v, --verbose : print verbose messages\n"));

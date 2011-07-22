@@ -1,0 +1,113 @@
+Index: alsa-utils-1.0.24.2/alsactl/init/default
+===================================================================
+--- alsa-utils-1.0.24.2.orig/alsactl/init/default	2011-02-21 12:43:29.374811231 +0100
++++ alsa-utils-1.0.24.2/alsactl/init/default	2011-02-21 13:26:42.762810505 +0100
+@@ -126,6 +126,12 @@
+   CTL{values}="on"
+ 
+ CTL{reset}="mixer"
++CTL{name}="DAC Playback Volume",CTL{index}="1",CTL{do_search}=="1", \
++  CTL{values}="$env{pvolume}",RESULT!="0",CTL{values}="$env{ppercent}"
++CTL{name}="DAC Playback Switch",CTL{index}="1",CTL{do_search}=="1", \
++  CTL{values}="on"
++
++CTL{reset}="mixer"
+ CTL{name}="Synth Playback Volume",CTL{do_search}=="1", \
+   CTL{values}="$env{pvolume}",RESULT!="0",CTL{values}="$env{ppercent}"
+ CTL{name}="Synth Playback Switch",CTL{do_search}=="1", \
+@@ -174,6 +180,81 @@
+ CTL{name}="AC97 Playback Switch",CTL{do_search}=="1", \
+   CTL{values}="on"
+ 
++# Ubuntu bug #19648
++CTL{reset}="mixer"
++CTL{name}="IEC958 Switch",CTL{do_search}=="1", \
++  CTL{values}="off"
++CTL{name}="IEC958 Capture Monitor",CTL{do_search}=="1", \
++  CTL{values}="off"
++# Ubuntu #408370
++CTL{name}="Optical Raw Playback Switch",CTL{do_search}=="1", \
++  CTL{values}="off"
++
++# Ubuntu unknown bug (bug nr probably similar to 5813)
++CTL{reset}="mixer"
++CTL{name}="Master Surround Playback Volume",CTL{do_search}=="1", \
++  CTL{values}="$env{pvolume}",RESULT!="0",CTL{values}="$env{ppercent}"
++CTL{name}="Master Surround Playback Switch",CTL{do_search}=="1", \
++  CTL{values}="on"
++
++# dropped - name not present in kernel 2.6.38:
++# Dynamic Range Compression Volume/Switch
++# VIA DXS
++
++# Ubuntu - Required for SB Live 7.1/24-bit (ca0106)
++CTL{reset}="mixer"
++CTL{name}="Analog Front Playback Volume",CTL{do_search}=="1", \
++  CTL{values}="$env{pvolume}",RESULT!="0",CTL{values}="$env{ppercent}"
++CTL{name}="Analog Front Playback Switch",CTL{do_search}=="1", \
++  CTL{values}="on"
++
++# Ubuntu #597791
++CTL{reset}="mixer"
++CTL{name}="Front Speaker Playback Volume",CTL{do_search}=="1", \
++  CTL{values}="$env{pvolume}",RESULT!="0",CTL{values}="$env{ppercent}"
++CTL{name}="Front Speaker Playback Switch",CTL{do_search}=="1", \
++  CTL{values}="on"
++
++# Ubuntu #331589
++CTL{reset}="mixer"
++CTL{name}="PC Beep Playback Volume",CTL{do_search}=="1", \
++  CTL{values}="0%"
++CTL{name}="PC Beep Playback Switch",CTL{do_search}=="1", \
++  CTL{values}="off"
++
++# Required for hardware allowing toggles for AC97 through IEC958,
++#  valid values are 0, 1, 2, 3. Needs to be set to 0 for PCM1.
++CTL{reset}="mixer"
++CTL{name}="IEC958 Playback AC97-SPSA",CTL{do_search}=="1", \
++  CTL{values}="0"
++
++# Required on some notebooks with ICH4:
++CTL{reset}="mixer"
++CTL{name}="Headphone Jack Sense",CTL{do_search}=="1", \
++  CTL{values}="off"
++CTL{name}="Line Jack Sense",CTL{do_search}=="1", \
++  CTL{values}="off"
++
++CTL{reset}="mixer"
++CTL{name}="Audigy Analog/Digital Output Jack",CTL{do_search}=="1", \
++  CTL{values}="off"
++CTL{name}="SB Live Analog/Digital Output Jack",CTL{do_search}=="1", \
++  CTL{values}="off"
++
++# HDA-Intel w/ "Digital" capture mixer (See Ubuntu #193823)
++CTL{reset}="mixer"
++CTL{name}="Digital Playback Volume",CTL{do_search}=="1", \
++  CTL{values}="$env{pvolume}",RESULT!="0",CTL{values}="$env{ppercent}"
++CTL{name}="Digital Playback Switch",CTL{do_search}=="1", \
++  CTL{values}="on"
++
++# Dove boards need 'Line HP Swap' unmuted for the jack adjacent
++# to the serial port (Ubuntu #451635)
++CTL{reset}="mixer"
++CTL{name}="Line HP Swap Switch",CTL{do_search}=="1", \
++  CTL{values}="on"
++
++
+ #
+ # Powermacs
+ #
+@@ -199,11 +280,13 @@
+ 
+ CTL{name}="Input Source",PROGRAM!="__ctl_search", GOTO=""
+ CTL{enums}=="*|Internal Mic|*",CTL{values}="Internal Mic", GOTO=""
++CTL{enums}=="*|Digital Mic|*",CTL{values}="Digital Mic", GOTO=""
+ CTL{enums}=="*|Mic|*",CTL{values}="Mic"
+ LABEL=""
+ 
+ CTL{name}="Digital Input Source",PROGRAM!="__ctl_search", GOTO=""
+ CTL{enums}=="*|Digital Mic 1|*",CTL{values}="Digital Mic 1", GOTO=""
++CTL{enums}=="*|Digital Mic|*",CTL{values}="Digital Mic", GOTO=""
+ CTL{enums}=="*|Mic|*",CTL{values}="Mic"
+ LABEL=""
+ 

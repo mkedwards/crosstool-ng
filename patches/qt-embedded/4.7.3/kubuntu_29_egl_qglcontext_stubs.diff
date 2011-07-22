@@ -1,0 +1,42 @@
+Description: Retain ABI and API compatibility when Qt is built with EGL.
+Author: Felix Geyer <debfx-pkg@fobos.de>
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/707794
+
+Index: qt-everywhere-opensource-src-4.7.2/src/opengl/qgl.h
+===================================================================
+--- qt-everywhere-opensource-src-4.7.2.orig/src/opengl/qgl.h	2011-02-22 12:03:59.000000000 +0000
++++ qt-everywhere-opensource-src-4.7.2/src/opengl/qgl.h	2011-03-03 10:58:08.778965132 +0000
+@@ -385,7 +385,7 @@
+ #if defined(Q_WS_WIN)
+     virtual int choosePixelFormat(void* pfd, HDC pdc);
+ #endif
+-#if defined(Q_WS_X11) && defined(QT_NO_EGL)
++#if defined(Q_WS_X11)
+     virtual void* tryVisual(const QGLFormat& f, int bufDepth = 1);
+     virtual void* chooseVisual();
+ #endif
+Index: qt-everywhere-opensource-src-4.7.2/src/opengl/qgl_x11egl.cpp
+===================================================================
+--- qt-everywhere-opensource-src-4.7.2.orig/src/opengl/qgl_x11egl.cpp	2011-02-22 12:03:59.000000000 +0000
++++ qt-everywhere-opensource-src-4.7.2/src/opengl/qgl_x11egl.cpp	2011-03-03 10:58:08.788965132 +0000
+@@ -248,6 +248,20 @@
+     return true;
+ }
+ 
++void *QGLContext::chooseVisual()
++{
++    qFatal("QGLContext::chooseVisual - this method must not be called as Qt is built with EGL support");
++    return 0;
++}
++
++void *QGLContext::tryVisual(const QGLFormat& f, int bufDepth)
++{
++    Q_UNUSED(f);
++    Q_UNUSED(bufDepth);
++    qFatal("QGLContext::tryVisual - this method must not be called as Qt is built with EGL support");
++    return 0;
++}
++
+ void QGLWidget::resizeEvent(QResizeEvent *)
+ {
+     Q_D(QGLWidget);

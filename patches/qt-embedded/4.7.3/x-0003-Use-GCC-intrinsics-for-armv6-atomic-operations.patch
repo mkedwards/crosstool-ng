@@ -1,0 +1,200 @@
+From 7aaf387cdb578327017169a9c97bcf6c0581a780 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Mon, 14 Mar 2011 01:52:46 +0000
+Subject: [PATCH] Use GCC intrinsics for armv6 atomic operations
+
+---
+ src/corelib/arch/qatomic_armv6.h |  146 +++++++------------------------------
+ 1 files changed, 28 insertions(+), 118 deletions(-)
+
+diff --git a/src/corelib/arch/qatomic_armv6.h b/src/corelib/arch/qatomic_armv6.h
+index 53f7907..7dfc002 100644
+--- a/src/corelib/arch/qatomic_armv6.h
++++ b/src/corelib/arch/qatomic_armv6.h
+@@ -104,155 +104,65 @@ Q_INLINE_TEMPLATE bool QBasicAtomicPointer<T>::isFetchAndAddWaitFree()
+ 
+ inline bool QBasicAtomicInt::ref()
+ {
+-    register int newValue;
+-    register int result;
+-    asm volatile("0:\n"
+-                 "ldrex %[newValue], [%[_q_value]]\n"
+-                 "add %[newValue], %[newValue], #1\n"
+-                 "strex %[result], %[newValue], [%[_q_value]]\n"
+-                 "teq %[result], #0\n"
+-                 "bne 0b\n"
+-                 : [newValue] "=&r" (newValue),
+-                   [result] "=&r" (result),
+-                   "+m" (_q_value)
+-                 : [_q_value] "r" (&_q_value)
+-                 : "cc", "memory");
+-    return newValue != 0;
++    return __sync_add_and_fetch(&_q_value, 1) != 0;
+ }
+ 
+ inline bool QBasicAtomicInt::deref()
+ {
+-    register int newValue;
+-    register int result;
+-    asm volatile("0:\n"
+-                 "ldrex %[newValue], [%[_q_value]]\n"
+-                 "sub %[newValue], %[newValue], #1\n"
+-                 "strex %[result], %[newValue], [%[_q_value]]\n"
+-                 "teq %[result], #0\n"
+-                 "bne 0b\n"
+-                 : [newValue] "=&r" (newValue),
+-                   [result] "=&r" (result),
+-                   "+m" (_q_value)
+-                 : [_q_value] "r" (&_q_value)
+-                 : "cc", "memory");
+-    return newValue != 0;
++    return __sync_sub_and_fetch(&_q_value, 1) != 0;
+ }
+ 
+ inline bool QBasicAtomicInt::testAndSetOrdered(int expectedValue, int newValue)
+ {
+-    register int result;
+-    asm volatile("0:\n"
+-                 "ldrex %[result], [%[_q_value]]\n"
+-                 "eors %[result], %[result], %[expectedValue]\n"
+-                 "strexeq %[result], %[newValue], [%[_q_value]]\n"
+-                 "teqeq %[result], #1\n"
+-                 "beq 0b\n"
+-                 : [result] "=&r" (result),
+-                   "+m" (_q_value)
+-                 : [expectedValue] "r" (expectedValue),
+-                   [newValue] "r" (newValue),
+-                   [_q_value] "r" (&_q_value)
+-                 : "cc", "memory");
+-    return result == 0;
++    return __sync_bool_compare_and_swap(&_q_value, expectedValue, newValue);
+ }
+ 
+ inline int QBasicAtomicInt::fetchAndStoreOrdered(int newValue)
+ {
+-    register int originalValue;
+-    register int result;
+-    asm volatile("0:\n"
+-                 "ldrex %[originalValue], [%[_q_value]]\n"
+-                 "strex %[result], %[newValue], [%[_q_value]]\n"
+-                 "teq %[result], #0\n"
+-                 "bne 0b\n"
+-                 : [originalValue] "=&r" (originalValue),
+-                   [result] "=&r" (result),
+-                   "+m" (_q_value)
+-                 : [newValue] "r" (newValue),
+-                   [_q_value] "r" (&_q_value)
+-                 : "cc", "memory");
+-    return originalValue;
++    if (!newValue)
++        return __sync_fetch_and_and(&_q_value, 0);
++    else
++    {
++        int expectedValue = 0;
++        int oldValue;
++        do {
++            oldValue = __sync_val_compare_and_swap(&_q_value, expectedValue, newValue);
++        } while (oldValue != expectedValue);
++        return oldValue;
++    }
+ }
+ 
+ inline int QBasicAtomicInt::fetchAndAddOrdered(int valueToAdd)
+ {
+-    register int originalValue;
+-    register int newValue;
+-    register int result;
+-    asm volatile("0:\n"
+-                 "ldrex %[originalValue], [%[_q_value]]\n"
+-                 "add %[newValue], %[originalValue], %[valueToAdd]\n"
+-                 "strex %[result], %[newValue], [%[_q_value]]\n"
+-                 "teq %[result], #0\n"
+-                 "bne 0b\n"
+-                 : [originalValue] "=&r" (originalValue),
+-                   [newValue] "=&r" (newValue),
+-                   [result] "=&r" (result),
+-                   "+m" (_q_value)
+-                 : [valueToAdd] "r" (valueToAdd),
+-                   [_q_value] "r" (&_q_value)
+-                 : "cc", "memory");
+-    return originalValue;
++    return __sync_fetch_and_add(&_q_value, valueToAdd);
+ }
+ 
+ template <typename T>
+ Q_INLINE_TEMPLATE bool QBasicAtomicPointer<T>::testAndSetOrdered(T *expectedValue, T *newValue)
+ {
+-    register T *result;
+-    asm volatile("0:\n"
+-                 "ldrex %[result], [%[_q_value]]\n"
+-                 "eors %[result], %[result], %[expectedValue]\n"
+-                 "strexeq %[result], %[newValue], [%[_q_value]]\n"
+-                 "teqeq %[result], #1\n"
+-                 "beq 0b\n"
+-                 : [result] "=&r" (result),
+-                   "+m" (_q_value)
+-                 : [expectedValue] "r" (expectedValue),
+-                   [newValue] "r" (newValue),
+-                   [_q_value] "r" (&_q_value)
+-                 : "cc", "memory");
+-    return result == 0;
++    return __sync_bool_compare_and_swap(&_q_value, expectedValue, newValue);
+ }
+ 
+ template <typename T>
+ Q_INLINE_TEMPLATE T *QBasicAtomicPointer<T>::fetchAndStoreOrdered(T *newValue)
+ {
+-    register T *originalValue;
+-    register int result;
+-    asm volatile("0:\n"
+-                 "ldrex %[originalValue], [%[_q_value]]\n"
+-                 "strex %[result], %[newValue], [%[_q_value]]\n"
+-                 "teq %[result], #0\n"
+-                 "bne 0b\n"
+-                 : [originalValue] "=&r" (originalValue),
+-                   [result] "=&r" (result),
+-                   "+m" (_q_value)
+-                 : [newValue] "r" (newValue),
+-                   [_q_value] "r" (&_q_value)
+-                 : "cc", "memory");
+-    return originalValue;
++    if (!newValue)
++        return __sync_fetch_and_and(&_q_value, 0);
++    else
++    {
++        T* expectedValue = 0;
++        T* oldValue;
++        do {
++            oldValue = __sync_val_compare_and_swap(&_q_value, expectedValue, newValue);
++        } while (oldValue != expectedValue);
++        return oldValue;
++    }
+ }
+ 
+ template <typename T>
+ Q_INLINE_TEMPLATE T *QBasicAtomicPointer<T>::fetchAndAddOrdered(qptrdiff valueToAdd)
+ {
+-    register T *originalValue;
+-    register T *newValue;
+-    register int result;
+-    asm volatile("0:\n"
+-                 "ldrex %[originalValue], [%[_q_value]]\n"
+-                 "add %[newValue], %[originalValue], %[valueToAdd]\n"
+-                 "strex %[result], %[newValue], [%[_q_value]]\n"
+-                 "teq %[result], #0\n"
+-                 "bne 0b\n"
+-                 : [originalValue] "=&r" (originalValue),
+-                   [newValue] "=&r" (newValue),
+-                   [result] "=&r" (result),
+-                   "+m" (_q_value)
+-                 : [valueToAdd] "r" (valueToAdd * sizeof(T)),
+-                   [_q_value] "r" (&_q_value)
+-                 : "cc", "memory");
+-    return originalValue;
++    return (T*) __sync_fetch_and_add((volatile int*) &_q_value, valueToAdd);
+ }
+ 
+ #else
+-- 
+1.7.0.4
+

@@ -1,0 +1,44 @@
+From 26b4ad5af8f342fea905ea3682d5a3a512f297e3 Mon Sep 17 00:00:00 2001
+From: David Henningsson <david.henningsson@canonical.com>
+Date: Mon, 4 Apr 2011 11:28:47 +0200
+Subject: [PATCH] alsactl init: Mute CD Playback volume by default
+
+The CD analog playback line is seldom used these days, as all
+modern players rip the CD and use the DAC on the sound card.
+In addition, it causes background hum on some machines.
+Therefore keep it muted by default.
+
+BugLink: http://bugs.launchpad.net/bugs/747184
+Signed-off-by: David Henningsson <david.henningsson@canonical.com>
+---
+ alsactl/init/default |   13 +++----------
+ 1 files changed, 3 insertions(+), 10 deletions(-)
+
+diff --git a/alsactl/init/default b/alsactl/init/default
+index 7f8ec4c..b7cb941 100644
+--- a/alsactl/init/default
++++ b/alsactl/init/default
+@@ -144,17 +144,10 @@ CTL{name}="Music Playback Switch",CTL{do_search}=="1", \
+   CTL{values}="on"
+ 
+ CTL{reset}="mixer"
+-CTL{name}="CD Playback Volume",PROGRAM!="__ctl_search", GOTO=""
+-# if master volume control is present, turn CD volume to max
+-ENV{has_pmaster_vol}=="true",CTL{write}=="0dB",GOTO=""
+-ENV{has_pmaster_vol}=="true",CTL{write}=="100%",GOTO=""
+-# exception - some HDA codecs have shifted dB range
+-CTL{dBmin}=="-34.50dB",CTL{dBmax}=="12.00dB",CTL{write}=="0dB",GOTO=""
+-CTL{dBmin}=="-30.00dB",CTL{dBmax}=="0dB",CTL{write}=="0dB",GOTO=""
+-CTL{write}!="$env{pvolume}",CTL{values}="$env{ppercent}"
+-LABEL=""
++CTL{name}="CD Playback Volume",CTL{do_search}=="1", \
++  CTL{values}="0%"
+ CTL{name}="CD Playback Switch",CTL{do_search}=="1", \
+-  CTL{values}="on"
++  CTL{values}="off"
+ 
+ CTL{reset}="mixer"
+ CTL{name}="Mono Playback Volume",CTL{do_search}=="1", \
+-- 
+1.7.4.1
+

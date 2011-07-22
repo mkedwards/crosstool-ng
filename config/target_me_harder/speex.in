@@ -1,0 +1,21 @@
+# speex
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "speex version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config SPEEX_V_1_2rc1
+    bool
+    prompt "1.2rc1 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config SPEEX_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.2rc1" if SPEEX_V_1_2rc1

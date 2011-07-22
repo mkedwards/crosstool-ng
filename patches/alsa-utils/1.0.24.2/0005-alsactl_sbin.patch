@@ -1,0 +1,8 @@
+Index: alsa-utils-1.0.24.2/alsactl/90-alsa-restore.rules.in
+===================================================================
+--- alsa-utils-1.0.24.2.orig/alsactl/90-alsa-restore.rules.in	2011-02-09 15:29:31.204340223 +0100
++++ alsa-utils-1.0.24.2/alsactl/90-alsa-restore.rules.in	2011-02-09 15:29:50.928340221 +0100
+@@ -1,2 +1,2 @@
+ ACTION=="add", SUBSYSTEM=="sound", KERNEL=="controlC*", KERNELS=="card*", \
+-        RUN+="@sbindir@/alsactl restore $attr{number}"
++        RUN+="/sbin/alsactl restore $attr{number}"

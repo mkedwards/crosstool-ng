@@ -1,0 +1,12 @@
+--- a/src/3rdparty/webkit/WebCore/loader/TextResourceDecoder.cpp	2010-10-14 10:49:12.000000000 +0800
++++ b/src/3rdparty/webkit/WebCore/loader/TextResourceDecoder.cpp	2010-10-14 10:51:19.736666930 +0800
+@@ -797,6 +797,9 @@ String TextResourceDecoder::decode(const
+     if ((m_contentType == HTML || m_contentType == XML) && !m_checkedForHeadCharset) // HTML and XML
+         if (!checkForHeadCharset(data, len, movedDataToBuffer))
+             return "";
++        // change gb2312/gbk to gb18030 in html/xml files
++        else if (m_encoding == "gb2312" || m_encoding == "gbk" || m_encoding == "GB2312" || m_encoding == "GBK")
++            setEncoding("GB18030", AutoDetectedEncoding);
+ 
+     // FIXME: It is wrong to change the encoding downstream after we have already done some decoding.
+     if (shouldAutoDetect()) {

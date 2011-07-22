@@ -1,0 +1,21 @@
+# libsndfile
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "libsndfile version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LIBSNDFILE_V_1_0_25
+    bool
+    prompt "1.0.25 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config LIBSNDFILE_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.0.25" if LIBSNDFILE_V_1_0_25
