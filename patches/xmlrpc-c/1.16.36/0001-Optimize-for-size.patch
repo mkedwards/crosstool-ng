@@ -1,0 +1,30 @@
+From a1f04d9c8756bf53471edfc2e0a4070d4baac7be Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Sat, 28 May 2011 04:20:22 +0000
+Subject: [PATCH] Optimize for size
+
+---
+ common.mk |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/common.mk b/common.mk
+index fe4ddbc..928b3ef 100644
+--- a/common.mk
++++ b/common.mk
+@@ -35,11 +35,11 @@ CFLAGS_COMMON = -DNDEBUG
+ CXXFLAGS_COMMON = -DNDEBUG
+ 
+ ifeq ($(C_COMPILER_GNU),yes)
+-  CFLAGS_COMMON += $(GCC_C_WARNINGS) -fno-common -g -O3
++  CFLAGS_COMMON += $(GCC_C_WARNINGS) -fno-common -g -Os
+ endif
+ 
+ ifeq ($(CXX_COMPILER_GNU),yes)
+-  CXXFLAGS_COMMON += $(GCC_CXX_WARNINGS) -g
++  CXXFLAGS_COMMON += $(GCC_CXX_WARNINGS) -g -Os
+ endif
+ 
+ DISTDIR = $(BLDDIR)/$(PACKAGE)-$(VERSION)/$(SUBDIR)
+-- 
+1.7.0.4
+

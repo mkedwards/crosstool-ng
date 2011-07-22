@@ -1,0 +1,21 @@
+# xmlrpc-c
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "xmlrpc-c version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config XMLRPC_C_V_1_16_36
+    bool
+    prompt "1.16.36 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config XMLRPC_C_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.16.36" if XMLRPC_C_V_1_16_36

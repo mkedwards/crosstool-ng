@@ -1,0 +1,21 @@
+# openssh
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "openssh version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config OPENSSH_V_5_8p2
+    bool
+    prompt "5.8p2 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config OPENSSH_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "5.8p2" if OPENSSH_V_5_8p2

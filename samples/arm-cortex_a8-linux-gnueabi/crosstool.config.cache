@@ -1,4 +1,5 @@
 ac_cv_buggy_ether_ntohost=no
+ac_cv_file__dev_random=yes
 ac_cv_file__usr_share_hwdata_pci_ids=no
 ac_cv_file__usr_share_misc_pci_ids=no
 ac_cv_file__usr_share_pci_ids=yes

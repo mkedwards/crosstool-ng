@@ -1,0 +1,21 @@
+# xerces-c
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "xerces-c version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config XERCES_C_V_3_1_1
+    bool
+    prompt "3.1.1 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config XERCES_C_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "3.1.1" if XERCES_C_V_3_1_1
