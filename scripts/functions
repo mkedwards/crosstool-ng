@@ -410,7 +410,7 @@ CT_GetFileExtension() {
     # we need to also check for an empty extension for those very
     # peculiar components that don't have one (such as sstrip from
     # buildroot).
-    for ext in ${first_ext} .src.tar.gz .tar.gz .tar.bz2 .tgz .tar .zip /.git ''; do
+    for ext in ${first_ext} .tar.bz2 .orig.tar.gz .src.tar.gz .tar.gz .tgz .tar .zip /.git ''; do
         if [ -e "${CT_TARBALLS_DIR}/${file}${ext}" ]; then
             echo "${ext}"
             exit 0
@@ -481,7 +481,7 @@ CT_GetLocal() {
         CT_DoLog DEBUG "Trying to retrieve an already downloaded copy of '${basename}'"
         # We'd rather have a bzip2'ed tarball, then gzipped tarball, plain tarball,
         # or, as a failover, a file without extension.
-        for ext in ${first_ext} .tar.bz2 .tar.gz .tgz .tar .zip ''; do
+        for ext in ${first_ext} .tar.bz2 .orig.tar.gz .src.tar.gz .tar.gz .tgz .tar .zip ''; do
             CT_DoLog DEBUG "Trying '${CT_LOCAL_TARBALLS_DIR}/${basename}${ext}'"
             if [ -r "${CT_LOCAL_TARBALLS_DIR}/${basename}${ext}" -a \
                  "${CT_FORCE_DOWNLOAD}" != "y" ]; then
@@ -516,6 +516,7 @@ CT_GetFile() {
     local ext
     local url URLS LAN_URLS
     local file="$1"
+    local altfile=`echo "$1" | perl -pe 's/(.*)-/\1_/'`
     local first_ext
     shift
     # If next argument starts with a dot, then this is not an URL,
@@ -555,13 +556,21 @@ CT_GetFile() {
     # Scan all URLs in turn, and try to grab a tarball from there
     # Do *not* try git trees (ext=/.git), this is handled in a specific
     # wrapper, below
-    for ext in ${first_ext} .tar.bz2 .tar.gz .tgz .tar .zip ''; do
+    for ext in ${first_ext} .tar.bz2 .orig.tar.gz .src.tar.gz .tar.gz .tgz .tar .zip ''; do
         # Try all urls in turn
         for url in ${URLS}; do
             CT_DoLog DEBUG "Trying '${url}/${file}${ext}'"
             CT_DoGetFile "${url}/${file}${ext}"
             if [ -f "${file}${ext}" ]; then
                 CT_DoLog DEBUG "Got '${file}' from the Internet"
+                CT_SaveLocal "${CT_TARBALLS_DIR}/${file}${ext}"
+                return 0
+            fi
+            CT_DoLog DEBUG "Trying '${url}/${altfile}${ext}'"
+            CT_DoGetFile "${url}/${altfile}${ext}"
+            if [ -f "${altfile}${ext}" ]; then
+                CT_DoLog DEBUG "Got '${altfile}' from the Internet"
+                mv "${altfile}${ext}" "${file}${ext}"
                 CT_SaveLocal "${CT_TARBALLS_DIR}/${file}${ext}"
                 return 0
             fi
@@ -726,7 +735,7 @@ CT_Extract() {
     CT_DoLog EXTRA "Extracting '${basename}'"
     case "${ext}" in
         .tar.bz2)     CT_DoExecLog FILE tar xvjf "${full_file}";;
-        .src.tar.gz|.tar.gz|.tgz) CT_DoExecLog FILE tar xvzf "${full_file}";;
+        .orig.tar.gz|.src.tar.gz|.tar.gz|.tgz) CT_DoExecLog FILE tar xvzf "${full_file}";;
         .tar)         CT_DoExecLog FILE tar xvf  "${full_file}";;
         .zip)         CT_DoExecLog FILE unzip "${full_file}";;
         /.git)        CT_ExtractGit "${basename}" "${@}";;

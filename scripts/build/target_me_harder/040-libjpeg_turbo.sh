@@ -40,7 +40,7 @@ do_target_me_harder_libjpeg_turbo_extract() {
 do_target_me_harder_libjpeg_turbo_build() {
     CT_DoStep EXTRA "Installing target libjpeg-turbo"
 
-    CT_Pushd "${CT_SRC_DIR}/udev-${CT_LIBJPEG_TURBO_VERSION}"
+    CT_Pushd "${CT_SRC_DIR}/libjpeg-turbo-${CT_LIBJPEG_TURBO_VERSION}"
     CT_DoExecLog CFG                                            \
     ACLOCAL="aclocal -I ${CT_SYSROOT_DIR}/usr/share/aclocal -I ${CT_PREFIX_DIR}/share/aclocal" \
     autoreconf -fiv

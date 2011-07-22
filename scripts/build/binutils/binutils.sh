@@ -5,6 +5,7 @@
 # Download binutils
 do_binutils_get() {
     CT_GetFile "binutils-${CT_BINUTILS_VERSION}"                                        \
+               http://archive.ubuntu.com/ubuntu/pool/main/b/binutils                    \
                {ftp,http}://{ftp.gnu.org/gnu,ftp.kernel.org/pub/linux/devel}/binutils   \
                ftp://gcc.gnu.org/pub/binutils/{releases,snapshots}
 }
