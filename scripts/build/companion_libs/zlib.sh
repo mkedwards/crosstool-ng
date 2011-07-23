@@ -68,7 +68,7 @@ do_zlib_target() {
         --enable-shared
 
     CT_DoLog EXTRA "Building zlib"
-    CT_DoExecLog ALL make ${JOBSFLAGS}
+    CT_DoExecLog ALL make
 
     CT_DoLog EXTRA "Installing zlib"
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install

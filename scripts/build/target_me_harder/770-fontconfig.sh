@@ -24,7 +24,7 @@ do_target_me_harder_fontconfig_build() {
 
     mkdir -p indirect-configs
     cat >indirect-configs/freetype-config <<EOT
-${CT_SYSROOT_DIR}/usr/bin/freetype-config --prefix=${CT_SYSROOT_DIR}/usr --exec-prefix=/usr "\$@"
+${CT_SYSROOT_DIR}/usr/bin/freetype-config --prefix=${CT_SYSROOT_DIR}/usr "\$@"
 EOT
     cat >indirect-configs/xml2-config <<EOT
 ${CT_SYSROOT_DIR}/usr/bin/xml2-config --prefix=${CT_SYSROOT_DIR}/usr --exec-prefix=/usr "\$@"

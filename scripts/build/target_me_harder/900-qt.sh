@@ -92,6 +92,7 @@ do_target_me_harder_qt_build() {
     CT_Popd
 
     CT_DoExecLog CFG \
+    HOST_TUPLE="${CT_TARGET}"                                   \
     PKG_CONFIG="${CT_TARGET}-pkg-config --define-variable=prefix=${CT_SYSROOT_DIR}/usr" \
     CFLAGS="-g -Os"                                             \
     CXXFLAGS="-g -Os"                                           \
@@ -158,10 +159,16 @@ do_target_me_harder_qt_build() {
 	-nomake demos \
 	-nomake docs \
 
-    CT_DoExecLog ALL make ${JOBSFLAGS}
+    CT_DoExecLog ALL \
+    HOST_TUPLE="${CT_TARGET}"                                   \
+    make ${JOBSFLAGS}
+
     rm -rf "${CT_SYSROOT_DIR}/dummy-install"
     mkdir "${CT_SYSROOT_DIR}/dummy-install"
-    CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}"/dummy-install install
+
+    CT_DoExecLog ALL \
+    HOST_TUPLE="${CT_TARGET}"                                   \
+    make DESTDIR="${CT_SYSROOT_DIR}"/dummy-install install
 
     tar -C "${CT_SYSROOT_DIR}/dummy-install${CT_PREFIX_DIR}" -cf - lib plugins translations \
         | tar -C "${CT_SYSROOT_DIR}/usr" -xf -

@@ -14,7 +14,8 @@ do_target_me_harder_xmlrpc_c_extract() {
 
 do_target_me_harder_xmlrpc_c_build() {
     CT_DoStep EXTRA "Installing target xmlrpc-c"
-    mkdir -p "${CT_BUILD_DIR}/build-xmlrpc-c-target"
+    rm -rf "${CT_BUILD_DIR}/build-xmlrpc-c-target"
+    cp -a "${CT_SRC_DIR}/xmlrpc-c-${CT_XMLRPC_C_VERSION}" "${CT_BUILD_DIR}/build-xmlrpc-c-target"
     CT_Pushd "${CT_BUILD_DIR}/build-xmlrpc-c-target"
 
     mkdir -p indirect-configs
@@ -32,7 +33,7 @@ EOT
     PKG_CONFIG="${CT_TARGET}-pkg-config --define-variable=prefix=${CT_SYSROOT_DIR}/usr" \
     CFLAGS="-g -Os"                                             \
     CXXFLAGS="-g -Os"                                           \
-    "${CT_SRC_DIR}/xmlrpc-c-${CT_XMLRPC_C_VERSION}/configure"   \
+    ./configure                                                 \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \
         --cache-file="$(pwd)/config.cache"                      \
@@ -44,8 +45,14 @@ EOT
         --with-curl                                             \
         --enable-libxml2-backend
 
-    CT_DoExecLog ALL make ${JOBSFLAGS} CADD="-fPIC -DPIC"
-    CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" pkgconfigdir=/usr/lib/pkgconfig install
+    CT_DoExecLog ALL \
+    PATH="${CT_BUILD_DIR}/build-xmlrpc-c-target/indirect-configs:${PATH}" \
+    make ${JOBSFLAGS} CADD="-fPIC -DPIC"
+
+    CT_DoExecLog ALL \
+    PATH="${CT_BUILD_DIR}/build-xmlrpc-c-target/indirect-configs:${PATH}" \
+    make DESTDIR="${CT_SYSROOT_DIR}" pkgconfigdir=/usr/lib/pkgconfig install
+
     CT_Popd
     CT_EndStep
 }
