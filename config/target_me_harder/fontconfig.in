@@ -1,0 +1,21 @@
+# fontconfig
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "fontconfig version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config FONTCONFIG_V_2_8_0
+    bool
+    prompt "2.8.0 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config FONTCONFIG_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "2.8.0" if FONTCONFIG_V_2_8_0

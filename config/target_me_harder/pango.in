@@ -1,0 +1,21 @@
+# pango
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "pango version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config PANGO_V_1_29_3
+    bool
+    prompt "1.29.3 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config PANGO_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.29.3" if PANGO_V_1_29_3

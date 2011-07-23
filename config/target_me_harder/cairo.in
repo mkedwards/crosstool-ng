@@ -1,0 +1,21 @@
+# cairo
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "cairo version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config CAIRO_V_1_10_2
+    bool
+    prompt "1.10.2 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config CAIRO_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.10.2" if CAIRO_V_1_10_2

@@ -33,7 +33,7 @@ do_target_me_harder_openssh_build() {
         --disable-strip
 
     CT_DoExecLog ALL make ${JOBSFLAGS}
-    CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
+    CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install-nokeys
     CT_Popd
     CT_EndStep
 }

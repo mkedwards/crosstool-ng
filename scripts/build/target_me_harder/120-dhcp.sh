@@ -12,14 +12,17 @@ do_target_me_harder_dhcp_extract() {
 
 do_target_me_harder_dhcp_build() {
     CT_DoStep EXTRA "Installing target dhcp"
-    mkdir -p "${CT_BUILD_DIR}/build-dhcp-target"
+    rm -rf "${CT_BUILD_DIR}/build-dhcp-target"
+    cp -a "${CT_SRC_DIR}/dhcp-${CT_DHCP_VERSION}" "${CT_BUILD_DIR}/build-dhcp-target"
     CT_Pushd "${CT_BUILD_DIR}/build-dhcp-target"
     
     cp ../../config.cache .
     CT_DoExecLog CFG \
+    BUILD_CC="${CT_BUILD}-gcc"                                  \
+    BUILD_CFLAGS="${CT_CFLAGS_FOR_HOST}"                        \
     PKG_CONFIG="${CT_TARGET}-pkg-config --define-variable=prefix=${CT_SYSROOT_DIR}/usr" \
     CFLAGS="-g -Os"                                             \
-    "${CT_SRC_DIR}/dhcp-${CT_DHCP_VERSION}/configure"           \
+    ./configure                                                 \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \
         --cache-file="$(pwd)/config.cache"                      \
@@ -29,8 +32,16 @@ do_target_me_harder_dhcp_build() {
         --infodir=/usr/share/info                               \
         --prefix=/usr                                           \
 
-    CT_DoExecLog ALL make ${JOBSFLAGS}
-    CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
+    CT_DoExecLog ALL \
+    BUILD_CC="${CT_BUILD}-gcc"                                  \
+    BUILD_CFLAGS="${CT_CFLAGS_FOR_HOST}"                        \
+    make ${JOBSFLAGS}
+
+    CT_DoExecLog ALL \
+    BUILD_CC="${CT_BUILD}-gcc"                                  \
+    BUILD_CFLAGS="${CT_CFLAGS_FOR_HOST}"                        \
+    make DESTDIR="${CT_SYSROOT_DIR}" install
+
     CT_Popd
     CT_EndStep
 }
