@@ -22,8 +22,18 @@ do_target_me_harder_fontconfig_build() {
         x86:32)     fc_arch="le32d4";;
     esac
 
+    mkdir -p indirect-configs
+    cat >indirect-configs/freetype-config <<EOT
+${CT_SYSROOT_DIR}/usr/bin/freetype-config --prefix=${CT_SYSROOT_DIR}/usr --exec-prefix=/usr "\$@"
+EOT
+    cat >indirect-configs/xml2-config <<EOT
+${CT_SYSROOT_DIR}/usr/bin/xml2-config --prefix=${CT_SYSROOT_DIR}/usr --exec-prefix=/usr "\$@"
+EOT
+    chmod 755 indirect-configs/freetype-config indirect-configs/xml2-config
+
     cp ../../config.cache .
     CT_DoExecLog CFG \
+    PATH="${CT_BUILD_DIR}/build-fontconfig-target/indirect-configs:${PATH}" \
     PKG_CONFIG="${CT_TARGET}-pkg-config --define-variable=prefix=${CT_SYSROOT_DIR}/usr" \
     CFLAGS="-g -Os -fPIC -DPIC"                                 \
     "${CT_SRC_DIR}/fontconfig-${CT_FONTCONFIG_VERSION}/configure" \

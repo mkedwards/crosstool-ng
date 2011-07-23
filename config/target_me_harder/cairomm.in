@@ -1,0 +1,21 @@
+# cairomm
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "cairomm version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config CAIROMM_V_1_10_0
+    bool
+    prompt "1.10.0 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config CAIROMM_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "1.10.0" if CAIROMM_V_1_10_0

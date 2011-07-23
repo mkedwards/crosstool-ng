@@ -1,0 +1,21 @@
+# pangomm
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "pangomm version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config PANGOMM_V_2_28_2
+    bool
+    prompt "2.28.2 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config PANGOMM_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "2.28.2" if PANGOMM_V_2_28_2
