@@ -36,6 +36,7 @@ do_target_me_harder_pulseaudio_build() {
         --mandir=/usr/share/man                                 \
         --infodir=/usr/share/info                               \
         --prefix=/usr                                           \
+        --with-udev-rules-dir=/etc/udev/rules.d                 \
 
     CT_DoExecLog ALL make ${JOBSFLAGS}
     CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" pkgconfigdir=/usr/lib/pkgconfig install

@@ -37,6 +37,7 @@ do_target_me_harder_alsa_utils_build() {
         --mandir=/usr/share/man                                 \
         --infodir=/usr/share/info                               \
         --prefix=/usr                                           \
+        --with-udev-rules-dir=/etc/udev/rules.d                 \
         --disable-xmlto
 
     CT_DoExecLog ALL make ${JOBSFLAGS}
