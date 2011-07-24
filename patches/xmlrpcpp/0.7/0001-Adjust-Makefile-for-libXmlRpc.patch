@@ -4,13 +4,13 @@ Date: Sun, 18 Jul 2010 07:43:00 -0700
 Subject: [PATCH 1/4] Adjust Makefile for libXmlRpc
 
 ---
- xmlrpc++/Makefile |   15 +++++++--------
+ Makefile |   15 +++++++--------
  1 files changed, 7 insertions(+), 8 deletions(-)
 
-diff --git a/xmlrpc++/Makefile b/xmlrpc++/Makefile
+diff --git a/Makefile b/Makefile
 index 9141f81..15c68d5 100644
---- a/xmlrpc++/Makefile
-+++ b/xmlrpc++/Makefile
+--- a/Makefile
++++ b/Makefile
 @@ -4,8 +4,8 @@ SRC		= ./src
  SHARED		= -shared
  CPPFLAGS	= -I$(SRC)

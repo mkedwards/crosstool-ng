@@ -4,13 +4,13 @@ Date: Fri, 10 Sep 2010 19:59:07 -0700
 Subject: [PATCH] include errno when select fails
 
 ---
- xmlrpc++/src/XmlRpcDispatch.cpp |    3 ++-
+ src/XmlRpcDispatch.cpp |    3 ++-
  1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/xmlrpc++/src/XmlRpcDispatch.cpp b/xmlrpc++/src/XmlRpcDispatch.cpp
+diff --git a/src/XmlRpcDispatch.cpp b/src/XmlRpcDispatch.cpp
 index 95321c7..79b0e39 100644
---- a/xmlrpc++/src/XmlRpcDispatch.cpp
-+++ b/xmlrpc++/src/XmlRpcDispatch.cpp
+--- a/src/XmlRpcDispatch.cpp
++++ b/src/XmlRpcDispatch.cpp
 @@ -9,6 +9,7 @@
  #include <errno.h>
  #include <math.h>

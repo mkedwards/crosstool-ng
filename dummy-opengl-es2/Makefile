@@ -15,6 +15,8 @@ install: all
 	ln -s libGLESv2.so.1.7.5.0 $(DESTDIR)/usr/lib/libGLESv2.so.2
 	ln -s libEGL.so.1 $(DESTDIR)/usr/lib/libEGL.so
 	ln -s libGLESv2.so.2 $(DESTDIR)/usr/lib/libGLESv2.so
+	rm -rf $(DESTDIR)/usr/include/KHR $(DESTDIR)/usr/include/EGL $(DESTDIR)/usr/include/GLES2
+	cp -a include/KHR include/EGL include/GLES2 $(DESTDIR)/usr/include
 
 libEGL.so.1.7.5.0: libEGL.o
 	$(HOST_TUPLE)-gcc -shared -Wl,-soname,libEGL.so.1 -o $@ $<

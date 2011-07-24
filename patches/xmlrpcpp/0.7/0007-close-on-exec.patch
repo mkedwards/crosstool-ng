@@ -4,14 +4,14 @@ Date: Fri, 10 Sep 2010 21:26:03 -0700
 Subject: [PATCH] close-on-exec
 
 ---
- xmlrpc++/src/XmlRpcSocket.cpp |    5 ++++-
- xmlrpc++/src/XmlRpcSocket.h   |    2 +-
+ src/XmlRpcSocket.cpp |    5 ++++-
+ src/XmlRpcSocket.h   |    2 +-
  2 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/xmlrpc++/src/XmlRpcSocket.cpp b/xmlrpc++/src/XmlRpcSocket.cpp
+diff --git a/src/XmlRpcSocket.cpp b/src/XmlRpcSocket.cpp
 index caf8adc..d4642e5 100644
---- a/xmlrpc++/src/XmlRpcSocket.cpp
-+++ b/xmlrpc++/src/XmlRpcSocket.cpp
+--- a/src/XmlRpcSocket.cpp
++++ b/src/XmlRpcSocket.cpp
 @@ -120,13 +120,16 @@ XmlRpcSocket::setReuseAddr(XmlRpcSocket::Socket fd)
  
  // Bind to a specified port
@@ -30,10 +30,10 @@ index caf8adc..d4642e5 100644
    return (::bind(fd, (struct sockaddr *)&saddr, sizeof(saddr)) == 0);
  }
  
-diff --git a/xmlrpc++/src/XmlRpcSocket.h b/xmlrpc++/src/XmlRpcSocket.h
+diff --git a/src/XmlRpcSocket.h b/src/XmlRpcSocket.h
 index b5d451a..dcdfe6a 100644
---- a/xmlrpc++/src/XmlRpcSocket.h
-+++ b/xmlrpc++/src/XmlRpcSocket.h
+--- a/src/XmlRpcSocket.h
++++ b/src/XmlRpcSocket.h
 @@ -49,7 +49,7 @@ namespace XmlRpc {
      static bool setReuseAddr(Socket socket);
  

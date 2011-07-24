@@ -4,15 +4,15 @@ Date: Thu, 19 May 2011 07:12:18 +0000
 Subject: [PATCH 9/9] Disable use of OpenSSL
 
 ---
- xmlrpc++/Makefile             |    2 +-
- xmlrpc++/src/XmlRpcSource.cpp |    2 ++
- xmlrpc++/test/Makefile        |    5 ++---
+ Makefile             |    2 +-
+ src/XmlRpcSource.cpp |    2 ++
+ test/Makefile        |    5 ++---
  3 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/xmlrpc++/Makefile b/xmlrpc++/Makefile
+diff --git a/Makefile b/Makefile
 index 364a338..90c80cd 100644
---- a/xmlrpc++/Makefile
-+++ b/xmlrpc++/Makefile
+--- a/Makefile
++++ b/Makefile
 @@ -4,7 +4,7 @@ SRC		= ./src
  SHARED		= -shared
  CPPFLAGS	= -I$(SRC)
@@ -22,10 +22,10 @@ index 364a338..90c80cd 100644
  GCCWARN		= -Wall -W
  CXXFLAGS	= $(DEBUG) $(GCCWARN) $(OPTIMIZE) $(INCLUDES)
  VERSION		= 0.8
-diff --git a/xmlrpc++/src/XmlRpcSource.cpp b/xmlrpc++/src/XmlRpcSource.cpp
+diff --git a/src/XmlRpcSource.cpp b/src/XmlRpcSource.cpp
 index 6b5e4e6..767f6aa 100644
---- a/xmlrpc++/src/XmlRpcSource.cpp
-+++ b/xmlrpc++/src/XmlRpcSource.cpp
+--- a/src/XmlRpcSource.cpp
++++ b/src/XmlRpcSource.cpp
 @@ -55,6 +55,8 @@ namespace XmlRpc {
    {
  #if USE_OPENSSL
@@ -35,10 +35,10 @@ index 6b5e4e6..767f6aa 100644
  #endif
    }
  
-diff --git a/xmlrpc++/test/Makefile b/xmlrpc++/test/Makefile
+diff --git a/test/Makefile b/test/Makefile
 index 0dca1f2..9db9e0f 100644
---- a/xmlrpc++/test/Makefile
-+++ b/xmlrpc++/test/Makefile
+--- a/test/Makefile
++++ b/test/Makefile
 @@ -1,5 +1,4 @@
  # makefile written for gnu make
 -CXX		= /usr/local/gcc-3.1/bin/g++ 

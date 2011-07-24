@@ -4,13 +4,13 @@ Date: Sun, 18 Jul 2010 08:04:49 -0700
 Subject: [PATCH 3/4] check h_addr in gethostbyname result
 
 ---
- xmlrpc++/src/XmlRpcSocket.cpp |    4 ++++
+ src/XmlRpcSocket.cpp |    4 ++++
  1 files changed, 4 insertions(+), 0 deletions(-)
 
-diff --git a/xmlrpc++/src/XmlRpcSocket.cpp b/xmlrpc++/src/XmlRpcSocket.cpp
+diff --git a/src/XmlRpcSocket.cpp b/src/XmlRpcSocket.cpp
 index fb7a622..2a4dad8 100644
---- a/xmlrpc++/src/XmlRpcSocket.cpp
-+++ b/xmlrpc++/src/XmlRpcSocket.cpp
+--- a/src/XmlRpcSocket.cpp
++++ b/src/XmlRpcSocket.cpp
 @@ -159,6 +159,10 @@ XmlRpcSocket::connect(XmlRpcSocket::Socket fd, std::string& host, int port)
  
    struct hostent *hp = gethostbyname(host.c_str());

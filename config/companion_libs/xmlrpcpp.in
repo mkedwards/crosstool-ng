@@ -6,9 +6,9 @@ choice
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
-config XMLRPCPP_V_20100717
+config XMLRPCPP_V_0_7
     bool
-    prompt "20100717"
+    prompt "0.7"
 
 endchoice
 
@@ -16,4 +16,4 @@ config XMLRPCPP_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
-    default "20100717" if XMLRPCPP_V_20100717
+    default "0.7" if XMLRPCPP_V_0_7

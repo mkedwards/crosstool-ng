@@ -4,29 +4,29 @@ Date: Fri, 6 Aug 2010 14:47:17 +0000
 Subject: [PATCH] Correct use of standard C/C++ headers, fix compiler warnings
 
 ---
- xmlrpc++/src/XmlRpcClient.cpp             |    4 ++--
- xmlrpc++/src/XmlRpcClient.h               |    4 ++--
- xmlrpc++/src/XmlRpcServer.cpp             |    3 +++
- xmlrpc++/src/XmlRpcServerConnection.cpp   |    4 ++--
- xmlrpc++/src/XmlRpcUtil.cpp               |    6 +++---
- xmlrpc++/src/XmlRpcValue.cpp              |    4 ++--
- xmlrpc++/src/base64.h                     |    2 ++
- xmlrpc++/test/FileClient.cpp              |    5 +++--
- xmlrpc++/test/HelloClient.cpp             |    4 ++--
- xmlrpc++/test/HelloServer.cpp             |    5 +++--
- xmlrpc++/test/TestBase64Client.cpp        |    4 ++--
- xmlrpc++/test/TestBase64Server.cpp        |    5 +++--
- xmlrpc++/test/TestEGroupwareSSLClient.cpp |    1 +
- xmlrpc++/test/TestValues.cpp              |    6 +++++-
- xmlrpc++/test/TestValuesWin32.cpp         |    2 +-
- xmlrpc++/test/TestXml.cpp                 |    4 +++-
- xmlrpc++/test/Validator.cpp               |    3 ++-
+ src/XmlRpcClient.cpp             |    4 ++--
+ src/XmlRpcClient.h               |    4 ++--
+ src/XmlRpcServer.cpp             |    3 +++
+ src/XmlRpcServerConnection.cpp   |    4 ++--
+ src/XmlRpcUtil.cpp               |    6 +++---
+ src/XmlRpcValue.cpp              |    4 ++--
+ src/base64.h                     |    2 ++
+ test/FileClient.cpp              |    5 +++--
+ test/HelloClient.cpp             |    4 ++--
+ test/HelloServer.cpp             |    5 +++--
+ test/TestBase64Client.cpp        |    4 ++--
+ test/TestBase64Server.cpp        |    5 +++--
+ test/TestEGroupwareSSLClient.cpp |    1 +
+ test/TestValues.cpp              |    6 +++++-
+ test/TestValuesWin32.cpp         |    2 +-
+ test/TestXml.cpp                 |    4 +++-
+ test/Validator.cpp               |    3 ++-
  17 files changed, 41 insertions(+), 25 deletions(-)
 
-diff --git a/xmlrpc++/src/XmlRpcClient.cpp b/xmlrpc++/src/XmlRpcClient.cpp
+diff --git a/src/XmlRpcClient.cpp b/src/XmlRpcClient.cpp
 index 442ac5f..c70c8f5 100644
---- a/xmlrpc++/src/XmlRpcClient.cpp
-+++ b/xmlrpc++/src/XmlRpcClient.cpp
+--- a/src/XmlRpcClient.cpp
++++ b/src/XmlRpcClient.cpp
 @@ -9,8 +9,8 @@
  
  #include "base64.h"   // For HTTP authentication encoding
@@ -38,10 +38,10 @@ index 442ac5f..c70c8f5 100644
  #include <string>
  
  using namespace XmlRpc;
-diff --git a/xmlrpc++/src/XmlRpcClient.h b/xmlrpc++/src/XmlRpcClient.h
+diff --git a/src/XmlRpcClient.h b/src/XmlRpcClient.h
 index 5954003..704fa07 100644
---- a/xmlrpc++/src/XmlRpcClient.h
-+++ b/xmlrpc++/src/XmlRpcClient.h
+--- a/src/XmlRpcClient.h
++++ b/src/XmlRpcClient.h
 @@ -58,13 +58,13 @@ namespace XmlRpc {
      bool isFault() const { return _isFault; }
  
@@ -58,10 +58,10 @@ index 5954003..704fa07 100644
  
      // XmlRpcSource interface implementation
      //! Close the connection
-diff --git a/xmlrpc++/src/XmlRpcServer.cpp b/xmlrpc++/src/XmlRpcServer.cpp
+diff --git a/src/XmlRpcServer.cpp b/src/XmlRpcServer.cpp
 index 0982069..fb53b55 100644
---- a/xmlrpc++/src/XmlRpcServer.cpp
-+++ b/xmlrpc++/src/XmlRpcServer.cpp
+--- a/src/XmlRpcServer.cpp
++++ b/src/XmlRpcServer.cpp
 @@ -11,6 +11,7 @@
  #include "XmlRpcException.h"
  #include "XmlRpc.h"
@@ -86,10 +86,10 @@ index 0982069..fb53b55 100644
      _server->listMethods(result);
    }
  
-diff --git a/xmlrpc++/src/XmlRpcServerConnection.cpp b/xmlrpc++/src/XmlRpcServerConnection.cpp
+diff --git a/src/XmlRpcServerConnection.cpp b/src/XmlRpcServerConnection.cpp
 index a37ff72..3f096e8 100644
---- a/xmlrpc++/src/XmlRpcServerConnection.cpp
-+++ b/xmlrpc++/src/XmlRpcServerConnection.cpp
+--- a/src/XmlRpcServerConnection.cpp
++++ b/src/XmlRpcServerConnection.cpp
 @@ -9,8 +9,8 @@
  #include "XmlRpcSocket.h"
  #include "XmlRpcUtil.h"
@@ -101,10 +101,10 @@ index a37ff72..3f096e8 100644
  
  using namespace XmlRpc;
  
-diff --git a/xmlrpc++/src/XmlRpcUtil.cpp b/xmlrpc++/src/XmlRpcUtil.cpp
+diff --git a/src/XmlRpcUtil.cpp b/src/XmlRpcUtil.cpp
 index 3ff36da..40e0ef8 100644
---- a/xmlrpc++/src/XmlRpcUtil.cpp
-+++ b/xmlrpc++/src/XmlRpcUtil.cpp
+--- a/src/XmlRpcUtil.cpp
++++ b/src/XmlRpcUtil.cpp
 @@ -6,9 +6,9 @@
  
  #include <ctype.h>
@@ -118,10 +118,10 @@ index 3ff36da..40e0ef8 100644
  
  #include "XmlRpc.h"
  
-diff --git a/xmlrpc++/src/XmlRpcValue.cpp b/xmlrpc++/src/XmlRpcValue.cpp
+diff --git a/src/XmlRpcValue.cpp b/src/XmlRpcValue.cpp
 index 7d23216..8875cc8 100644
---- a/xmlrpc++/src/XmlRpcValue.cpp
-+++ b/xmlrpc++/src/XmlRpcValue.cpp
+--- a/src/XmlRpcValue.cpp
++++ b/src/XmlRpcValue.cpp
 @@ -9,8 +9,8 @@
  
  #include <iostream>
@@ -133,10 +133,10 @@ index 7d23216..8875cc8 100644
  
  
  namespace XmlRpc {
-diff --git a/xmlrpc++/src/base64.h b/xmlrpc++/src/base64.h
+diff --git a/src/base64.h b/src/base64.h
 index f13c6cd..98fb209 100644
---- a/xmlrpc++/src/base64.h
-+++ b/xmlrpc++/src/base64.h
+--- a/src/base64.h
++++ b/src/base64.h
 @@ -152,6 +152,8 @@ public:
  	template<class _II, class _OI, class _State, class _Endline>
  		_II put(_II _First, _II _Last, _OI _To, _State& _St, _Endline _Endl)  const
@@ -146,10 +146,10 @@ index f13c6cd..98fb209 100644
  		three2four _3to4;
  		int line_octets = 0;
  
-diff --git a/xmlrpc++/test/FileClient.cpp b/xmlrpc++/test/FileClient.cpp
+diff --git a/test/FileClient.cpp b/test/FileClient.cpp
 index d97bc6a..101079b 100644
---- a/xmlrpc++/test/FileClient.cpp
-+++ b/xmlrpc++/test/FileClient.cpp
+--- a/test/FileClient.cpp
++++ b/test/FileClient.cpp
 @@ -6,9 +6,10 @@
  #include "XmlRpc.h"
  #include <iostream>
@@ -171,10 +171,10 @@ index d97bc6a..101079b 100644
  
    XmlRpc::setVerbosity(5);
    XmlRpcClient c(argv[1], port);
-diff --git a/xmlrpc++/test/HelloClient.cpp b/xmlrpc++/test/HelloClient.cpp
+diff --git a/test/HelloClient.cpp b/test/HelloClient.cpp
 index feca7c5..e607d6f 100644
---- a/xmlrpc++/test/HelloClient.cpp
-+++ b/xmlrpc++/test/HelloClient.cpp
+--- a/test/HelloClient.cpp
++++ b/test/HelloClient.cpp
 @@ -3,7 +3,7 @@
  // on windows)
  #include "XmlRpc.h"
@@ -193,10 +193,10 @@ index feca7c5..e607d6f 100644
    //XmlRpc::setVerbosity(5);
  
    // Use introspection API to look up the supported methods
-diff --git a/xmlrpc++/test/HelloServer.cpp b/xmlrpc++/test/HelloServer.cpp
+diff --git a/test/HelloServer.cpp b/test/HelloServer.cpp
 index ff81ad8..42b4232 100644
---- a/xmlrpc++/test/HelloServer.cpp
-+++ b/xmlrpc++/test/HelloServer.cpp
+--- a/test/HelloServer.cpp
++++ b/test/HelloServer.cpp
 @@ -3,7 +3,7 @@
  #include "XmlRpc.h"
  
@@ -223,10 +223,10 @@ index ff81ad8..42b4232 100644
  
    XmlRpc::setVerbosity(5);
  
-diff --git a/xmlrpc++/test/TestBase64Client.cpp b/xmlrpc++/test/TestBase64Client.cpp
+diff --git a/test/TestBase64Client.cpp b/test/TestBase64Client.cpp
 index 64bb3e8..acff8fa 100644
---- a/xmlrpc++/test/TestBase64Client.cpp
-+++ b/xmlrpc++/test/TestBase64Client.cpp
+--- a/test/TestBase64Client.cpp
++++ b/test/TestBase64Client.cpp
 @@ -8,7 +8,7 @@
  #include "XmlRpc.h"
  #include <iostream>
@@ -245,10 +245,10 @@ index 64bb3e8..acff8fa 100644
  
    //XmlRpc::setVerbosity(5);
    XmlRpcClient c(argv[1], port);
-diff --git a/xmlrpc++/test/TestBase64Server.cpp b/xmlrpc++/test/TestBase64Server.cpp
+diff --git a/test/TestBase64Server.cpp b/test/TestBase64Server.cpp
 index 0cd76fd..75f4572 100644
---- a/xmlrpc++/test/TestBase64Server.cpp
-+++ b/xmlrpc++/test/TestBase64Server.cpp
+--- a/test/TestBase64Server.cpp
++++ b/test/TestBase64Server.cpp
 @@ -8,7 +8,7 @@
  #include <iostream>
  #include <fstream>
@@ -275,10 +275,10 @@ index 0cd76fd..75f4572 100644
  
    //XmlRpc::setVerbosity(5);
  
-diff --git a/xmlrpc++/test/TestEGroupwareSSLClient.cpp b/xmlrpc++/test/TestEGroupwareSSLClient.cpp
+diff --git a/test/TestEGroupwareSSLClient.cpp b/test/TestEGroupwareSSLClient.cpp
 index a22b356..fe98e75 100644
---- a/xmlrpc++/test/TestEGroupwareSSLClient.cpp
-+++ b/xmlrpc++/test/TestEGroupwareSSLClient.cpp
+--- a/test/TestEGroupwareSSLClient.cpp
++++ b/test/TestEGroupwareSSLClient.cpp
 @@ -1,5 +1,6 @@
  #include "XmlRpc.h"
  #include <iostream>
@@ -286,10 +286,10 @@ index a22b356..fe98e75 100644
  
  using namespace XmlRpc;
  using namespace std;
-diff --git a/xmlrpc++/test/TestValues.cpp b/xmlrpc++/test/TestValues.cpp
+diff --git a/test/TestValues.cpp b/test/TestValues.cpp
 index e770e51..e241e29 100644
---- a/xmlrpc++/test/TestValues.cpp
-+++ b/xmlrpc++/test/TestValues.cpp
+--- a/test/TestValues.cpp
++++ b/test/TestValues.cpp
 @@ -1,6 +1,7 @@
  // TestValues.cpp : Test XML encoding and decoding of XmlRpcValues.
  
@@ -309,10 +309,10 @@ index e770e51..e241e29 100644
    testBoolean();
  
    testInt();
-diff --git a/xmlrpc++/test/TestValuesWin32.cpp b/xmlrpc++/test/TestValuesWin32.cpp
+diff --git a/test/TestValuesWin32.cpp b/test/TestValuesWin32.cpp
 index 79f48f2..cc58a15 100644
---- a/xmlrpc++/test/TestValuesWin32.cpp
-+++ b/xmlrpc++/test/TestValuesWin32.cpp
+--- a/test/TestValuesWin32.cpp
++++ b/test/TestValuesWin32.cpp
 @@ -1,7 +1,7 @@
  // TestValues.cpp : Test XML encoding and decoding of XmlRpcValues.
  
@@ -322,10 +322,10 @@ index 79f48f2..cc58a15 100644
  #include <crtdbg.h>
  
  #include "XmlRpcValue.h"
-diff --git a/xmlrpc++/test/TestXml.cpp b/xmlrpc++/test/TestXml.cpp
+diff --git a/test/TestXml.cpp b/test/TestXml.cpp
 index 73c15de..36167e7 100644
---- a/xmlrpc++/test/TestXml.cpp
-+++ b/xmlrpc++/test/TestXml.cpp
+--- a/test/TestXml.cpp
++++ b/test/TestXml.cpp
 @@ -9,7 +9,7 @@
  // BUG: getline Template Function Reads Extra Character
  #include <string>
@@ -344,10 +344,10 @@ index 73c15de..36167e7 100644
    // Basic tests
    std::string empty;
    assert(empty == XmlRpcUtil::xmlEncode(empty));
-diff --git a/xmlrpc++/test/Validator.cpp b/xmlrpc++/test/Validator.cpp
+diff --git a/test/Validator.cpp b/test/Validator.cpp
 index 64a264c..0642eda 100644
---- a/xmlrpc++/test/Validator.cpp
-+++ b/xmlrpc++/test/Validator.cpp
+--- a/test/Validator.cpp
++++ b/test/Validator.cpp
 @@ -4,6 +4,7 @@
  using namespace XmlRpc;
  

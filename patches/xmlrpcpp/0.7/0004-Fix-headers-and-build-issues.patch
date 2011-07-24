@@ -4,20 +4,20 @@ Date: Sun, 18 Jul 2010 09:31:52 -0700
 Subject: [PATCH 4/4] Fix headers and build issues
 
 ---
- xmlrpc++/src/XmlRpc.h                     |    4 ++++
- xmlrpc++/src/XmlRpcSocket.cpp             |    1 +
- xmlrpc++/src/XmlRpcSource.cpp             |    2 +-
- xmlrpc++/src/XmlRpcUtil.h                 |    2 ++
- xmlrpc++/test/HelloClient.cpp             |    1 +
- xmlrpc++/test/Makefile                    |    4 ++--
- xmlrpc++/test/TestBase64Server.cpp        |    3 ++-
- xmlrpc++/test/TestEGroupwareSSLClient.cpp |    9 ++++++---
+ src/XmlRpc.h                     |    4 ++++
+ src/XmlRpcSocket.cpp             |    1 +
+ src/XmlRpcSource.cpp             |    2 +-
+ src/XmlRpcUtil.h                 |    2 ++
+ test/HelloClient.cpp             |    1 +
+ test/Makefile                    |    4 ++--
+ test/TestBase64Server.cpp        |    3 ++-
+ test/TestEGroupwareSSLClient.cpp |    9 ++++++---
  8 files changed, 19 insertions(+), 7 deletions(-)
 
-diff --git a/xmlrpc++/src/XmlRpc.h b/xmlrpc++/src/XmlRpc.h
+diff --git a/src/XmlRpc.h b/src/XmlRpc.h
 index 8ffcba7..a31ee59 100644
---- a/xmlrpc++/src/XmlRpc.h
-+++ b/xmlrpc++/src/XmlRpc.h
+--- a/src/XmlRpc.h
++++ b/src/XmlRpc.h
 @@ -39,6 +39,8 @@ namespace XmlRpc {
    //! An interface allowing custom handling of error message reporting.
    class XmlRpcErrorHandler {
@@ -36,10 +36,10 @@ index 8ffcba7..a31ee59 100644
      //! Returns a pointer to the currently installed message reporting object.
      static XmlRpcLogHandler* getLogHandler() 
      { return _logHandler; }
-diff --git a/xmlrpc++/src/XmlRpcSocket.cpp b/xmlrpc++/src/XmlRpcSocket.cpp
+diff --git a/src/XmlRpcSocket.cpp b/src/XmlRpcSocket.cpp
 index 2a4dad8..caf8adc 100644
---- a/xmlrpc++/src/XmlRpcSocket.cpp
-+++ b/xmlrpc++/src/XmlRpcSocket.cpp
+--- a/src/XmlRpcSocket.cpp
++++ b/src/XmlRpcSocket.cpp
 @@ -27,6 +27,7 @@ extern "C" {
  # include <netdb.h>
  # include <errno.h>
@@ -48,10 +48,10 @@ index 2a4dad8..caf8adc 100644
  }
  #endif  // _WINDOWS
  
-diff --git a/xmlrpc++/src/XmlRpcSource.cpp b/xmlrpc++/src/XmlRpcSource.cpp
+diff --git a/src/XmlRpcSource.cpp b/src/XmlRpcSource.cpp
 index 7f5bc0a..6b5e4e6 100644
---- a/xmlrpc++/src/XmlRpcSource.cpp
-+++ b/xmlrpc++/src/XmlRpcSource.cpp
+--- a/src/XmlRpcSource.cpp
++++ b/src/XmlRpcSource.cpp
 @@ -29,7 +29,7 @@ namespace XmlRpc {
    {
  #if USE_OPENSSL
@@ -61,10 +61,10 @@ index 7f5bc0a..6b5e4e6 100644
      SSL* _ssl_ssl;
  #endif
    };
-diff --git a/xmlrpc++/src/XmlRpcUtil.h b/xmlrpc++/src/XmlRpcUtil.h
+diff --git a/src/XmlRpcUtil.h b/src/XmlRpcUtil.h
 index 96b110c..b464ea1 100644
---- a/xmlrpc++/src/XmlRpcUtil.h
-+++ b/xmlrpc++/src/XmlRpcUtil.h
+--- a/src/XmlRpcUtil.h
++++ b/src/XmlRpcUtil.h
 @@ -8,6 +8,8 @@
  #endif
  
@@ -74,10 +74,10 @@ index 96b110c..b464ea1 100644
  
  #if defined(_MSC_VER)
  # define snprintf	    _snprintf
-diff --git a/xmlrpc++/test/HelloClient.cpp b/xmlrpc++/test/HelloClient.cpp
+diff --git a/test/HelloClient.cpp b/test/HelloClient.cpp
 index 91c5724..feca7c5 100644
---- a/xmlrpc++/test/HelloClient.cpp
-+++ b/xmlrpc++/test/HelloClient.cpp
+--- a/test/HelloClient.cpp
++++ b/test/HelloClient.cpp
 @@ -3,6 +3,7 @@
  // on windows)
  #include "XmlRpc.h"
@@ -86,10 +86,10 @@ index 91c5724..feca7c5 100644
  using namespace XmlRpc;
  
  int main(int argc, char* argv[])
-diff --git a/xmlrpc++/test/Makefile b/xmlrpc++/test/Makefile
+diff --git a/test/Makefile b/test/Makefile
 index 8067ee3..0dca1f2 100644
---- a/xmlrpc++/test/Makefile
-+++ b/xmlrpc++/test/Makefile
+--- a/test/Makefile
++++ b/test/Makefile
 @@ -7,7 +7,7 @@ DEBUG		= -g
  GCCWARN		= -Wall -Wstrict-prototypes
  CXXFLAGS	= $(DEBUG) $(GCCWARN) $(OPTIMIZE) $(INCLUDES)
@@ -108,10 +108,10 @@ index 8067ee3..0dca1f2 100644
  
  clean:
  		rm -f *.o
-diff --git a/xmlrpc++/test/TestBase64Server.cpp b/xmlrpc++/test/TestBase64Server.cpp
+diff --git a/test/TestBase64Server.cpp b/test/TestBase64Server.cpp
 index d15888e..0cd76fd 100644
---- a/xmlrpc++/test/TestBase64Server.cpp
-+++ b/xmlrpc++/test/TestBase64Server.cpp
+--- a/test/TestBase64Server.cpp
++++ b/test/TestBase64Server.cpp
 @@ -9,9 +9,10 @@
  #include <fstream>
  #include <algorithm>
@@ -124,10 +124,10 @@ index d15888e..0cd76fd 100644
  # define getcwd _getcwd
  #endif
  
-diff --git a/xmlrpc++/test/TestEGroupwareSSLClient.cpp b/xmlrpc++/test/TestEGroupwareSSLClient.cpp
+diff --git a/test/TestEGroupwareSSLClient.cpp b/test/TestEGroupwareSSLClient.cpp
 index b80beba..a22b356 100644
---- a/xmlrpc++/test/TestEGroupwareSSLClient.cpp
-+++ b/xmlrpc++/test/TestEGroupwareSSLClient.cpp
+--- a/test/TestEGroupwareSSLClient.cpp
++++ b/test/TestEGroupwareSSLClient.cpp
 @@ -13,7 +13,8 @@ int main ( int argc, char *argv[]) {
  		cout << "example: " << argv[0] << " www.egroupware.org \"/egroupware/xmlrpc.php\" demo guest\n";
  		exit (0);

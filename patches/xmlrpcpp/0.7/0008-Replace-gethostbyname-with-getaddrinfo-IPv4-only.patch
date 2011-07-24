@@ -4,14 +4,14 @@ Date: Thu, 19 May 2011 05:38:23 +0000
 Subject: [PATCH 8/9] Replace gethostbyname with getaddrinfo (IPv4 only)
 
 ---
- xmlrpc++/Makefile             |    1 +
- xmlrpc++/src/XmlRpcSocket.cpp |   38 +++++++++++++++++++++-----------------
+ Makefile             |    1 +
+ src/XmlRpcSocket.cpp |   38 +++++++++++++++++++++-----------------
  2 files changed, 22 insertions(+), 17 deletions(-)
 
-diff --git a/xmlrpc++/Makefile b/xmlrpc++/Makefile
+diff --git a/Makefile b/Makefile
 index 15c68d5..364a338 100644
---- a/xmlrpc++/Makefile
-+++ b/xmlrpc++/Makefile
+--- a/Makefile
++++ b/Makefile
 @@ -38,6 +38,7 @@ $(LIB):		$(OBJ)
  
  $(SO):		$(OBJ)
@@ -20,10 +20,10 @@ index 15c68d5..364a338 100644
  		$(LN) $(SO) libXmlRpc.so
  
  
-diff --git a/xmlrpc++/src/XmlRpcSocket.cpp b/xmlrpc++/src/XmlRpcSocket.cpp
+diff --git a/src/XmlRpcSocket.cpp b/src/XmlRpcSocket.cpp
 index d4642e5..aa3c7d0 100644
---- a/xmlrpc++/src/XmlRpcSocket.cpp
-+++ b/xmlrpc++/src/XmlRpcSocket.cpp
+--- a/src/XmlRpcSocket.cpp
++++ b/src/XmlRpcSocket.cpp
 @@ -5,6 +5,7 @@
  #include "XmlRpcSocket.h"
  #include "XmlRpcUtil.h"
