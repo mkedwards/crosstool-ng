@@ -2,7 +2,7 @@
 
 do_target_me_harder_curl_get() {
     CT_GetFile "curl-${CT_CURL_VERSION}" .tar.bz2 \
-               http://curl.haxx.se
+               http://curl.haxx.se/download
 }
 
 do_target_me_harder_curl_extract() {

@@ -2,7 +2,7 @@
 
 do_cross_me_harder_nss_get() {
     CT_GetFile "nss-${CT_NSS_VERSION}" .tar.gz \
-               "https://ftp.mozilla.org/pub/mozilla.org/security/nss/releases/NSS_${CT_NSS_VERSION}_RTM/src"
+               "https://ftp.mozilla.org/pub/mozilla.org/security/nss/releases/NSS_${CT_NSS_VERSION//\./_}_RTM/src"
 }
 
 do_cross_me_harder_nss_extract() {

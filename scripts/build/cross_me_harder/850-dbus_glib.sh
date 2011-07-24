@@ -1,8 +1,8 @@
 # Build script for dbus-glib
 
 do_cross_me_harder_dbus_glib_get() {
-    CT_GetFile "dbus-glib-${CT_DBUS_GLIB_VERSION}" \
-               http://dbus.freedesktop.org/releases/dbus-glib/
+    CT_GetFile "dbus-glib-${CT_DBUS_GLIB_VERSION}" .tar.gz \
+               http://dbus.freedesktop.org/releases/dbus-glib
 }
 
 do_cross_me_harder_dbus_glib_extract() {

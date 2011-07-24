@@ -2,7 +2,7 @@
 
 do_cross_me_harder_glibmm_get() {
     CT_GetFile "glibmm-${CT_GLIBMM_VERSION}" \
-               http://ftp.gnome.org/pub/GNOME/sources/glibmm/2.28/
+               http://ftp.gnome.org/pub/GNOME/sources/glibmm/2.28
 }
 
 do_cross_me_harder_glibmm_extract() {

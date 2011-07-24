@@ -1,8 +1,8 @@
 # Build script for dbus
 
 do_cross_me_harder_dbus_get() {
-    CT_GetFile "dbus-${CT_DBUS_VERSION}" \
-               http://dbus.freedesktop.org/releases/dbus/
+    CT_GetFile "dbus-${CT_DBUS_VERSION}" .tar.gz \
+               http://dbus.freedesktop.org/releases/dbus
 }
 
 do_cross_me_harder_dbus_extract() {

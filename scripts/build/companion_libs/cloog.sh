@@ -11,7 +11,7 @@ if [ "${CT_CLOOG}" = "y" ]; then
 
 # Download CLooG
 do_cloog_get() {
-    CT_GetFile "cloog-ppl-${CT_CLOOG_VERSION}"  \
+    CT_GetFile "cloog-ppl-${CT_CLOOG_VERSION}" .tar.gz \
         ftp://gcc.gnu.org/pub/gcc/infrastructure
 }
 

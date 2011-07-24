@@ -3,7 +3,7 @@
 CT_INTLTOOL_VERSION=0.41.1
 
 do_companion_tools_intltool_get() {
-    CT_GetFile "intltool-${CT_INTLTOOL_VERSION}" \
+    CT_GetFile "intltool-${CT_INTLTOOL_VERSION}" .tar.gz \
                http://edge.launchpad.net/intltool/trunk/${CT_INTLTOOL_VERSION}/+download/
 }
 

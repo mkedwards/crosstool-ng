@@ -2,7 +2,7 @@
 
 do_cross_me_harder_mm_common_get() {
     CT_GetFile "mm-common-${CT_MM_COMMON_VERSION}" \
-               http://ftp.gnome.org/pub/GNOME/sources/mm-common/0.9/
+               http://ftp.gnome.org/pub/GNOME/sources/mm-common/0.9
 }
 
 do_cross_me_harder_mm_common_extract() {

@@ -3,7 +3,7 @@
 CT_GPERF_VERSION=3.0.4
 
 do_companion_tools_gperf_get() {
-    CT_GetFile "gperf-${CT_GPERF_VERSION}" \
+    CT_GetFile "gperf-${CT_GPERF_VERSION}" .tar.gz \
                {ftp,http}://ftp.gnu.org/gnu/gperf
 }
 

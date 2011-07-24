@@ -3,7 +3,7 @@
 do_cross_me_harder_tz_get() {
     CT_GetFile "tzcode${CT_TZ_VERSION}" .tar.gz \
                ftp://elsie.nci.nih.gov/pub
-    CT_GetFile "tzdata${CT_TZ_VERSION}" .tar.gz \
+    CT_GetFile "tzdata${CT_TZDATA_VERSION}" .tar.gz \
                ftp://elsie.nci.nih.gov/pub
 }
 
@@ -11,7 +11,7 @@ do_cross_me_harder_tz_extract() {
     mkdir -p "${CT_SRC_DIR}/tz-${CT_TZ_VERSION}"
     CT_Pushd "${CT_SRC_DIR}/tz-${CT_TZ_VERSION}"
     CT_Extract nochdir "tzcode${CT_TZ_VERSION}"
-    CT_Extract nochdir "tzdata${CT_TZ_VERSION}"
+    CT_Extract nochdir "tzdata${CT_TZDATA_VERSION}"
     CT_Popd
 }
 

@@ -2,7 +2,7 @@
 
 do_cross_me_harder_pkg_config_get() {
     CT_GetFile "pkg-config-${CT_PKG_CONFIG_VERSION}" \
-               http://pkgconfig.freedesktop.org/releases/
+               http://pkgconfig.freedesktop.org/releases
 }
 
 do_cross_me_harder_pkg_config_extract() {

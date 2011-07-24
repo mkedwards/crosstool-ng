@@ -2,7 +2,7 @@
 
 do_cross_me_harder_clips_core_get() {
     CT_GetFile "clips-core-${CT_CLIPS_CORE_VERSION}" .tgz \
-               "http://sourceforge.net/projects/clipsrules/files/CLIPS/6.30/"
+               "http://sourceforge.net/projects/clipsrules/files/CLIPS/6.30"
 }
 
 do_cross_me_harder_clips_core_extract() {

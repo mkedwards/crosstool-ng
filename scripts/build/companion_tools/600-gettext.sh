@@ -3,7 +3,7 @@
 CT_GETTEXT_VERSION=0.18.1.1
 
 do_companion_tools_gettext_get() {
-    CT_GetFile "gettext-${CT_GETTEXT_VERSION}" \
+    CT_GetFile "gettext-${CT_GETTEXT_VERSION}" .tar.gz \
                {ftp,http}://ftp.gnu.org/gnu/gettext
 }
 

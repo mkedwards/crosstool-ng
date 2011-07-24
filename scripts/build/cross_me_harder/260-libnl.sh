@@ -2,7 +2,7 @@
 
 do_cross_me_harder_libnl_get() {
     CT_GetFile "libnl-${CT_LIBNL_VERSION}" \
-               "http://www.infradead.org/~tgr/libnl/files/"
+               "http://www.infradead.org/~tgr/libnl/files"
 }
 
 do_cross_me_harder_libnl_extract() {

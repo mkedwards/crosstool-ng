@@ -2,7 +2,7 @@
 
 do_cross_me_harder_glib_get() {
     CT_GetFile "glib-${CT_GLIB_VERSION}" \
-               http://ftp.gnome.org/pub/GNOME/sources/glib/2.28/
+               http://ftp.gnome.org/pub/GNOME/sources/glib/2.28
 }
 
 do_cross_me_harder_glib_extract() {

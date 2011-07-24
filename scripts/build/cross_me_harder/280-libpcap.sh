@@ -2,7 +2,7 @@
 
 do_cross_me_harder_libpcap_get() {
     CT_GetFile "libpcap-${CT_LIBPCAP_VERSION}" \
-               "http://www.tcpdump.org/release/"
+               "http://www.tcpdump.org/release"
 }
 
 do_cross_me_harder_libpcap_extract() {

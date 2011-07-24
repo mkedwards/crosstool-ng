@@ -2,7 +2,7 @@
 
 do_cross_me_harder_busybox_get() {
     CT_GetFile "busybox-${CT_BUSYBOX_VERSION}" \
-               http://busybox.net/downloads/
+               http://busybox.net/downloads
 }
 
 do_cross_me_harder_busybox_extract() {

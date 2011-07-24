@@ -2,7 +2,7 @@
 
 do_cross_me_harder_libsigcpp_get() {
     CT_GetFile "libsigc++-${CT_LIBSIGCPP_VERSION}" \
-               "http://ftp.gnome.org/pub/GNOME/sources/libsigc++/2.2/"
+               "http://ftp.gnome.org/pub/GNOME/sources/libsigc++/2.2"
 }
 
 do_cross_me_harder_libsigcpp_extract() {

@@ -2,7 +2,7 @@
 
 do_cross_me_harder_flex_get() {
     CT_GetFile "flex-${CT_FLEX_VERSION}" \
-               http://mesh.dl.sourceforge.net/sourceforge/flex/flex/flex-${CT_FLEX_VERSION}/
+               http://mesh.dl.sourceforge.net/sourceforge/flex/flex/flex-${CT_FLEX_VERSION}
     # Downloading from sourceforge may leave garbage, cleanup
     CT_DoExecLog ALL rm -f "${CT_TARBALLS_DIR}/showfiles.php"*
 }

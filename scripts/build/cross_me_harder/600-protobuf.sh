@@ -2,7 +2,7 @@
 
 do_cross_me_harder_protobuf_get() {
     CT_GetFile "protobuf-${CT_PROTOBUF_VERSION}" \
-               http://protobuf.googlecode.com/files/
+               http://protobuf.googlecode.com/files
 }
 
 do_cross_me_harder_protobuf_extract() {
