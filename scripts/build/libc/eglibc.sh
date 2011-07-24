@@ -9,6 +9,9 @@
 
 # Download eglibc repository
 do_eglibc_get() {
+    local svn_url
+    local svn_action
+
     CT_HasOrAbort svn
 
     case "${CT_LIBC_VERSION}" in

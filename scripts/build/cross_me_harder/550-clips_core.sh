@@ -1,8 +1,46 @@
 # Build script for clips-core
 
 do_cross_me_harder_clips_core_get() {
-    CT_GetFile "clips-core-${CT_CLIPS_CORE_VERSION}" .tgz \
-               "http://sourceforge.net/projects/clipsrules/files/CLIPS/6.30"
+    local svn_url
+    local bz2file="clips-core-${CT_CLIPS_CORE_VERSION}.tar.bz2"
+
+    if [ -f "${CT_TARBALLS_DIR}/${bz2file}" ]; then
+        CT_DoLog DEBUG "Already have 'clips-core-${CT_CLIPS_CORE_VERSION}'"
+        return 0
+    fi
+
+    if [    -f "${CT_LOCAL_TARBALLS_DIR}/${bz2file}"                \
+         -a "${CT_FORCE_DOWNLOAD}" != "y"                           \
+       ]; then
+        CT_DoLog DEBUG "Got 'clips-core-${CT_CLIPS_CORE_VERSION}' from local storage"
+        CT_DoExecLog ALL ln -s "${CT_LOCAL_TARBALLS_DIR}/${bz2file}" "${CT_TARBALLS_DIR}/${bz2file}"
+        return 0
+    fi
+
+    CT_MktempDir tmp_dir
+    CT_Pushd "${tmp_dir}"
+
+    CT_HasOrAbort svn
+
+    svn_url="https://clipsrules.svn.sourceforge.net/svnroot/clipsrules/core"
+
+    CT_DoExecLog ALL svn checkout -r "${CT_CLIPS_CORE_REVISION:-HEAD}" "${svn_url}" "$(pwd)"/clips-core
+
+    # Compress clips-core
+    CT_DoExecLog ALL mv clips-core "clips-core-${CT_CLIPS_CORE_VERSION}"
+    CT_DoExecLog ALL tar cjf "${bz2file}" "clips-core-${CT_CLIPS_CORE_VERSION}"
+    CT_DoExecLog ALL mv -f "${bz2file}" "${CT_TARBALLS_DIR}"
+
+    CT_Popd
+
+    # Remove source files
+    CT_DoExecLog ALL rm -rf "${tmp_dir}"
+
+    if [ "${CT_SAVE_TARBALLS}" = "y" ]; then
+        CT_DoLog EXTRA "Saving 'clips-core-${CT_CLIPS_CORE_VERSION}' to local storage"
+        CT_DoExecLog ALL mv -f "${CT_TARBALLS_DIR}/${bz2file}" "${CT_LOCAL_TARBALLS_DIR}"
+        CT_DoExecLog ALL ln -s "${CT_LOCAL_TARBALLS_DIR}/${bz2file}" "${CT_TARBALLS_DIR}/${bz2file}"
+    fi
 }
 
 do_cross_me_harder_clips_core_extract() {

@@ -1,6 +1,7 @@
 # Build script for libjpeg-turbo
 
 do_target_me_harder_libjpeg_turbo_get() {
+    local svn_url
     local bz2file="libjpeg-turbo-${CT_LIBJPEG_TURBO_VERSION}.tar.bz2"
 
     if [ -f "${CT_TARBALLS_DIR}/${bz2file}" ]; then
