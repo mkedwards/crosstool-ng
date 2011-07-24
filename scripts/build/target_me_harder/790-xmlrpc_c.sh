@@ -47,7 +47,7 @@ EOT
 
     CT_DoExecLog ALL \
     PATH="${CT_BUILD_DIR}/build-xmlrpc-c-target/indirect-configs:${PATH}" \
-    make ${JOBSFLAGS} CADD="-fPIC -DPIC"
+    make CADD="-fPIC -DPIC"
 
     CT_DoExecLog ALL \
     PATH="${CT_BUILD_DIR}/build-xmlrpc-c-target/indirect-configs:${PATH}" \

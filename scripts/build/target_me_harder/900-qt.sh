@@ -93,6 +93,7 @@ do_target_me_harder_qt_build() {
 
     CT_DoExecLog CFG \
     HOST_TUPLE="${CT_TARGET}"                                   \
+    CTBU_SYSROOT="${CT_SYSROOT_DIR}"                            \
     PKG_CONFIG="${CT_TARGET}-pkg-config --define-variable=prefix=${CT_SYSROOT_DIR}/usr" \
     CFLAGS="-g -Os"                                             \
     CXXFLAGS="-g -Os"                                           \
@@ -161,6 +162,7 @@ do_target_me_harder_qt_build() {
 
     CT_DoExecLog ALL \
     HOST_TUPLE="${CT_TARGET}"                                   \
+    CTBU_SYSROOT="${CT_SYSROOT_DIR}"                            \
     make ${JOBSFLAGS}
 
     rm -rf "${CT_SYSROOT_DIR}/dummy-install"
@@ -168,15 +170,16 @@ do_target_me_harder_qt_build() {
 
     CT_DoExecLog ALL \
     HOST_TUPLE="${CT_TARGET}"                                   \
-    make DESTDIR="${CT_SYSROOT_DIR}"/dummy-install install
+    CTBU_SYSROOT="${CT_SYSROOT_DIR}"                            \
+    make INSTALL_ROOT="${CT_SYSROOT_DIR}"/dummy-install install
 
     tar -C "${CT_SYSROOT_DIR}/dummy-install${CT_PREFIX_DIR}" -cf - lib plugins translations \
         | tar -C "${CT_SYSROOT_DIR}/usr" -xf -
     ( cd "${CT_SYSROOT_DIR}/dummy-install${CT_PREFIX_DIR}" \
           && find bin include lib mkspecs translations -name .git\* -prune -o -name .svn\* -prune -o -print \
-          | LC_ALL=C sort ) >"${CT_SYSROOT_DIR}/dummy-install/qt.tar.list"
+          | LC_ALL=C sort ) >"${CT_BUILD_DIR}/build-qt-target/qt.tar.list"
     tar cf - -C "${CT_SYSROOT_DIR}/dummy-install${CT_PREFIX_DIR}" \
-        --no-recursion -T "${CT_SYSROOT_DIR}/dummy-install/qt.tar.list" . \
+        --no-recursion -T "${CT_BUILD_DIR}/build-qt-target/qt.tar.list" . \
         | tar xf - -C "${CT_PREFIX_DIR}"
 
     rm -rf "${CT_SYSROOT_DIR}/dummy-install"

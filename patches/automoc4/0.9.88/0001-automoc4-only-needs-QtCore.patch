@@ -1,0 +1,25 @@
+From f5c792c3a0d2b517a9e28f7d0327bde792674653 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld4.cisco.com>
+Date: Sat, 23 Jul 2011 22:27:25 +0000
+Subject: [PATCH] automoc4 only needs QtCore
+
+---
+ CMakeLists.txt |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 22447c9..d2e11f0 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -2,7 +2,7 @@ project(Automoc4)
+ 
+ cmake_minimum_required(VERSION 2.4.5 FATAL_ERROR)
+ 
+-find_package(Qt4 REQUIRED)
++find_package(Qt4 REQUIRED COMPONENTS QtCore)
+ 
+ if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_C_COMPILER MATCHES "icc")
+    set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wnon-virtual-dtor -Wno-long-long -ansi -Wundef -Wcast-align -Wchar-subscripts -Wall -W -Wpointer-arith -Wformat-security -fno-check-new -fno-common")
+-- 
+1.7.0.4
+

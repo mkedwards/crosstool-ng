@@ -20,6 +20,7 @@ do_target_me_harder_pango_build() {
     PKG_CONFIG="${CT_TARGET}-pkg-config --define-variable=prefix=${CT_SYSROOT_DIR}/usr" \
     CFLAGS="-g -Os -fPIC -DPIC"                                 \
     CXXFLAGS="-g -Os -fPIC -DPIC"                               \
+    CCC="${CT_TARGET}-g++"                                      \
     "${CT_SRC_DIR}/pango-${CT_PANGO_VERSION}/configure"         \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \
