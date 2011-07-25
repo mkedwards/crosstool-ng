@@ -55,6 +55,7 @@ do_cross_me_harder_clips_core_build() {
     CT_DoExecLog CFG                                            \
     ACLOCAL="aclocal -I ${CT_SYSROOT_DIR}/usr/share/aclocal -I ${CT_PREFIX_DIR}/share/aclocal" \
     autoreconf -fiv
+    chmod 755 mkinstalldirs install-sh
     CT_Popd
 
     rm -rf "${CT_BUILD_DIR}/build-clips-core-host"
