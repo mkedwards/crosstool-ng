@@ -20,9 +20,9 @@ index 0000000..55a3a40
 +# qmake configuration for building with linux-g++
 +#
 +
-+include(../../common/g++.conf)
-+include(../../common/linux.conf)
-+include(../../common/qws.conf)
++include(../common/g++.conf)
++include(../common/linux.conf)
++include(../common/qws.conf)
 +
 +QMAKE_CCFLAGS		= -g -Os -fno-strict-volatile-bitfields
 +QMAKE_CXXFLAGS		= -g -Os -fno-strict-volatile-bitfields
@@ -116,7 +116,7 @@ index 0000000..b0551e5
 +**
 +****************************************************************************/
 +
-+#include "../../linux-g++/qplatformdefs.h"
++#include "../linux-g++/qplatformdefs.h"
 -- 
 1.7.0.4
 

@@ -20,6 +20,11 @@ do_target_me_harder_qt_build() {
     mkdir -p "${CT_BUILD_DIR}/build-qt-cross"
     CT_Pushd "${CT_BUILD_DIR}/build-qt-cross"
     
+    rm -f "${CT_SRC_DIR}/qt-${CT_QT_VERSION}/mkspecs/qws/common"
+    ln -s ../common "${CT_SRC_DIR}/qt-${CT_QT_VERSION}/mkspecs/qws/common"
+    rm -f "${CT_SRC_DIR}/qt-${CT_QT_VERSION}/mkspecs/qws/linux-g++"
+    ln -s ../linux-g++ "${CT_SRC_DIR}/qt-${CT_QT_VERSION}/mkspecs/qws/linux-g++"
+
     CT_DoExecLog CFG \
     CPPFLAGS="-I${CT_BUILDTOOLS_PREFIX_DIR}/include"            \
     LDFLAGS="-L${CT_BUILDTOOLS_PREFIX_DIR}/lib -Wl,-rpath=${CT_BUILDTOOLS_PREFIX_DIR}/lib" \

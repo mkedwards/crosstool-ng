@@ -258,9 +258,9 @@ index 0000000..ecde2cc
 +# qmake configuration for building with linux-g++
 +#
 +
-+include(../../common/g++.conf)
-+include(../../common/linux.conf)
-+include(../../common/qws.conf)
++include(../common/g++.conf)
++include(../common/linux.conf)
++include(../common/qws.conf)
 +
 +QMAKE_CCFLAGS		= -g -Os
 +QMAKE_CXXFLAGS		= -g -Os
@@ -354,7 +354,7 @@ index 0000000..b0551e5
 +**
 +****************************************************************************/
 +
-+#include "../../linux-g++/qplatformdefs.h"
++#include "../linux-g++/qplatformdefs.h"
 diff --git a/src/corelib/global/global.pri b/src/corelib/global/global.pri
 index 4800716..922d99c 100644
 --- a/src/corelib/global/global.pri
