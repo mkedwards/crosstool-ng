@@ -1,0 +1,72 @@
+From 185a01a89583c32641ca362e6fe13be00c09fd81 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Tue, 29 Mar 2011 21:44:39 +0000
+Subject: [PATCH] fix memory leak in TCP socket handling
+
+---
+ src/eXtl_tcp.c |   21 +++++++++++++++++++++
+ 1 files changed, 21 insertions(+), 0 deletions(-)
+
+diff --git a/src/eXtl_tcp.c b/src/eXtl_tcp.c
+index 6002d6d..b862b20 100644
+--- a/src/eXtl_tcp.c
++++ b/src/eXtl_tcp.c
+@@ -123,6 +123,10 @@ static int tcp_tl_free(void)
+ 			}
+ #endif
+ 		}
++		if (tcp_socket_tab[pos].previous_content) {
++			osip_free(tcp_socket_tab[pos].previous_content);
++			tcp_socket_tab[pos].previous_content = NULL;
++		}
+ 	}
+ 	memset(&tcp_socket_tab, 0, sizeof(struct _tcp_sockets) * EXOSIP_MAX_SOCKETS);
+ 	return OSIP_SUCCESS;
+@@ -322,6 +326,10 @@ static int tcp_tl_read_message(fd_set * osip_fdset)
+ 				}
+ #endif
+ 			}
++			if (tcp_socket_tab[pos].previous_content) {
++				osip_free(tcp_socket_tab[pos].previous_content);
++				tcp_socket_tab[pos].previous_content = NULL;
++			}
+ 			memset(&tcp_socket_tab[pos], 0, sizeof(tcp_socket_tab[pos]));
+ 		}
+ 		
+@@ -614,6 +622,10 @@ static int tcp_tl_read_message(fd_set * osip_fdset)
+ 						CFRelease(tcp_socket_tab[pos].writeStream);
+ 					}
+ #endif
++					if (tcp_socket_tab[pos].previous_content) {
++						osip_free(tcp_socket_tab[pos].previous_content);
++						tcp_socket_tab[pos].previous_content = NULL;
++					}
+ 					memset(&(tcp_socket_tab[pos]), 0, sizeof(tcp_socket_tab[pos]));
+ 				}
+ 			} else if (i == 0) {
+@@ -635,6 +647,10 @@ static int tcp_tl_read_message(fd_set * osip_fdset)
+ 					CFRelease(tcp_socket_tab[pos].writeStream);
+ 				}
+ #endif
++				if (tcp_socket_tab[pos].previous_content) {
++					osip_free(tcp_socket_tab[pos].previous_content);
++					tcp_socket_tab[pos].previous_content = NULL;
++				}
+ 				memset(&(tcp_socket_tab[pos]), 0, sizeof(tcp_socket_tab[pos]));
+ 			}
+ #ifndef MINISIZE
+@@ -758,6 +774,11 @@ static int _tcp_tl_connect_socket(char *host, int port)
+ 	    tcp_socket_tab[pos].writeStream=0;
+ #endif
+ 	  }
++	  if (tcp_socket_tab[pos].previous_content)
++	    {
++	      osip_free(tcp_socket_tab[pos].previous_content);
++	      tcp_socket_tab[pos].previous_content = NULL;
++	    }
+ 	  memset(&tcp_socket_tab[pos], 0, sizeof(tcp_socket_tab[pos]));
+ #else
+ 	  return -1;
+-- 
+1.7.0.4
+

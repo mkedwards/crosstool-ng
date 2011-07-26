@@ -1,0 +1,25 @@
+From 34ed911dabd1c63fd05e9361230412f8ae4e4113 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Tue, 5 Apr 2011 20:32:55 +0000
+Subject: [PATCH] initialize sockets to -1
+
+---
+ src/osip2/osip_transaction.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/src/osip2/osip_transaction.c b/src/osip2/osip_transaction.c
+index ee8290c..831b125 100644
+--- a/src/osip2/osip_transaction.c
++++ b/src/osip2/osip_transaction.c
+@@ -149,6 +149,8 @@ osip_transaction_init(osip_transaction_t ** transaction,
+ 	memset(*transaction, 0, sizeof(osip_transaction_t));
+ 
+ 	(*transaction)->birth_time = now;
++	(*transaction)->in_socket = -1;
++	(*transaction)->out_socket = -1;
+ 
+ 	osip_id_mutex_lock(osip);
+ 	(*transaction)->transactionid = transactionid;
+-- 
+1.7.0.4
+

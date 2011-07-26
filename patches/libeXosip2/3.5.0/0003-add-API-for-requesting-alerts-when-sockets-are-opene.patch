@@ -1,0 +1,327 @@
+From ed94313e3663d3fe88a585946874bfbae3c20972 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
+Date: Tue, 5 Apr 2011 21:40:56 +0000
+Subject: [PATCH] add API for requesting alerts when sockets are opened and closed
+
+---
+ include/eXosip2/eX_setup.h |   14 ++++++++++++++
+ src/eXtl.c                 |   25 +++++++++++++++++++++++++
+ src/eXtl_dtls.c            |    4 ++++
+ src/eXtl_tcp.c             |   10 ++++++++++
+ src/eXtl_tls.c             |   15 +++++++++++++++
+ src/eXtl_udp.c             |    2 ++
+ src/eXtransport.h          |    3 +++
+ 7 files changed, 73 insertions(+), 0 deletions(-)
+
+diff --git a/include/eXosip2/eX_setup.h b/include/eXosip2/eX_setup.h
+index 2894fad..a09afb7 100644
+--- a/include/eXosip2/eX_setup.h
++++ b/include/eXosip2/eX_setup.h
+@@ -164,6 +164,20 @@ extern "C"
+                         int max_length);
+ 
+ /**
++ * Register a callback for when eXosip opens a new socket.
++ *
++ * @param cb callback
++ */
++  void eXosip_set_alert_after_opening_fd_cb (void (*cb)(int));
++
++/**
++ * Register a callback for when eXosip closes a socket that it opened.
++ *
++ * @param cb callback
++ */
++  void eXosip_set_alert_before_closing_fd_cb (void (*cb)(int));
++
++/**
+  * Listen on a specified socket.
+  * 
+  * @param transport IPPROTO_UDP for udp. (soon to come: TCP/TLS?)
+diff --git a/src/eXtl.c b/src/eXtl.c
+index 33135e7..404d491 100644
+--- a/src/eXtl.c
++++ b/src/eXtl.c
+@@ -25,3 +25,28 @@ struct eXtl_protocol *eXtl_protos[] = {
+ 	&eXtl_tcp,
+ 	NULL
+ };
++
++static void (*alert_after_opening_fd_cb)(int fd) = NULL;
++static void (*alert_before_closing_fd_cb)(int fd) = NULL;
++
++void alert_after_opening_fd(int fd)
++{
++	if (alert_after_opening_fd_cb)
++		(*alert_after_opening_fd_cb)(fd);
++}
++
++void alert_before_closing_fd(int fd)
++{
++	if (alert_before_closing_fd_cb)
++		(*alert_before_closing_fd_cb)(fd);
++}
++
++void eXosip_set_alert_after_opening_fd_cb(void (*cb)(int))
++{
++	alert_after_opening_fd_cb = cb;
++}
++
++void eXosip_set_alert_before_closing_fd_cb(void (*cb)(int))
++{
++	alert_before_closing_fd_cb = cb;
++}
+diff --git a/src/eXtl_dtls.c b/src/eXtl_dtls.c
+index efdb087..26f21d1 100644
+--- a/src/eXtl_dtls.c
++++ b/src/eXtl_dtls.c
+@@ -275,7 +275,10 @@ static int dtls_tl_free(void)
+ 	memset(dtls_firewall_port, 0, sizeof(dtls_firewall_port));
+ 	memset(&ai_addr, 0, sizeof(struct sockaddr_storage));
+ 	if (dtls_socket >= 0)
++	{
++		alert_before_closing_fd(dtls_socket);
+ 		close(dtls_socket);
++	}
+ 	dtls_socket = -1;
+ 	return OSIP_SUCCESS;
+ }
+@@ -380,6 +383,7 @@ static int dtls_tl_open(void)
+ 	}
+ 
+ 	dtls_socket = sock;
++	alert_after_opening_fd(dtls_socket);
+ 
+ 	if (eXtl_dtls.proto_port == 0) {
+ 		/* get port number from socket */
+diff --git a/src/eXtl_tcp.c b/src/eXtl_tcp.c
+index 26553f6..a940393 100644
+--- a/src/eXtl_tcp.c
++++ b/src/eXtl_tcp.c
+@@ -110,12 +110,14 @@ static int tcp_tl_free(void)
+ 	memset(&ai_addr, 0, sizeof(struct sockaddr_storage));
+ 	if (tcp_socket >= 0)
+ 	{
++		alert_before_closing_fd(tcp_socket);
+ 		close(tcp_socket);
+ 		tcp_socket = -1;
+ 	}
+ 
+ 	for (pos = 0; pos < EXOSIP_MAX_SOCKETS; pos++) {
+ 		if (tcp_socket_tab[pos].socket >= 0) {
++			alert_before_closing_fd(tcp_socket_tab[pos].socket);
+ 			close(tcp_socket_tab[pos].socket);
+ #ifdef MULTITASKING_ENABLED
+ 			if (tcp_socket_tab[pos].readStream!=NULL)
+@@ -249,6 +251,7 @@ static int tcp_tl_open(void)
+ 	}
+ 
+ 	tcp_socket = sock;
++	alert_after_opening_fd(tcp_socket);
+ 
+ 	if (eXtl_tcp.proto_port == 0) {
+ 		/* get port number from socket */
+@@ -321,6 +324,7 @@ static int tcp_tl_read_message(fd_set * osip_fdset)
+ 			/* delete an old one! */
+ 			pos = 0;
+ 			if (tcp_socket_tab[pos].socket >= 0) {
++				alert_before_closing_fd(tcp_socket_tab[pos].socket);
+ 				close(tcp_socket_tab[pos].socket);
+ #ifdef MULTITASKING_ENABLED
+ 				if (tcp_socket_tab[pos].readStream!=NULL)
+@@ -351,6 +355,7 @@ static int tcp_tl_read_message(fd_set * osip_fdset)
+ 								  "Error accepting TCP socket\n"));
+ 		} else {
+ 			tcp_socket_tab[pos].socket = sock;
++			alert_after_opening_fd(tcp_socket_tab[pos].socket);
+ 			OSIP_TRACE(osip_trace(__FILE__, __LINE__, OSIP_INFO1, NULL,
+ 								  "New TCP connection accepted\n"));
+ 
+@@ -619,6 +624,7 @@ static int tcp_tl_read_message(fd_set * osip_fdset)
+ 							   (__FILE__, __LINE__, OSIP_ERROR, NULL,
+ 								"Could not read socket (%s)- close it\n",
+ 								strerror(status)));
++					alert_before_closing_fd(tcp_socket_tab[pos].socket);
+ 					close(tcp_socket_tab[pos].socket);
+ #ifdef MULTITASKING_ENABLED
+ 					if (tcp_socket_tab[pos].readStream!=NULL)
+@@ -645,6 +651,7 @@ static int tcp_tl_read_message(fd_set * osip_fdset)
+ 							"End of stream (read 0 byte from %s:%i)\n",
+ 							tcp_socket_tab[pos].remote_ip,
+ 							tcp_socket_tab[pos].remote_port));
++				alert_before_closing_fd(tcp_socket_tab[pos].socket);
+ 				close(tcp_socket_tab[pos].socket);
+ #ifdef MULTITASKING_ENABLED
+ 				if (tcp_socket_tab[pos].readStream!=NULL)
+@@ -770,6 +777,7 @@ static int _tcp_tl_connect_socket(char *host, int port)
+ 	  /* delete an old one! */
+ 	  pos = 0;
+ 	  if (tcp_socket_tab[pos].socket >= 0) {
++	    alert_before_closing_fd(tcp_socket_tab[pos].socket);
+ 	    close(tcp_socket_tab[pos].socket);
+ #ifdef MULTITASKING_ENABLED
+ 	    if (tcp_socket_tab[pos].readStream!=NULL)
+@@ -993,6 +1001,7 @@ static int _tcp_tl_connect_socket(char *host, int port)
+ 
+ 	if (sock >= 0) {
+ 		tcp_socket_tab[pos].socket = sock;
++		alert_after_opening_fd(tcp_socket_tab[pos].socket);
+ 
+ 		if (src6host[0] == '\0')
+ 			osip_strncpy(tcp_socket_tab[pos].remote_ip, host,
+@@ -1219,6 +1228,7 @@ static int tcp_tl_keepalive(void)
+ 							tcp_socket_tab[pos].remote_ip,
+ 							tcp_socket_tab[pos].remote_port,
+ 							tcp_socket_tab[pos].socket, pos));
++				alert_before_closing_fd(tcp_socket_tab[pos].socket);
+ 				close(tcp_socket_tab[pos].socket);
+ #ifdef MULTITASKING_ENABLED
+ 				if (tcp_socket_tab[pos].readStream!=NULL)
+diff --git a/src/eXtl_tls.c b/src/eXtl_tls.c
+index 4f3ce19..08cb6ee 100644
+--- a/src/eXtl_tls.c
++++ b/src/eXtl_tls.c
+@@ -155,6 +155,7 @@ static int tls_tl_free(void)
+ 			}
+ 			if (tls_socket_tab[pos].ssl_ctx != NULL)
+ 				SSL_CTX_free(tls_socket_tab[pos].ssl_ctx);
++			alert_before_closing_fd(tls_socket_tab[pos].socket);
+ 			close(tls_socket_tab[pos].socket);
+ #ifdef MULTITASKING_ENABLED
+ 			if (tls_socket_tab[pos].readStream!=NULL)
+@@ -186,7 +187,10 @@ static int tls_tl_free(void)
+ 	memset(tls_firewall_port, 0, sizeof(tls_firewall_port));
+ 	memset(&ai_addr, 0, sizeof(struct sockaddr_storage));
+ 	if (tls_socket >= 0)
++	{
++		alert_before_closing_fd(tls_socket);
+ 		close(tls_socket);
++	}
+ 	tls_socket = -1;
+ 
+ 	memset(&eXosip_tls_ctx_params, 0, sizeof(eXosip_tls_ctx_t));
+@@ -1276,6 +1280,7 @@ static int tls_tl_open(void)
+ 	}
+ 
+ 	tls_socket = sock;
++	alert_after_opening_fd(tls_socket);
+ 
+ 	if (eXtl_tls.proto_port == 0) {
+ 		/* get port number from socket */
+@@ -1701,6 +1706,7 @@ static int tls_tl_read_message(fd_set * osip_fdset)
+ 					SSL_free(tls_socket_tab[pos].ssl_conn);
+ 					SSL_CTX_free(tls_socket_tab[pos].ssl_ctx);
+ 				}
++				alert_before_closing_fd(tls_socket_tab[pos].socket);
+ 				close(tls_socket_tab[pos].socket);
+ #ifdef MULTITASKING_ENABLED
+ 				if (tls_socket_tab[pos].readStream!=NULL)
+@@ -1776,6 +1782,7 @@ static int tls_tl_read_message(fd_set * osip_fdset)
+ 			tls_socket_tab[pos].socket = sock;
+ 			tls_socket_tab[pos].ssl_conn = ssl;
+ 			tls_socket_tab[pos].ssl_state = 2;
++			alert_after_opening_fd(tls_socket_tab[pos].socket);
+ 
+ 
+ 			memset(src6host, 0, sizeof(src6host));
+@@ -1866,6 +1873,7 @@ static int tls_tl_read_message(fd_set * osip_fdset)
+ 								tls_socket_tab[pos].socket, pos));
+ 					if (tls_socket_tab[pos].ssl_conn != NULL)
+ 						SSL_shutdown(tls_socket_tab[pos].ssl_conn);
++					alert_before_closing_fd(tls_socket_tab[pos].socket);
+ 					close(tls_socket_tab[pos].socket);
+ 					if (tls_socket_tab[pos].ssl_conn != NULL)
+ 						SSL_free(tls_socket_tab[pos].ssl_conn);
+@@ -1894,6 +1902,7 @@ static int tls_tl_read_message(fd_set * osip_fdset)
+ 				if (i < 0) {
+ 					if (tls_socket_tab[pos].ssl_conn != NULL)
+ 						SSL_shutdown(tls_socket_tab[pos].ssl_conn);
++					alert_before_closing_fd(tls_socket_tab[pos].socket);
+ 					close(tls_socket_tab[pos].socket);
+ 					if (tls_socket_tab[pos].ssl_conn != NULL)
+ 						SSL_free(tls_socket_tab[pos].ssl_conn);
+@@ -1924,6 +1933,7 @@ static int tls_tl_read_message(fd_set * osip_fdset)
+ 					print_ssl_error(i);
+ 
+ 					SSL_shutdown(tls_socket_tab[pos].ssl_conn);
++					alert_before_closing_fd(tls_socket_tab[pos].socket);
+ 					close(tls_socket_tab[pos].socket);
+ 					SSL_free(tls_socket_tab[pos].ssl_conn);
+ 					if (tls_socket_tab[pos].ssl_ctx != NULL)
+@@ -1975,6 +1985,7 @@ static int tls_tl_read_message(fd_set * osip_fdset)
+ 									NULL, "TLS closed\n"));
+ 
+ 						SSL_shutdown(tls_socket_tab[pos].ssl_conn);
++						alert_before_closing_fd(tls_socket_tab[pos].socket);
+ 						close(tls_socket_tab[pos].socket);
+ 						SSL_free(tls_socket_tab[pos].ssl_conn);
+ 						if (tls_socket_tab[pos].ssl_ctx != NULL)
+@@ -2268,6 +2279,7 @@ static int _tls_tl_connect_socket(char *host, int port)
+ 
+ 	if (sock >= 0) {
+ 		tls_socket_tab[pos].socket = sock;
++		alert_after_opening_fd(tls_socket_tab[pos].socket);
+ 
+ 		if (src6host[0] == '\0')
+ 			osip_strncpy(tls_socket_tab[pos].remote_ip, host,
+@@ -2285,6 +2297,7 @@ static int _tls_tl_connect_socket(char *host, int port)
+ 			res = _tls_tl_ssl_connect_socket(pos);
+ 			if (res < 0) {
+ 				SSL_shutdown(tls_socket_tab[pos].ssl_conn);
++				alert_before_closing_fd(tls_socket_tab[pos].socket);
+ 				close(tls_socket_tab[pos].socket);
+ 				SSL_free(tls_socket_tab[pos].ssl_conn);
+ 				if (tls_socket_tab[pos].ssl_ctx != NULL)
+@@ -2408,6 +2421,7 @@ tls_tl_send_message(osip_transaction_t * tr, osip_message_t * sip, char *host,
+ 			{
+ 				if (tls_socket_tab[pos].ssl_conn != NULL)
+ 					SSL_shutdown(tls_socket_tab[pos].ssl_conn);
++				alert_before_closing_fd(tls_socket_tab[pos].socket);
+ 				close(tls_socket_tab[pos].socket);
+ 				if (tls_socket_tab[pos].ssl_conn != NULL)
+ 					SSL_free(tls_socket_tab[pos].ssl_conn);
+@@ -2451,6 +2465,7 @@ tls_tl_send_message(osip_transaction_t * tr, osip_message_t * sip, char *host,
+ 		i = _tls_tl_ssl_connect_socket(pos);
+ 		if (i < 0) {
+ 			SSL_shutdown(tls_socket_tab[pos].ssl_conn);
++			alert_before_closing_fd(tls_socket_tab[pos].socket);
+ 			close(tls_socket_tab[pos].socket);
+ 			SSL_free(tls_socket_tab[pos].ssl_conn);
+ 			if (tls_socket_tab[pos].ssl_ctx != NULL)
+diff --git a/src/eXtl_udp.c b/src/eXtl_udp.c
+index a2d82c8..e2915f2 100644
+--- a/src/eXtl_udp.c
++++ b/src/eXtl_udp.c
+@@ -61,6 +61,7 @@ static int udp_tl_free(void)
+ 	memset(&ai_addr, 0, sizeof(struct sockaddr_storage));
+ 	if (udp_socket >= 0)
+ 	{
++		alert_before_closing_fd(udp_socket);
+ 		close(udp_socket);
+ 		udp_socket = -1;
+ 	}
+@@ -164,6 +165,7 @@ static int udp_tl_open(void)
+ 	}
+ 
+ 	udp_socket = sock;
++	alert_after_opening_fd(udp_socket);
+ 
+ 	if (eXtl_udp.proto_port == 0) {
+ 		/* get port number from socket */
+diff --git a/src/eXtransport.h b/src/eXtransport.h
+index 548220c..a4cbc67 100644
+--- a/src/eXtransport.h
++++ b/src/eXtransport.h
+@@ -35,6 +35,9 @@
+ #  include <sys/select.h>
+ #endif
+ 
++extern void alert_after_opening_fd(int fd);
++extern void alert_before_closing_fd(int fd);
++
+ struct eXtl_protocol {
+ 	int enabled;
+ 
+-- 
+1.7.0.4
+

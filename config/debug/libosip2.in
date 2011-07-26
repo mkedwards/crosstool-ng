@@ -1,0 +1,24 @@
+# libosip2
+# depends on ! BACKEND
+
+config DEBUG_libosip2
+    bool
+
+choice
+    bool
+    prompt "libosip2 version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LIBOSIP2_V_3_5_0
+    bool
+    prompt "3.5.0 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config LIBOSIP2_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "3.5.0" if LIBOSIP2_V_3_5_0
