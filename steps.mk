@@ -24,6 +24,7 @@ CT_STEPS := libc_check_config   \
             mpc                 \
             zlib                \
             bzip2               \
+            xz                  \
             libelf              \
             elfutils            \
             libunwind           \
@@ -47,6 +48,7 @@ CT_STEPS := libc_check_config   \
             libc_finish         \
             zlib_target         \
             bzip2_target        \
+            xz_target           \
             libelf_target       \
             elfutils_target     \
             libunwind_target    \

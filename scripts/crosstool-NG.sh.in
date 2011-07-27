@@ -139,6 +139,7 @@ CT_DoLog INFO "Building environment variables"
 . "${CT_LIB_DIR}/scripts/build/companion_libs/libunwind.sh"
 . "${CT_LIB_DIR}/scripts/build/companion_libs/zlib.sh"
 . "${CT_LIB_DIR}/scripts/build/companion_libs/bzip2.sh"
+. "${CT_LIB_DIR}/scripts/build/companion_libs/xz.sh"
 . "${CT_LIB_DIR}/scripts/build/companion_libs/popt.sh"
 . "${CT_LIB_DIR}/scripts/build/companion_libs/expat.sh"
 . "${CT_LIB_DIR}/scripts/build/companion_libs/ncurses.sh"
@@ -553,6 +554,7 @@ if [ -z "${CT_RESTART}" ]; then
         do_libunwind_get
         do_zlib_get
         do_bzip2_get
+        do_xz_get
         do_popt_get
         do_expat_get
         do_ncurses_get
@@ -598,6 +600,7 @@ if [ -z "${CT_RESTART}" ]; then
         do_libunwind_extract
         do_zlib_extract
         do_bzip2_extract
+        do_xz_extract
         do_popt_extract
         do_expat_extract
         do_ncurses_extract

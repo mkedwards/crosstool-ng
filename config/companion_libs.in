@@ -68,6 +68,12 @@ config BZIP2_NEEDED
     select BZIP2
     select COMPLIBS_NEEDED
 
+config XZ_NEEDED
+    bool
+    default n
+    select XZ
+    select COMPLIBS_NEEDED
+
 config POPT_NEEDED
     bool
     default n
@@ -182,6 +188,13 @@ config BZIP2
 config BZIP2_TARGET
     bool
 
+config XZ
+    bool
+    select COMPLIBS
+
+config XZ_TARGET
+    bool
+
 config POPT
     bool
     select COMPLIBS
@@ -279,6 +292,11 @@ if BZIP2 || BZIP2_TARGET
 comment "bzip2 version needed to build for target"
     depends on !BZIP2
 source "config/companion_libs/bzip2.in"
+endif
+if XZ || XZ_TARGET
+comment "xz version needed to build for target"
+    depends on !XZ
+source "config/companion_libs/xz.in"
 endif
 if POPT || POPT_TARGET
 comment "popt version needed to build for target"

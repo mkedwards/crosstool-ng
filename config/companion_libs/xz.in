@@ -1,0 +1,20 @@
+# xz
+
+choice
+    bool
+    prompt "xz version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config XZ_V_5_0_3
+    bool
+    prompt "5.0.3 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config XZ_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "5.0.3" if XZ_V_5_0_3

@@ -62,6 +62,7 @@ dump_single_sample() {
                  -o -n "${CT_LIBUNWIND}"        \
                  -o -n "${CT_ZLIB}"             \
                  -o -n "${CT_BZIP2}"            \
+                 -o -n "${CT_XZ}"               \
                  -o -n "${CT_POPT}"             \
                  -o -n "${CT_EXPAT}"            \
                  -o -n "${CT_NCURSES}"          \
@@ -80,6 +81,7 @@ dump_single_sample() {
                  -o -n "${CT_LIBUNWIND_TARGET}" \
                  -o -n "${CT_ZLIB_TARGET}"      \
                  -o -n "${CT_BZIP2_TARGET}"     \
+                 -o -n "${CT_XZ_TARGET}"        \
                  -o -n "${CT_POPT_TARGET}"      \
                  -o -n "${CT_EXPAT_TARGET}"     \
                  -o -n "${CT_NCURSES_TARGET}"   \
@@ -102,6 +104,7 @@ dump_single_sample() {
             [ -z "${CT_LIBUNWIND}" -a -z "${CT_LIBUNWIND_TARGET}" ] || printf " libunwind-%s" "${CT_LIBUNWIND_VERSION}"
             [ -z "${CT_ZLIB}"   -a -z "${CT_ZLIB_TARGET}"   ] || printf " zlib-%s"      "${CT_ZLIB_VERSION}"
             [ -z "${CT_BZIP2}"  -a -z "${CT_BZIP2_TARGET}"  ] || printf " bzip2-%s"     "${CT_BZIP2_VERSION}"
+            [ -z "${CT_XZ}"     -a -z "${CT_XZ_TARGET}"     ] || printf " xz-%s"        "${CT_XZ_VERSION}"
             [ -z "${CT_POPT}"   -a -z "${CT_POPT_TARGET}"   ] || printf " popt-%s"      "${CT_POPT_VERSION}"
             [ -z "${CT_EXPAT}"  -a -z "${CT_EXPAT_TARGET}"  ] || printf " expat-%s"     "${CT_EXPAT_VERSION}"
             [ -z "${CT_NCURSES}" -a -z "${CT_NCURSES_TARGET}" ] || printf " ncurses-%s" "${CT_NCURSES_VERSION}"

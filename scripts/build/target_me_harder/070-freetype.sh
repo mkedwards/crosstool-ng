@@ -47,8 +47,8 @@ do_target_me_harder_freetype_build() {
 @@ -9,4 +9,3 @@
  Requires:
 -Libs: -L${libdir} -lfreetype
--Libs.private: -lz  
-+Libs: -L${libdir} -lfreetype -lz
+-Libs.private: -lz -lbz2 
++Libs: -L${libdir} -lfreetype -lz -lbz2
  Cflags: -I${includedir}/freetype2 -I${includedir}
 EOF
     CT_Popd
