@@ -38,6 +38,7 @@ do_pcre() {
         --prefix="${CT_PREFIX_DIR}"                             \
         --enable-unicode-properties                             \
         --enable-pcregrep-libz                                  \
+        --enable-pcregrep-libbz2                                \
         --enable-shared                                         \
         --enable-static
     # --enable-shared because glib builds a shared library linked against pcre
@@ -78,6 +79,7 @@ do_pcre_target() {
         --prefix=/usr                                           \
         --enable-unicode-properties                             \
         --enable-pcregrep-libz                                  \
+        --enable-pcregrep-libbz2                                \
         --enable-shared                                         \
         --enable-static
 

@@ -19,8 +19,8 @@ doHelp() {
 		    gcc, binutils, glibc, eglibc, uClibc, newlib, linux,
 		    gdb, dmalloc, duma, tcpdump, oprofile, strace, ltrace, valgrind,
 		    latencytop, bash, gawk, tar, procps, cgreen, gmock,
-		    libunwind, elfutils, libelf, zlib, popt, expat, ncurses, pcre, sqlite,
-                    attr, acl, xmlrpcpp, gmp, mpfr, ppl, cloog, mpc
+		    libunwind, elfutils, libelf, zlib, bzip2, popt, expat, ncurses,
+                    pcre, sqlite, attr, acl, xmlrpcpp, gmp, mpfr, ppl, cloog, mpc
 		
 		  Valid options for all tools:
 		    --stable, -s, +x   (default)
@@ -187,6 +187,7 @@ while [ $# -gt 0 ]; do
         --elfutils) EXP=; OBS=; cat=ELFUTILS;       tool=elfutils;  tool_prefix=companion_libs;;
         --libunwind) EXP=; OBS=; cat=LIBUNWIND;     tool=libunwind; tool_prefix=companion_libs;;
         --zlib)     EXP=; OBS=; cat=ZLIB;           tool=zlib;      tool_prefix=companion_libs;;
+        --bzip2)    EXP=; OBS=; cat=BZIP2;          tool=bzip2;     tool_prefix=companion_libs;;
         --popt)     EXP=; OBS=; cat=POPT;           tool=popt;      tool_prefix=companion_libs;;
         --expat)    EXP=; OBS=; cat=EXPAT;          tool=expat;     tool_prefix=companion_libs;;
         --ncurses)  EXP=; OBS=; cat=NCURSES;        tool=ncurses;   tool_prefix=companion_libs;;
