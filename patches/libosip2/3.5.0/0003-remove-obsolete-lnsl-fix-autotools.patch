@@ -1,0 +1,75 @@
+From b4858d3ce6014eab444372ad1d168badf09ac644 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld6.cisco.com>
+Date: Wed, 27 Jul 2011 00:21:32 +0000
+Subject: [PATCH] remove obsolete -lnsl, fix autotools
+
+---
+ Makefile.am  |    4 +++-
+ configure.in |   11 +++--------
+ 2 files changed, 6 insertions(+), 9 deletions(-)
+
+diff --git a/Makefile.am b/Makefile.am
+index 10ca00e..3522e49 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -1,6 +1,8 @@
++ACLOCAL_AMFLAGS = -I m4
++
+ EXTRA_DIST = README BUGS FEATURES HISTORY autogen.sh libosip2.pc.in
+ 
+-SUBDIRS = include src scripts help platform
++SUBDIRS = include src help platform
+ 
+ rpm-package:
+ 	cd platform && $(MAKE) rpm-package
+diff --git a/configure.in b/configure.in
+index 290afd0..e315d5c 100644
+--- a/configure.in
++++ b/configure.in
+@@ -41,10 +41,10 @@ AC_MSG_RESULT([Building Package on ${OS}])
+ 
+ dnl *********************************************************************
+ dnl Initialize automake stuff
++AC_CONFIG_MACRO_DIR([m4])
+ AC_CONFIG_AUX_DIR(scripts)
+ AC_CONFIG_HEADERS(config.h)
+ AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
+-AM_ACLOCAL_INCLUDE(scripts)
+ 
+ AC_CANONICAL_HOST                                                               
+ 
+@@ -122,10 +122,9 @@ dnl compile with mt support
+ if test "x$enable_mt" = "xyes"; then
+   if test "x$enable_pthread" = "xyes"; then
+     SIP_FSM_FLAGS="-DOSIP_MT -DHAVE_PTHREAD"
+-    dnl FSM_LIB="-lpthread"
++    FSM_LIB="-pthread"
+   else
+     SIP_FSM_FLAGS="-DOSIP_MT"
+-    ACX_PTHREAD()
+   fi
+ fi
+ 
+@@ -210,10 +209,7 @@ if test "x$enable_minisize" = "xyes"; then
+ fi
+ AM_CONDITIONAL(BUILD_MAXSIZE, test x$enable_minisize = xno)
+ 
+-dnl Checks for libraries. (those one are needed for sun)
+-AC_CHECK_LIB(posix4,sem_open,[FSM_LIB="$FSM_LIB -lposix4 -mt"])
+-AC_CHECK_LIB(nsl,nis_add,[FSM_LIB="$FSM_LIB -lnsl"])
+-AC_CHECK_LIB(socket,sendto,[FSM_LIB="$FSM_LIB -lsocket"])
++dnl Checks for libraries.
+ AC_CHECK_LIB(c, lrand48, AC_DEFINE([HAVE_LRAND48], [], [Defined if you have lrand48]))
+ 
+ AC_CACHE_CHECK([whether -Wall works], Wall_cv_flag, [
+@@ -369,7 +365,6 @@ AC_CHECK_TYPES([struct timeval],,,[
+ AC_OUTPUT(
+ libosip2.pc
+ Makefile
+-scripts/Makefile
+ src/Makefile
+ src/osipparser2/Makefile
+ src/osip2/Makefile
+-- 
+1.7.0.4
+

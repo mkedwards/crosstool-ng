@@ -1,0 +1,101 @@
+From a44aabafeafa2e445e1a19031abae67b854f3cbe Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld6.cisco.com>
+Date: Wed, 27 Jul 2011 00:42:31 +0000
+Subject: [PATCH] remove obsolete -lnsl, fix autotools
+
+---
+ Makefile.am       |    3 ++-
+ configure.in      |    6 ++----
+ src/Makefile.am   |    4 ++--
+ tools/Makefile.am |    4 ++--
+ 4 files changed, 8 insertions(+), 9 deletions(-)
+
+diff --git a/Makefile.am b/Makefile.am
+index e3a3a99..e8f1db2 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -1,7 +1,8 @@
++ACLOCAL_AMFLAGS = -I m4
+ 
+ EXTRA_DIST = README autogen.sh
+ 
+-SUBDIRS = scripts platform src include tools help
++SUBDIRS = platform src include tools help
+ 
+ doxygen:
+ 	doxygen help/doxygen/DoxyFile
+diff --git a/configure.in b/configure.in
+index 765299e..e12e7f8 100644
+--- a/configure.in
++++ b/configure.in
+@@ -42,9 +42,9 @@ AC_MSG_RESULT([Building Package on ${OS}])
+ dnl *********************************************************************
+ dnl Initialize automake stuff
+ AC_CONFIG_AUX_DIR(scripts)
++AC_CONFIG_MACRO_DIR([m4])
+ AC_CONFIG_HEADERS(config.h)
+ AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
+-AM_ACLOCAL_INCLUDE(scripts)
+ 
+ AC_CANONICAL_HOST
+ 
+@@ -114,10 +114,9 @@ if test "x$enable_mt" = "xyes"; then
+   if test "x$enable_pthread" = "xyes"; then
+     EXOSIP_FLAGS="-DOSIP_MT -DHAVE_PTHREAD"
+     SIP_FSM_FLAGS="-DHAVE_PTHREAD"
+-    dnl FSM_LIB="-lpthread"
++    FSM_LIB="-pthread"
+   else
+     EXOSIP_FLAGS="$EXOSIP_FLAGS -DOSIP_MT"
+-    ACX_PTHREAD()
+   fi
+ fi
+ 
+@@ -379,7 +378,6 @@ fi
+ 
+ AC_OUTPUT(
+  Makefile
+- scripts/Makefile
+  platform/Makefile
+  platform/vsnet/Makefile
+  platform/wince/Makefile
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 76f3eec..020de00 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -9,7 +9,7 @@ lib_LTLIBRARIES = libeXosip2.la
+ #	-Wstrict-prototypes
+ #	-Werror
+ #
+-AM_CFLAGS = @EXOSIP_FLAGS@ @CFLAGS@  @PTHREAD_CFLAGS@
++AM_CFLAGS = @EXOSIP_FLAGS@ @CFLAGS@
+ 
+ libeXosip2_la_SOURCES =           \
+ eXosip.c         eXconf.c         \
+@@ -48,6 +48,6 @@ sdp_offans.c
+ endif
+ 
+ libeXosip2_la_LDFLAGS = -version-info $(LIBEXOSIP_SO_VERSION) -no-undefined
+-libeXosip2_la_LIBADD = @EXOSIP_LIB@ @PTHREAD_LIBS@ $(OSIP_LIBS)
++libeXosip2_la_LIBADD = @EXOSIP_LIB@ $(OSIP_LIBS)
+ 
+ INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include $(OSIP_CFLAGS)
+diff --git a/tools/Makefile.am b/tools/Makefile.am
+index 5cb1da9..19d7be1 100644
+--- a/tools/Makefile.am
++++ b/tools/Makefile.am
+@@ -3,9 +3,9 @@ if COMPILE_TOOLS
+ bin_PROGRAMS = sip_reg
+ endif
+ 
+-AM_CFLAGS = @CFLAGS@ @PTHREAD_CFLAGS@ @EXOSIP_FLAGS@
++AM_CFLAGS = @CFLAGS@ @EXOSIP_FLAGS@
+ 
+ sip_reg_SOURCES = sip_reg.c
+-sip_reg_LDADD = $(top_builddir)/src/libeXosip2.la @TOOLS_LIBS@ $(OSIP_LIBS) $(EXOSIP_LIB) $(PTHREAD_LIBS)
++sip_reg_LDADD = $(top_builddir)/src/libeXosip2.la @TOOLS_LIBS@ $(EXOSIP_LIB) $(OSIP_LIBS)
+ 
+ INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/include $(OSIP_CFLAGS)
+-- 
+1.7.0.4
+
