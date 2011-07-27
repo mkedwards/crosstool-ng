@@ -26,17 +26,17 @@ do_xz() {
 
     CT_DoLog EXTRA "Configuring xz"
 
-    CT_DoExecLog CFG                                        \
-    CC="${CT_HOST}-gcc"                                     \
-    AR="${CT_HOST}-ar"                                      \
-    RANLIB="${CT_HOST}-ranlib"                              \
-    CFLAGS="-g -Os -fPIC -DPIC"                             \
-    ./configure                                             \
-        --prefix="${CT_BUILDTOOLS_PREFIX_DIR}"              \
-        --enable-shared
+    CT_DoExecLog CFG \
+    CPPFLAGS="-I${CT_PREFIX_DIR}/include"                       \
+    LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}/lib" \
+    ./configure                                                 \
+            --build=${CT_BUILD}                                 \
+            --host=${CT_HOST}                                   \
+            --prefix="${CT_BUILDTOOLS_PREFIX_DIR}"              \
+            --enable-shared
 
     CT_DoLog EXTRA "Building xz"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing xz"
     CT_DoExecLog ALL make install
@@ -56,20 +56,26 @@ do_xz_target() {
     CT_Pushd "${CT_BUILD_DIR}/build-xz-for-target"
 
     CT_DoLog EXTRA "Configuring xz"
-    CT_DoExecLog CFG                                        \
-    CC="${CT_TARGET}-gcc"                                   \
-    AR="${CT_TARGET}-ar"                                    \
-    RANLIB="${CT_TARGET}-ranlib"                            \
-    CFLAGS="-g -Os -fPIC -DPIC"                             \
-    ./configure                                             \
-        --prefix=/usr                                       \
-        --enable-shared
+    cp ../../config.cache .
+    CT_DoExecLog CFG                                            \
+    CFLAGS="-g -Os -fPIC -DPIC"                                 \
+    CXXFLAGS="-g -Os -fPIC -DPIC"                               \
+    ./configure                                                 \
+        --build=${CT_BUILD}                                     \
+        --host=${CT_TARGET}                                     \
+        --cache-file="$(pwd)/config.cache"                      \
+        --sysconfdir=/etc                                       \
+        --localstatedir=/var                                    \
+        --mandir=/usr/share/man                                 \
+        --infodir=/usr/share/info                               \
+        --prefix=/usr                                           \
+        --enable-shared                                         \
 
     CT_DoLog EXTRA "Building xz"
-    CT_DoExecLog ALL make
+    CT_DoExecLog ALL make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing xz"
-    CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
+    CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" pkgconfigdir=/usr/lib/pkgconfig install
 
     CT_Popd
     CT_EndStep

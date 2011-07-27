@@ -71,7 +71,7 @@ do_zlib_target() {
     CT_DoExecLog ALL make
 
     CT_DoLog EXTRA "Installing zlib"
-    CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" install
+    CT_DoExecLog ALL make DESTDIR="${CT_SYSROOT_DIR}" pkgconfigdir=/usr/lib/pkgconfig install
 
     CT_Popd
     CT_EndStep
