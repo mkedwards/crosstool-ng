@@ -1,0 +1,33 @@
+From 11d98ed628b599d048b9eb302c7f929a312ca5ef Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld6.cisco.com>
+Date: Wed, 27 Jul 2011 19:27:43 +0000
+Subject: [PATCH] Use LT_SYSROOT as prefix during relink
+
+---
+ libltdl/config/ltmain.m4sh  |    4 +-
+
+diff --git a/libltdl/config/ltmain.m4sh b/libltdl/config/ltmain.m4sh
+index 814cc93..c276922 100644
+--- a/libltdl/config/ltmain.m4sh
++++ b/libltdl/config/ltmain.m4sh
+@@ -5275,7 +5275,7 @@ func_mode_link ()
+ 		if test -n "$inst_prefix_dir"; then
+ 		  case $libdir in
+ 		    [\\/]*)
+-		      add_dir="$add_dir -L$inst_prefix_dir$libdir"
++		      add_dir="-L$LT_SYSROOT$libdir -L$inst_prefix_dir$libdir"
+ 		      ;;
+ 		  esac
+ 		fi
+@@ -5348,7 +5348,7 @@ func_mode_link ()
+ 	      if test -n "$inst_prefix_dir"; then
+ 		case $libdir in
+ 		  [\\/]*)
+-		    add_dir="$add_dir -L$inst_prefix_dir$libdir"
++		    add_dir="-L$LT_SYSROOT$libdir -L$inst_prefix_dir$libdir"
+ 		    ;;
+ 		esac
+ 	      fi
+-- 
+1.7.0.4
+

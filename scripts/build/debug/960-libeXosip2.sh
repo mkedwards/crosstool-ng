@@ -40,10 +40,14 @@ do_debug_libeXosip2_build() {
         --disable-debug --enable-trace --enable-test --disable-mt
 
     CT_DoLog EXTRA "Building libeXosip2"
-    CT_DoExecLog ALL make ${JOBSFLAGS}
+    CT_DoExecLog ALL \
+    LT_SYSROOT="${CT_SYSROOT_DIR}"                              \
+    make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing libeXosip2"
-    CT_DoExecLog ALL make DESTDIR="${CT_DEBUGROOT_DIR}" pkgconfigdir=/usr/lib/pkgconfig install
+    CT_DoExecLog ALL \
+    LT_SYSROOT="${CT_SYSROOT_DIR}"                              \
+    make DESTDIR="${CT_DEBUGROOT_DIR}" pkgconfigdir=/usr/lib/pkgconfig install
 
     CT_Popd
     CT_EndStep

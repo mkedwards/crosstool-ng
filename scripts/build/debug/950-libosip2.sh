@@ -28,6 +28,7 @@ do_debug_libosip2_build() {
     PKG_CONFIG="${CT_TARGET}-pkg-config --define-variable=prefix=${CT_SYSROOT_DIR}/usr" \
     CFLAGS="-g -Os -fPIC -DPIC"                                 \
     CXXFLAGS="-g -Os -fPIC -DPIC"                               \
+    LT_SYSROOT="${CT_SYSROOT_DIR}"                              \
     "${CT_SRC_DIR}/libosip2-${CT_LIBOSIP2_VERSION}/configure"   \
         --build=${CT_BUILD}                                     \
         --host=${CT_TARGET}                                     \
@@ -40,10 +41,14 @@ do_debug_libosip2_build() {
         --disable-debug --enable-trace --enable-test --disable-mt
 
     CT_DoLog EXTRA "Building libosip2"
-    CT_DoExecLog ALL make ${JOBSFLAGS}
+    CT_DoExecLog ALL \
+    LT_SYSROOT="${CT_SYSROOT_DIR}"                              \
+    make ${JOBSFLAGS}
 
     CT_DoLog EXTRA "Installing libosip2"
-    CT_DoExecLog ALL make DESTDIR="${CT_DEBUGROOT_DIR}" pkgconfigdir=/usr/lib/pkgconfig install
+    CT_DoExecLog ALL \
+    LT_SYSROOT="${CT_SYSROOT_DIR}"                              \
+    make DESTDIR="${CT_DEBUGROOT_DIR}" pkgconfigdir=/usr/lib/pkgconfig install
 
     CT_Popd
     CT_EndStep
