@@ -16,10 +16,12 @@ do_debug_libosip2_build() {
 
     CT_DoLog EXTRA "Configuring libosip2"
 
+    CT_Pushd "${CT_SRC_DIR}/libosip2-${CT_LIBOSIP2_VERSION}"
     mkdir -p m4 scripts
     CT_DoExecLog CFG                                            \
     ACLOCAL="aclocal -I ${CT_SYSROOT_DIR}/usr/share/aclocal -I ${CT_PREFIX_DIR}/share/aclocal" \
     autoreconf -fiv
+    CT_Popd
 
     cp ../../config.cache .
     CT_DoExecLog CFG                                            \
