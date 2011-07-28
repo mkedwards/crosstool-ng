@@ -1,0 +1,1607 @@
+From ddde7be8f94205871237de7bf2941361e04c7919 Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld6.cisco.com>
+Date: Thu, 28 Jul 2011 16:55:39 +0000
+Subject: [PATCH] Build for Qt without X11
+
+---
+ .gitignore                                         |    7 +++
+ .mozconfig                                         |   36 +++++++++++++
+ build-me-harder                                    |   14 +++++
+ config.cache.init                                  |   32 ++++++++++++
+ configure.in                                       |   49 +++++++++---------
+ dom/plugins/PluginInstanceChild.cpp                |    4 ++
+ dom/plugins/PluginInstanceParent.cpp               |    3 +
+ dom/plugins/PluginMessageUtils.h                   |    4 ++
+ gfx/src/nsSystemFontsQt.cpp                        |    4 +-
+ gfx/thebes/GLContextProvider.h                     |    8 +++
+ gfx/thebes/GLContextProviderEGL.cpp                |   20 +++++++-
+ gfx/thebes/GLDefs.h                                |   53 ++++++++++++++------
+ gfx/thebes/Makefile.in                             |    9 +++-
+ gfx/thebes/gfxQPainterSurface.h                    |    5 ++
+ gfx/thebes/gfxQtPlatform.cpp                       |   14 +++--
+ intl/locale/src/nsLocaleService.cpp                |    2 +-
+ ipc/chromium/src/base/message_pump_qt.cc           |    8 ++--
+ ipc/chromium/src/base/message_pump_qt.h            |    2 +-
+ js/src/configure.in                                |   23 +-------
+ layout/generic/nsObjectFrame.cpp                   |    8 ++--
+ modules/libpr0n/decoders/icon/qt/nsIconChannel.cpp |    6 +-
+ modules/libpr0n/decoders/nsJPEGDecoder.cpp         |    2 +-
+ modules/plugin/base/src/nsNPAPIPlugin.cpp          |    6 ++-
+ modules/plugin/base/src/nsPluginNativeWindowQt.cpp |    2 +
+ modules/plugin/test/testplugin/nptest_qt.cpp       |    6 ++-
+ netwerk/system/qt/nsQtNetworkManager.cpp           |    6 +-
+ netwerk/system/qt/nsQtNetworkManager.h             |   10 ++--
+ other-licenses/bsdiff/Makefile.in                  |    4 ++
+ .../src/client/windows/build/common.gypi           |   14 -----
+ toolkit/xre/nsQAppInstance.cpp                     |    2 +-
+ toolkit/xre/nsQAppInstance.h                       |    2 +-
+ uriloader/exthandler/unix/nsMIMEInfoUnix.cpp       |    6 +-
+ widget/src/qt/Makefile.in                          |    2 +-
+ widget/src/qt/mozSwipeGesture.cpp                  |    4 +-
+ widget/src/qt/mozSwipeGesture.h                    |    6 +-
+ widget/src/qt/mozqorientationsensorfilter.h        |    4 +-
+ widget/src/qt/nsAppShell.cpp                       |    4 +-
+ widget/src/qt/nsAppShell.h                         |    2 +-
+ widget/src/qt/nsBidiKeyboard.cpp                   |    4 +-
+ widget/src/qt/nsClipboard.cpp                      |   16 +++---
+ widget/src/qt/nsClipboard.h                        |    2 +-
+ widget/src/qt/nsDeviceContextSpecQt.cpp            |    4 +-
+ widget/src/qt/nsDragService.cpp                    |    4 +-
+ widget/src/qt/nsDragService.h                      |    2 +-
+ widget/src/qt/nsFilePicker.h                       |    4 +-
+ widget/src/qt/nsIdleServiceQt.cpp                  |   16 +++---
+ widget/src/qt/nsIdleServiceQt.h                    |    4 +-
+ widget/src/qt/nsLookAndFeel.cpp                    |   10 ++--
+ widget/src/qt/nsNativeThemeQt.cpp                  |   20 ++++----
+ widget/src/qt/nsNativeThemeQt.h                    |    4 +-
+ widget/src/qt/nsPrintSettingsQt.cpp                |    4 +-
+ widget/src/qt/nsPrintSettingsQt.h                  |    2 +-
+ widget/src/qt/nsScreenManagerQt.cpp                |    4 +-
+ widget/src/qt/nsScreenQt.cpp                       |   12 ++--
+ widget/src/qt/nsSound.cpp                          |    4 +-
+ widget/src/qt/nsToolkit.h                          |    2 +-
+ widget/src/qt/nsWindow.cpp                         |   37 ++++++++++---
+ widget/src/qt/nsWindow.h                           |    6 +-
+ widget/src/shared/nsShmImage.cpp                   |    2 +-
+ 59 files changed, 358 insertions(+), 198 deletions(-)
+ create mode 100644 .gitignore
+ create mode 100644 .mozconfig
+ create mode 100755 build-me-harder
+ create mode 100644 config.cache.init
+
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..e117a3d
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,7 @@
++.mozconfig.mk
++.mozconfig.out
++configure
++js/src/configure
++config.cache
++*.pyc
++ff-dbg
+diff --git a/.mozconfig b/.mozconfig
+new file mode 100644
+index 0000000..bf95960
+--- /dev/null
++++ b/.mozconfig
+@@ -0,0 +1,36 @@
++ac_add_options --enable-application=mobile
++mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/ff-dbg
++mk_add_options MOZ_MAKE_FLAGS="-j16"
++ac_add_options --cache-file=$topsrcdir/config.cache
++ac_add_options --build=x86_64-build_unknown-linux-gnu
++ac_add_options --host=x86_64-build_unknown-linux-gnu
++ac_add_options --target=${CTBU_TARGET}
++ac_add_options --enable-thumb2
++ac_add_options --enable-optimize
++ac_add_options --enable-debug 
++ac_add_options --enable-tests
++ac_add_options --enable-default-toolkit=cairo-qt-embedded
++ac_add_options --enable-system-sqlite
++ac_add_options --enable-system-pixman
++ac_add_options --enable-system-cairo
++ac_add_options --disable-libjpeg-turbo
++ac_add_options --without-libIDL
++ac_add_options --with-system-zlib
++ac_add_options --with-system-bz2
++ac_add_options --with-system-nspr
++ac_add_options --with-system-nss
++ac_add_options --with-system-libpng
++ac_add_options --with-system-jpeg
++ac_add_options --with-pthreads
++ac_add_options --without-x
++ac_add_options --enable-crypto
++ac_add_options --enable-dbus
++ac_add_options --disable-printing
++ac_add_options --disable-necko-wifi
++ac_add_options --sysconfdir=/etc
++ac_add_options --localstatedir=/var
++ac_add_options --mandir=/usr/share/man
++ac_add_options --infodir=/usr/share/info
++ac_add_options --prefix=/usr
++ac_add_options --with-nspr-prefix=${CTBU_SYSROOT}/usr
++ac_add_options --with-nss-prefix=${CTBU_SYSROOT}/usr
+diff --git a/build-me-harder b/build-me-harder
+new file mode 100755
+index 0000000..9c488bc
+--- /dev/null
++++ b/build-me-harder
+@@ -0,0 +1,14 @@
++#!/bin/sh -x
++
++find . -name configure.in -exec touch {} \;
++cp config.cache.init config.cache
++
++export CTBU_TARGET=arm-cortex_a9-linux-gnueabi
++export PATH=/opt/x-tools/$CTBU_TARGET/bin:/opt/x-tools/buildtools/bin:$PATH
++export CTBU_SYSROOT=/opt/x-tools/$CTBU_TARGET/$CTBU_TARGET/sysroot
++
++HOST_LIBIDL_CFLAGS=`PKG_CONFIG_LIBDIR="/opt/x-tools/$CTBU_TARGET/lib/pkgconfig" pkg-config --cflags "libIDL-2.0 >= 0.8.0"` \
++HOST_LIBIDL_LIBS=`(PKG_CONFIG_LIBDIR="/opt/x-tools/$CTBU_TARGET/lib/pkgconfig" pkg-config --libs "libIDL-2.0 >= 0.8.0" && PKG_CONFIG_LIBDIR="/opt/x-tools/$CTBU_TARGET/lib/pkgconfig" pkg-config --libs-only-L libIDL-2.0 | sed -e 's/-L/-Wl,-rpath=/g') | tr '\n' ' '` \
++PKG_CONFIG="$CTBU_TARGET-pkg-config --define-variable=prefix=$CTBU_SYSROOT/usr" \
++CROSS_COMPILE=1 \
++make -f client.mk
+diff --git a/config.cache.init b/config.cache.init
+new file mode 100644
+index 0000000..c6762d9
+--- /dev/null
++++ b/config.cache.init
+@@ -0,0 +1,32 @@
++ac_cv_buggy_ether_ntohost=no
++ac_cv_file__dev_random=yes
++ac_cv_func_malloc_0_nonnull=yes
++ac_cv_func_memcmp_working=yes
++ac_cv_func_mmap_fixed_mapped=yes
++ac_cv_func_posix_getgrgid_r=yes
++ac_cv_func_posix_getpwuid_r=yes
++ac_cv_func_printf_unix98=yes
++ac_cv_func_realloc_0_nonnull=yes
++ac_cv_func_snprintf_c99=yes
++ac_cv_func_strcoll_works=yes
++ac_cv_func_strncmp_works=yes
++ac_cv_func_vsnprintf_c99=yes
++ac_cv_have_abstract_sockets=no
++ac_cv_lib_formw___new_form=yes
++ac_cv_lib_panelw___new_panel=yes
++ac_cv_lib_menuw___new_menu=yes
++ac_cv_linux_vers=2
++ac_cv_prog_ncursesw5_config=no
++ac_cv_prog_ncurses5_config=no
++ac_cv_sqlite_enable_fts3=yes
++ac_cv_sqlite_enable_unlock_notify=yes
++ac_cv_sqlite_secure_delete=yes
++ac_cv_sqlite_threadsafe=yes
++ac_cv_sys_largefile_CFLAGS="-D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
++ac_cv_sys_largefile_LDFLAGS=""
++ac_cv_sys_largefile_LIBS=""
++glib_cv_compliant_posix_memalign=yes
++glib_cv_long_long_format=ll
++glib_cv_monotonic_clock=yes
++glib_cv_stack_grows=no
++glib_cv_uscore=no
+diff --git a/configure.in b/configure.in
+index 8f66709..2bc1bbd 100644
+--- a/configure.in
++++ b/configure.in
+@@ -3603,22 +3603,9 @@ fi
+ AC_SUBST(HAVE_ARM_SIMD)
+ 
+ AC_MSG_CHECKING(for ARM NEON support in compiler)
+-_SAVE_CFLAGS="$CFLAGS"
+-if test "$GNU_CC"; then
+-  # gcc needs -mfpu=neon to recognize NEON instructions
+-  CFLAGS="$CFLAGS -mfpu=neon -mfloat-abi=softfp"
+-fi
+-# We try to link so that this also fails when
+-# building with LTO.
+-AC_TRY_LINK([],
+-               [asm("vadd.i8 d0, d0, d0");],
+-               result="yes", result="no")
+-AC_MSG_RESULT("$result")
+-if test "$result" = "yes"; then
+-    AC_DEFINE(HAVE_ARM_NEON)
+-    HAVE_ARM_NEON=1
+-fi
+-CFLAGS="$_SAVE_CFLAGS"
++AC_MSG_RESULT([forced to yes (compiler default)])
++AC_DEFINE(HAVE_ARM_NEON)
++HAVE_ARM_NEON=1
+ AC_SUBST(HAVE_ARM_NEON)
+ 
+ dnl ========================================================
+@@ -4704,11 +4691,11 @@ MOZ_ARG_WITH_BOOL(system-nss,
+     _USE_SYSTEM_NSS=1 )
+ 
+ if test -n "$_USE_SYSTEM_NSS"; then
+-    AM_PATH_NSS(3.12.9, [MOZ_NATIVE_NSS=1], [AC_MSG_ERROR([you don't have NSS installed or your version is too old])])
++    AM_PATH_NSS(3.12.10, [MOZ_NATIVE_NSS=1], [AC_MSG_ERROR([you don't have NSS installed or your version is too old])])
+ fi
+ 
+ if test -n "$MOZ_NATIVE_NSS"; then
+-   NSS_LIBS="$NSS_LIBS -lcrmf"
++   NSS_LIBS="-lcrmf $NSS_LIBS"
+ else
+    NSS_CFLAGS='-I$(LIBXUL_DIST)/include/nss'
+    NSS_DEP_LIBS="\
+@@ -5163,6 +5150,7 @@ MOZ_ARG_HEADER(Toolkit Options)
+                             Win32/WinCE - cairo-windows
+                             Gtk2 with DirectFB - cairo-gtk2-dfb
+                             * - cairo-gtk2
++                            * - cairo-qt-embedded
+                             * - cairo-qt],
+     [ _DEFAULT_TOOLKIT=$enableval ],
+     [ _DEFAULT_TOOLKIT=$_PLATFORM_DEFAULT_TOOLKIT])
+@@ -5172,6 +5160,7 @@ MOZ_ARG_HEADER(Toolkit Options)
+         -o "$_DEFAULT_TOOLKIT" = "cairo-gtk2" \
+         -o "$_DEFAULT_TOOLKIT" = "cairo-gtk2-dfb" \
+         -o "$_DEFAULT_TOOLKIT" = "cairo-gtk2-x11" \
++        -o "$_DEFAULT_TOOLKIT" = "cairo-qt-embedded" \
+         -o "$_DEFAULT_TOOLKIT" = "cairo-qt" \
+         -o "$_DEFAULT_TOOLKIT" = "cairo-os2" \
+         -o "$_DEFAULT_TOOLKIT" = "cairo-cocoa" \
+@@ -5240,6 +5229,18 @@ cairo-gtk2-dfb)
+     MOZ_PDF_PRINTING=1
+     ;;
+ 
++cairo-qt-embedded)
++    MOZ_WIDGET_TOOLKIT=qt
++    MOZ_ENABLE_QT=1
++    USE_ELF_DYNSTR_GC=
++
++    USE_FC_FREETYPE=1
++
++    TK_CFLAGS='$(MOZ_QT_CFLAGS)'
++    TK_LIBS='$(MOZ_QT_LIBS)'
++    AC_DEFINE(MOZ_WIDGET_QT)
++    ;;
++
+ cairo-qt)
+     MOZ_WIDGET_TOOLKIT=qt
+     MOZ_ENABLE_QT=1
+@@ -5565,6 +5566,10 @@ then
+         ])
+     fi
+     AC_SUBST(MOZ_PANGO)
++
++    PKG_CHECK_MODULES(FT2, freetype2 > 6.1.0 fontconfig)
++    AC_SUBST(FT2_CFLAGS)
++    AC_SUBST(FT2_LIBS)
+ fi
+ 
+ dnl ========================================================
+@@ -7165,9 +7170,6 @@ if test -n "$MOZ_THUMB2"; then
+       if test "$GNU_CC"; then
+         AC_DEFINE(MOZ_THUMB2)
+         AC_DEFINE(MOZ_ARM_ARCH)
+-        CFLAGS="$CFLAGS -march=armv7-a -mthumb -mfloat-abi=softfp $MOZ_ARM_VFP_FLAGS"
+-        CXXFLAGS="$CXXFLAGS -march=armv7-a -mthumb -mfloat-abi=softfp $MOZ_ARM_VFP_FLAGS"
+-        ASFLAGS="$ASFLAGS -march=armv7-a -mthumb -mfloat-abi=softfp $MOZ_ARM_VFP_FLAGS"
+       else
+         AC_MSG_ERROR([--enable-thumb2 is not supported for non-GNU toolchains])
+       fi
+@@ -7181,9 +7183,6 @@ elif test "$MOZ_ARM_ARCH" = "armv7"; then
+     arm*)
+       if test "$GNU_CC"; then
+         AC_DEFINE(MOZ_ARM_ARCH)
+-        CFLAGS="$CFLAGS -march=armv7-a -marm -mfloat-abi=softfp $MOZ_ARM_VFP_FLAGS"
+-        CXXFLAGS="$CXXFLAGS -march=armv7-a -marm -mfloat-abi=softfp $MOZ_ARM_VFP_FLAGS"
+-        ASFLAGS="$ASFLAGS -march=armv7-a -marm -mfloat-abi=softfp $MOZ_ARM_VFP_FLAGS"
+       else
+         AC_MSG_ERROR([--with-cpu-arch=armv7 is not supported for non-GNU toolchains])
+       fi
+@@ -8522,7 +8521,7 @@ fi
+ 
+ if test -z "$SKIP_PATH_CHECKS"; then
+ if test -z "${GLIB_CFLAGS}" -o -z "${GLIB_LIBS}" ; then
+-    if test "$MOZ_ENABLE_GTK2" -o "$USE_ELF_DYNSTR_GC" ; then
++    if test "$MOZ_ENABLE_GTK2" -o "$MOZ_ENABLE_QT" -o "$USE_ELF_DYNSTR_GC" ; then
+         PKG_CHECK_MODULES(GLIB, glib-2.0 >= 1.3.7 gobject-2.0)
+     else
+         AM_PATH_GLIB(${GLIB_VERSION})
+diff --git a/dom/plugins/PluginInstanceChild.cpp b/dom/plugins/PluginInstanceChild.cpp
+index 7991213..62aebba 100644
+--- a/dom/plugins/PluginInstanceChild.cpp
++++ b/dom/plugins/PluginInstanceChild.cpp
+@@ -72,7 +72,9 @@ using namespace mozilla::plugins;
+ #include "gtk2xtbin.h"
+ 
+ #elif defined(MOZ_WIDGET_QT)
++#ifdef MOZ_X11
+ #include <QX11Info>
++#endif
+ #elif defined(OS_WIN)
+ #ifndef WM_MOUSEHWHEEL
+ #define WM_MOUSEHWHEEL     0x020E
+@@ -1018,6 +1020,8 @@ PluginInstanceChild::AnswerNPP_SetWindow(const NPRemoteWindow& aWindow)
+ 
+ #elif defined(ANDROID)
+ #  warning Need Android impl
++#elif defined(MOZ_WIDGET_QT)
++#  warning Need non-X11 Qt impl
+ #else
+ #  error Implement me for your OS
+ #endif
+diff --git a/dom/plugins/PluginInstanceParent.cpp b/dom/plugins/PluginInstanceParent.cpp
+index 44ceb54..bd423b9 100644
+--- a/dom/plugins/PluginInstanceParent.cpp
++++ b/dom/plugins/PluginInstanceParent.cpp
+@@ -281,6 +281,9 @@ PluginInstanceParent::AnswerNPN_GetValue_NPNVnetscapeWindow(NativeWindowHandle*
+ #elif defined(ANDROID)
+ #warning Need Android impl
+     int id;
++#elif defined(MOZ_WIDGET_QT)
++#warning Need non-X11 Qt impl
++    int id;
+ #else
+ #warning Implement me
+ #endif
+diff --git a/dom/plugins/PluginMessageUtils.h b/dom/plugins/PluginMessageUtils.h
+index 32211c7..905841e 100644
+--- a/dom/plugins/PluginMessageUtils.h
++++ b/dom/plugins/PluginMessageUtils.h
+@@ -126,6 +126,8 @@ typedef HWND NativeWindowHandle;
+ typedef XID NativeWindowHandle;
+ #elif defined(XP_MACOSX) || defined(ANDROID)
+ typedef intptr_t NativeWindowHandle; // never actually used, will always be 0
++#elif defined(QT_SHARED)
++typedef intptr_t NativeWindowHandle; // never actually used, will always be 0
+ #else
+ #error Need NativeWindowHandle for this platform
+ #endif
+@@ -791,6 +793,8 @@ struct ParamTraits<NPCoordinateSpace>
+ #  include "mozilla/plugins/NPEventX11.h"
+ #elif defined(ANDROID)
+ #  include "mozilla/plugins/NPEventAndroid.h"
++#elif defined(QT_SHARED)
++#  include "mozilla/plugins/NPEventAndroid.h"
+ #else
+ #  error Unsupported platform
+ #endif
+diff --git a/gfx/src/nsSystemFontsQt.cpp b/gfx/src/nsSystemFontsQt.cpp
+index c703b1f..15236a0 100644
+--- a/gfx/src/nsSystemFontsQt.cpp
++++ b/gfx/src/nsSystemFontsQt.cpp
+@@ -36,8 +36,8 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ 
+-#include <QApplication>
+-#include <QFont>
++#include <QtGui/QApplication>
++#include <QtGui/QFont>
+ 
+ #include "nsIDeviceContext.h"
+ #include "nsIRenderingContext.h"
+diff --git a/gfx/thebes/GLContextProvider.h b/gfx/thebes/GLContextProvider.h
+index e86c9ca..b3674e8 100644
+--- a/gfx/thebes/GLContextProvider.h
++++ b/gfx/thebes/GLContextProvider.h
+@@ -92,6 +92,14 @@ namespace gl {
+ #define GL_CONTEXT_PROVIDER_DEFAULT GLContextProviderGLX
+ #endif
+ 
++// Non-X11 Qt
++#if defined(MOZ_WIDGET_QT) && !defined(GL_CONTEXT_PROVIDER_DEFAULT)
++#define GL_CONTEXT_PROVIDER_NAME GLContextProviderEGL
++#include "GLContextProviderImpl.h"
++#undef GL_CONTEXT_PROVIDER_NAME
++#define GL_CONTEXT_PROVIDER_DEFAULT GLContextProviderEGL
++#endif
++
+ #ifdef GL_CONTEXT_PROVIDER_DEFAULT
+ typedef GL_CONTEXT_PROVIDER_DEFAULT GLContextProvider;
+ #else
+diff --git a/gfx/thebes/GLContextProviderEGL.cpp b/gfx/thebes/GLContextProviderEGL.cpp
+index 5a27f91..85805f7 100644
+--- a/gfx/thebes/GLContextProviderEGL.cpp
++++ b/gfx/thebes/GLContextProviderEGL.cpp
+@@ -46,7 +46,7 @@
+ // we're using default display for now
+ #define GET_NATIVE_WINDOW(aWidget) (EGLNativeWindowType)GDK_WINDOW_XID((GdkWindow *) aWidget->GetNativeData(NS_NATIVE_WINDOW))
+ #elif defined(MOZ_WIDGET_QT)
+-#include <QWidget>
++#include <QtGui/QWidget>
+ #include <QtOpenGL/QGLWidget>
+ #define GLdouble_defined 1
+ // we're using default display for now
+@@ -132,6 +132,20 @@ public:
+     HWND mWnd;
+ };
+ 
++#elif defined(MOZ_WIDGET_QT)
++#include <QtGui/QWidget>
++#include <QtOpenGL/QGLWidget>
++#define GLdouble_defined 1
++// we're using default display for now
++#define GET_NATIVE_WINDOW(aWidget) (EGLNativeWindowType)static_cast<QWidget*>(aWidget->GetNativeData(NS_NATIVE_SHELLWIDGET))->handle()
++
++typedef void *EGLNativeDisplayType;
++typedef void *EGLNativePixmapType;
++typedef void *EGLNativeWindowType;
++
++#define EGL_LIB "/usr/lib/libEGL.so"
++#define GLES2_LIB "/usr/lib/libGLESv2.so"
++
+ #else
+ 
+ #error "Platform not recognized"
+@@ -154,8 +168,12 @@ public:
+ #ifdef MOZ_PLATFORM_MAEMO
+ static bool gUseBackingSurface = true;
+ #else
++#ifndef MOZ_X11
++static bool gUseBackingSurface = true;
++#else
+ static bool gUseBackingSurface = false;
+ #endif
++#endif
+ 
+ namespace mozilla {
+ namespace gl {
+diff --git a/gfx/thebes/GLDefs.h b/gfx/thebes/GLDefs.h
+index f317914..49d88fc 100644
+--- a/gfx/thebes/GLDefs.h
++++ b/gfx/thebes/GLDefs.h
+@@ -45,27 +45,48 @@
+ 
+ #include <stddef.h>
+ 
+-typedef unsigned int GLenum;
+-typedef unsigned int GLbitfield;
+-typedef unsigned int GLuint;
+-typedef int GLint;
+-typedef int GLsizei;
++#include <stdint.h>
++typedef int32_t                 khronos_int32_t;
++typedef uint32_t                khronos_uint32_t;
++typedef int64_t                 khronos_int64_t;
++typedef uint64_t                khronos_uint64_t;
++
++typedef signed   char          khronos_int8_t;
++typedef unsigned char          khronos_uint8_t;
++typedef signed   short int     khronos_int16_t;
++typedef unsigned short int     khronos_uint16_t;
++typedef signed   long  int     khronos_intptr_t;
++typedef unsigned long  int     khronos_uintptr_t;
++typedef signed   long  int     khronos_ssize_t;
++typedef unsigned long  int     khronos_usize_t;
++
++typedef          float         khronos_float_t;
++
++typedef void            GLvoid;
++typedef char             GLchar;
++typedef unsigned int    GLenum;
++typedef unsigned char   GLboolean;
++typedef unsigned int    GLbitfield;
++typedef khronos_int8_t   GLbyte;
++typedef short           GLshort;
++typedef int             GLint;
++typedef int             GLsizei;
++typedef khronos_uint8_t  GLubyte;
++typedef unsigned short  GLushort;
++typedef unsigned int    GLuint;
++typedef khronos_float_t  GLfloat;
++typedef khronos_float_t  GLclampf;
++typedef khronos_int32_t  GLfixed;
++
++/* GL types for handling large vertex buffer objects */
++typedef khronos_intptr_t GLintptr;
++typedef khronos_ssize_t  GLsizeiptr;
++
+ typedef char realGLboolean;
+-typedef signed char GLbyte;
+-typedef short GLshort;
+-typedef unsigned char GLubyte;
+-typedef unsigned short GLushort;
+-typedef float GLfloat;
+-typedef float GLclampf;
+ #ifndef GLdouble_defined
+ typedef double GLdouble;
+ #endif
+ typedef double GLclampd;
+-typedef void GLvoid;
+-
+-typedef char GLchar;
+-typedef ptrdiff_t GLsizeiptr;
+-typedef ptrdiff_t GLintptr;
+ 
+ #ifndef GLAPIENTRY
+ # ifdef WIN32
+diff --git a/gfx/thebes/Makefile.in b/gfx/thebes/Makefile.in
+index fbc9ac4..4d72d3f 100644
+--- a/gfx/thebes/Makefile.in
++++ b/gfx/thebes/Makefile.in
+@@ -109,7 +109,6 @@ ifeq ($(MOZ_WIDGET_TOOLKIT),qt)
+ EXPORTS += \
+ 	gfxFT2FontBase.h \
+ 	gfxQPainterSurface.h \
+-	gfxQtNativeRenderer.h \
+ 	gfxQtPlatform.h \
+ 	gfxPDFSurface.h \
+ 	$(NULL)
+@@ -117,6 +116,7 @@ EXPORTS += \
+ ifdef MOZ_X11
+ EXPORTS += \
+ 	gfxXlibSurface.h \
++	gfxQtNativeRenderer.h \
+ 	GLXLibrary.h \
+ 	$(NULL)
+ endif
+@@ -334,7 +334,10 @@ endif
+ 
+ ifeq ($(MOZ_WIDGET_TOOLKIT),qt)
+ CPPSRCS += gfxQtPlatform.cpp gfxQPainterSurface.cpp
++ifdef MOZ_X11
+ CPPSRCS += gfxXlibSurface.cpp gfxQtNativeRenderer.cpp
++else
++endif
+ ifdef MOZ_PANGO
+ CPPSRCS += gfxPangoFonts.cpp
+ else
+@@ -399,7 +402,11 @@ ifeq ($(MOZ_WIDGET_TOOLKIT),qt)
+ ifdef MOZ_PLATFORM_MAEMO
+ GL_PROVIDER = EGL
+ else
++ifdef MOZ_X11
+ GL_PROVIDER = GLX
++else
++GL_PROVIDER = EGL
++endif
+ endif
+ endif
+ 
+diff --git a/gfx/thebes/gfxQPainterSurface.h b/gfx/thebes/gfxQPainterSurface.h
+index 343f92f..6f1fc1c 100644
+--- a/gfx/thebes/gfxQPainterSurface.h
++++ b/gfx/thebes/gfxQPainterSurface.h
+@@ -41,6 +41,11 @@
+ #include "gfxASurface.h"
+ #include "gfxImageSurface.h"
+ 
++#ifdef mozilla_mozalloc_macro_wrappers_h
++/* The "anti-header" */
++#  include "mozilla/mozalloc_undef_macro_wrappers.h"
++#endif
++
+ #include "cairo-features.h"
+ #ifdef CAIRO_HAS_QT_SURFACE
+ 
+diff --git a/gfx/thebes/gfxQtPlatform.cpp b/gfx/thebes/gfxQtPlatform.cpp
+index dc074dc..443e1ae 100644
+--- a/gfx/thebes/gfxQtPlatform.cpp
++++ b/gfx/thebes/gfxQtPlatform.cpp
+@@ -36,11 +36,13 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ 
+-#include <QPixmap>
+-#include <QX11Info>
+-#include <QApplication>
+-#include <QDesktopWidget>
+-#include <QPaintEngine>
++#include <QtGui/QPixmap>
++#ifdef MOZ_X11
++#include <QtGui/QX11Info>
++#endif
++#include <QtGui/QApplication>
++#include <QtGui/QDesktopWidget>
++#include <QtGui/QPaintEngine>
+ 
+ #include "gfxQtPlatform.h"
+ 
+@@ -588,9 +590,11 @@ gfxQtPlatform::GetDPI()
+ gfxImageFormat
+ gfxQtPlatform::GetOffscreenFormat()
+ {
++#ifdef MOZ_X11
+     if (QX11Info::appDepth() == 16) {
+         return gfxASurface::ImageFormatRGB16_565;
+     }
++#endif
+ 
+     return gfxASurface::ImageFormatRGB24;
+ }
+diff --git a/intl/locale/src/nsLocaleService.cpp b/intl/locale/src/nsLocaleService.cpp
+index 8c0ea00..f360348 100644
+--- a/intl/locale/src/nsLocaleService.cpp
++++ b/intl/locale/src/nsLocaleService.cpp
+@@ -36,7 +36,7 @@
+  * ***** END LICENSE BLOCK ***** */
+ 
+ #ifdef MOZ_WIDGET_QT
+-#include <QString>
++#include <QtCore/QString>
+ #include <QtCore/QLocale>
+ #endif
+ 
+diff --git a/ipc/chromium/src/base/message_pump_qt.cc b/ipc/chromium/src/base/message_pump_qt.cc
+index 36a8b7c..83d7730 100644
+--- a/ipc/chromium/src/base/message_pump_qt.cc
++++ b/ipc/chromium/src/base/message_pump_qt.cc
+@@ -4,10 +4,10 @@
+ 
+ #include "base/message_pump_qt.h"
+ 
+-#include <qabstracteventdispatcher.h>
+-#include <qevent.h>
+-#include <qapplication.h>
+-#include <qtimer.h>
++#include <QtCore/QAbstractEventDispatcher>
++#include <QtCore/QEvent>
++#include <QtGui/QApplication>
++#include <QtCore/QTimer>
+ 
+ #include <fcntl.h>
+ #include <limits>
+diff --git a/ipc/chromium/src/base/message_pump_qt.h b/ipc/chromium/src/base/message_pump_qt.h
+index 2ecbb07..66bb8ad 100644
+--- a/ipc/chromium/src/base/message_pump_qt.h
++++ b/ipc/chromium/src/base/message_pump_qt.h
+@@ -10,7 +10,7 @@
+ #  include "mozilla/mozalloc_undef_macro_wrappers.h"
+ #endif
+  
+-#include <qobject.h>
++#include <QtCore/QObject>
+ 
+ #include "base/message_pump.h"
+ #include "base/time.h"
+diff --git a/js/src/configure.in b/js/src/configure.in
+index 3460091..d9b8caf 100644
+--- a/js/src/configure.in
++++ b/js/src/configure.in
+@@ -3467,20 +3467,9 @@ fi
+ AC_SUBST(HAVE_ARM_SIMD)
+ 
+ AC_MSG_CHECKING(for ARM NEON support in compiler)
+-_SAVE_CFLAGS="$CFLAGS"
+-if test "$GNU_CC"; then
+-  # gcc needs -mfpu=neon to recognize NEON instructions
+-  CFLAGS="$CFLAGS -mfpu=neon -mfloat-abi=softfp"
+-fi
+-AC_TRY_COMPILE([],
+-               [asm("vadd.i8 d0, d0, d0");],
+-               result="yes", result="no")
+-AC_MSG_RESULT("$result")
+-if test "$result" = "yes"; then
+-    AC_DEFINE(HAVE_ARM_NEON)
+-    HAVE_ARM_NEON=1
+-fi
+-CFLAGS="$_SAVE_CFLAGS"
++AC_MSG_RESULT([forced to yes (compiler default)])
++AC_DEFINE(HAVE_ARM_NEON)
++HAVE_ARM_NEON=1
+ AC_SUBST(HAVE_ARM_NEON)
+ 
+ dnl ========================================================
+@@ -4607,9 +4596,6 @@ if test -n "$MOZ_THUMB2"; then
+       if test "$GNU_CC"; then
+         AC_DEFINE(MOZ_THUMB2)
+         AC_DEFINE(MOZ_ARM_ARCH)
+-        CFLAGS="$CFLAGS -march=armv7-a -mthumb -mfloat-abi=softfp $MOZ_ARM_VFP_FLAGS"
+-        CXXFLAGS="$CXXFLAGS -march=armv7-a -mthumb -mfloat-abi=softfp $MOZ_ARM_VFP_FLAGS"
+-        ASFLAGS="$ASFLAGS -march=armv7-a -mthumb -mfloat-abi=softfp $MOZ_ARM_VFP_FLAGS"
+       else
+         AC_MSG_ERROR([--enable-thumb2 is not supported for non-GNU toolchains])
+       fi
+@@ -4623,9 +4609,6 @@ elif test "$MOZ_ARM_ARCH" = "armv7"; then
+     arm*)
+       if test "$GNU_CC"; then
+         AC_DEFINE(MOZ_ARM_ARCH)
+-        CFLAGS="$CFLAGS -march=armv7-a -marm -mfloat-abi=softfp $MOZ_ARM_VFP_FLAGS"
+-        CXXFLAGS="$CXXFLAGS -march=armv7-a -marm -mfloat-abi=softfp $MOZ_ARM_VFP_FLAGS"
+-        ASFLAGS="$ASFLAGS -march=armv7-a -marm -mfloat-abi=softfp $MOZ_ARM_VFP_FLAGS"
+       else
+         AC_MSG_ERROR([--with-cpu-arch=armv7 is not supported for non-GNU toolchains])
+       fi
+diff --git a/layout/generic/nsObjectFrame.cpp b/layout/generic/nsObjectFrame.cpp
+index b0d88c9..e3628e3 100644
+--- a/layout/generic/nsObjectFrame.cpp
++++ b/layout/generic/nsObjectFrame.cpp
+@@ -47,10 +47,10 @@
+ /* rendering objects for replaced elements implemented by a plugin */
+ 
+ #ifdef MOZ_WIDGET_QT
+-#include <QWidget>
+-#include <QKeyEvent>
++#include <QtGui/QWidget>
++#include <QtGui/QKeyEvent>
+ #ifdef MOZ_X11
+-#include <QX11Info>
++#include <QtGui/QX11Info>
+ #endif
+ #undef slots
+ #endif
+@@ -206,11 +206,11 @@ static NS_DEFINE_CID(kAppShellCID, NS_APPSHELL_CID);
+ #endif
+ #endif
+ 
++#ifdef MOZ_X11
+ #ifdef MOZ_WIDGET_QT
+ #include "gfxQtNativeRenderer.h"
+ #endif
+ 
+-#ifdef MOZ_X11
+ #include "mozilla/X11Util.h"
+ using mozilla::DefaultXDisplay;
+ #endif
+diff --git a/modules/libpr0n/decoders/icon/qt/nsIconChannel.cpp b/modules/libpr0n/decoders/icon/qt/nsIconChannel.cpp
+index 1591f81..378f2b6 100644
+--- a/modules/libpr0n/decoders/icon/qt/nsIconChannel.cpp
++++ b/modules/libpr0n/decoders/icon/qt/nsIconChannel.cpp
+@@ -35,9 +35,9 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ 
+-#include <QIcon>
+-#include <QStyle>
+-#include <QApplication>
++#include <QtGui/QIcon>
++#include <QtGui/QStyle>
++#include <QtGui/QApplication>
+ 
+ #include <stdlib.h>
+ #include <unistd.h>
+diff --git a/modules/libpr0n/decoders/nsJPEGDecoder.cpp b/modules/libpr0n/decoders/nsJPEGDecoder.cpp
+index cfd81a1..b7c3e06 100644
+--- a/modules/libpr0n/decoders/nsJPEGDecoder.cpp
++++ b/modules/libpr0n/decoders/nsJPEGDecoder.cpp
+@@ -417,7 +417,7 @@ nsJPEGDecoder::WriteInternal(const char *aBuffer, PRUint32 aCount)
+     /* FIXME -- Should reset dct_method and dither mode
+      * for final pass of progressive JPEG
+      */
+-    mInfo.dct_method =  JDCT_ISLOW;
++    mInfo.dct_method =  JDCT_IFAST;
+     mInfo.dither_mode = JDITHER_FS;
+     mInfo.do_fancy_upsampling = TRUE;
+     mInfo.enable_2pass_quant = FALSE;
+diff --git a/modules/plugin/base/src/nsNPAPIPlugin.cpp b/modules/plugin/base/src/nsNPAPIPlugin.cpp
+index 3ddb0e2..becc0b7 100644
+--- a/modules/plugin/base/src/nsNPAPIPlugin.cpp
++++ b/modules/plugin/base/src/nsNPAPIPlugin.cpp
+@@ -37,7 +37,9 @@
+  * ***** END LICENSE BLOCK ***** */
+ 
+ #ifdef MOZ_WIDGET_QT
+-#include <QX11Info>
++#ifdef MOZ_X11
++#include <QtGui/QX11Info>
++#endif
+ #endif
+ 
+ #include "base/basictypes.h"
+@@ -2022,7 +2024,7 @@ _getvalue(NPP npp, NPNVariable variable, void *result)
+   PluginDestructionGuard guard(npp);
+ 
+   switch(variable) {
+-#if defined(XP_UNIX) && !defined(XP_MACOSX)
++#if defined(XP_UNIX) && !defined(XP_MACOSX) && defined(MOZ_X11)
+   case NPNVxDisplay : {
+ #if defined(MOZ_WIDGET_GTK2) || defined(MOZ_WIDGET_QT)
+     if (npp) {
+diff --git a/modules/plugin/base/src/nsPluginNativeWindowQt.cpp b/modules/plugin/base/src/nsPluginNativeWindowQt.cpp
+index ef15aae..6720dfd 100644
+--- a/modules/plugin/base/src/nsPluginNativeWindowQt.cpp
++++ b/modules/plugin/base/src/nsPluginNativeWindowQt.cpp
+@@ -77,10 +77,12 @@ nsPluginNativeWindowQt::nsPluginNativeWindowQt() : nsPluginNativeWindow()
+   ws_info = &mWsInfo;
+   type = NPWindowTypeWindow;
+   mWsInfo.type = 0;
++#ifdef MOZ_X11
+   mWsInfo.display = nsnull;
+   mWsInfo.visual = nsnull;
+   mWsInfo.colormap = 0;
+   mWsInfo.depth = 0;
++#endif
+ }
+ 
+ nsPluginNativeWindowQt::~nsPluginNativeWindowQt()
+diff --git a/modules/plugin/test/testplugin/nptest_qt.cpp b/modules/plugin/test/testplugin/nptest_qt.cpp
+index 80fa709..ed4e2ce 100644
+--- a/modules/plugin/test/testplugin/nptest_qt.cpp
++++ b/modules/plugin/test/testplugin/nptest_qt.cpp
+@@ -30,8 +30,8 @@
+  *   Josh Aas <josh@mozilla.com>
+  * 
+  * ***** END LICENSE BLOCK ***** */
+-#include <QWidget>
+-#include <QPainter>
++#include <QtGui/QWidget>
++#include <QtGui/QPainter>
+ 
+ #include "nptest_platform.h"
+ #include "npapi.h"
+@@ -110,6 +110,7 @@ pluginDrawWindow(InstanceData* instanceData, void* event)
+   int width = window.width;
+   int height = window.height;
+ 
++#ifdef MOZ_X11
+   XEvent* nsEvent = (XEvent*)event;
+   const XGraphicsExposeEvent& expose = nsEvent->xgraphicsexpose;
+ 
+@@ -147,6 +148,7 @@ pluginDrawWindow(InstanceData* instanceData, void* event)
+   painter.drawRect(theRect);
+   painter.drawText(QRect(theRect), Qt::AlignCenter, text);
+   notifyDidPaint(instanceData);
++#endif
+   return;
+ }
+ 
+diff --git a/netwerk/system/qt/nsQtNetworkManager.cpp b/netwerk/system/qt/nsQtNetworkManager.cpp
+index 592dae2..10462c8 100644
+--- a/netwerk/system/qt/nsQtNetworkManager.cpp
++++ b/netwerk/system/qt/nsQtNetworkManager.cpp
+@@ -44,9 +44,9 @@
+ #include "nsIObserverService.h"
+ #include "nsIOService.h"
+ 
+-#include <QHostInfo>
+-#include <QHostAddress>
+-#include <QTime>
++#include <QtNetwork/QHostInfo>
++#include <QtNetwork/QHostAddress>
++#include <QtCore/QTime>
+ 
+ nsQtNetworkManager::nsQtNetworkManager(QObject* parent)
+   : QObject(parent), networkSession(0)
+diff --git a/netwerk/system/qt/nsQtNetworkManager.h b/netwerk/system/qt/nsQtNetworkManager.h
+index 37e10e5..b9d139f 100644
+--- a/netwerk/system/qt/nsQtNetworkManager.h
++++ b/netwerk/system/qt/nsQtNetworkManager.h
+@@ -38,11 +38,11 @@
+ #ifndef NSQTNETWORKMANAGER_H_
+ #define NSQTNETWORKMANAGER_H_
+ 
+-#include <QNetworkConfigurationManager>
+-#include <QObject>
+-#include <QTimer>
+-#include <QNetworkConfiguration>
+-#include <QNetworkSession>
++#include <QtNetwork/QNetworkConfigurationManager>
++#include <QtCore/QObject>
++#include <QtCore/QTimer>
++#include <QtNetwork/QNetworkConfiguration>
++#include <QtNetwork/QNetworkSession>
+ #include "nscore.h"
+ 
+ class nsQtNetworkManager;
+diff --git a/other-licenses/bsdiff/Makefile.in b/other-licenses/bsdiff/Makefile.in
+index d9132ba..199c46f 100644
+--- a/other-licenses/bsdiff/Makefile.in
++++ b/other-licenses/bsdiff/Makefile.in
+@@ -48,7 +48,11 @@ include $(DEPTH)/config/autoconf.mk
+ HOST_PROGRAM = mbsdiff$(BIN_SUFFIX)
+ HOST_CSRCS = bsdiff.c
+ 
++ifndef MOZ_NATIVE_BZ2
+ HOST_LIBS += $(DIST)/host/lib/$(LIB_PREFIX)hostbz2.$(LIB_SUFFIX)
++else
++HOST_LIBS += -lbz2
++endif
+ 
+ ifneq (,$(filter WINCE WINNT,$(HOST_OS_ARCH)))
+ HOST_EXTRA_LIBS += $(call EXPAND_LIBNAME,Ws2_32)
+diff --git a/toolkit/crashreporter/google-breakpad/src/client/windows/build/common.gypi b/toolkit/crashreporter/google-breakpad/src/client/windows/build/common.gypi
+index fb4e6d8..161391b 100755
+--- a/toolkit/crashreporter/google-breakpad/src/client/windows/build/common.gypi
++++ b/toolkit/crashreporter/google-breakpad/src/client/windows/build/common.gypi
+@@ -993,20 +993,6 @@
+                     '-Wa,-mimplicit-it=thumb',
+                     ]
+                   }],
+-                  ['armv7==1', {
+-                    'cflags': [
+-                      '-march=armv7-a',
+-                      '-mtune=cortex-a8',
+-                      '-mfloat-abi=softfp',
+-                    ],
+-                    'conditions': [
+-                      ['arm_neon==1', {
+-                        'cflags': [ '-mfpu=neon', ],
+-                      }, {
+-                        'cflags': [ '-mfpu=<(arm_fpu)', ],
+-                      }]
+-                    ],
+-                  }],
+                 ],
+               }],
+             ],
+diff --git a/toolkit/xre/nsQAppInstance.cpp b/toolkit/xre/nsQAppInstance.cpp
+index 386a506..6d98031 100644
+--- a/toolkit/xre/nsQAppInstance.cpp
++++ b/toolkit/xre/nsQAppInstance.cpp
+@@ -37,7 +37,7 @@
+  * ***** END LICENSE BLOCK ***** */
+ 
+ #include "nsQAppInstance.h"
+-#include <QApplication>
++#include <QtGui/QApplication>
+ #include "prenv.h"
+ 
+ // declared in nsAppRunner.cpp
+diff --git a/toolkit/xre/nsQAppInstance.h b/toolkit/xre/nsQAppInstance.h
+index 5d3a4cf..06ec2bb 100644
+--- a/toolkit/xre/nsQAppInstance.h
++++ b/toolkit/xre/nsQAppInstance.h
+@@ -39,7 +39,7 @@
+ #ifndef nsQAppInstance_h
+ #define nsQAppInstance_h
+ 
+-#include <QApplication>
++#include <QtGui/QApplication>
+ 
+ class nsQAppInstance
+ {
+diff --git a/uriloader/exthandler/unix/nsMIMEInfoUnix.cpp b/uriloader/exthandler/unix/nsMIMEInfoUnix.cpp
+index b781255..69975ba 100644
+--- a/uriloader/exthandler/unix/nsMIMEInfoUnix.cpp
++++ b/uriloader/exthandler/unix/nsMIMEInfoUnix.cpp
+@@ -45,9 +45,9 @@
+ #include <libosso.h>
+ #endif
+ #ifdef MOZ_WIDGET_QT
+-#include <QDesktopServices>
+-#include <QUrl>
+-#include <QString>
++#include <QtGui/QDesktopServices>
++#include <QtCore/QUrl>
++#include <QtCore/QString>
+ #if (MOZ_ENABLE_CONTENTACTION)
+ #include <contentaction/contentaction.h>
+ #include "nsContentHandlerApp.h"
+diff --git a/widget/src/qt/Makefile.in b/widget/src/qt/Makefile.in
+index e16efd3..04c0927 100644
+--- a/widget/src/qt/Makefile.in
++++ b/widget/src/qt/Makefile.in
+@@ -138,5 +138,5 @@ LOCAL_INCLUDES	+= \
+ 		   $(NULL)
+ ifdef MOZ_X11
+ INCLUDES   	+= -I$(srcdir)/../shared/x11
+-INCLUDES   	+= -I$(srcdir)/../shared
+ endif
++INCLUDES   	+= -I$(srcdir)/../shared
+diff --git a/widget/src/qt/mozSwipeGesture.cpp b/widget/src/qt/mozSwipeGesture.cpp
+index 08442fb..7915eee 100644
+--- a/widget/src/qt/mozSwipeGesture.cpp
++++ b/widget/src/qt/mozSwipeGesture.cpp
+@@ -35,8 +35,8 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ #include "mozSwipeGesture.h"
+-#include <QTouchEvent>
+-#include <QGraphicsWidget>
++#include <QtGui/QTouchEvent>
++#include <QtGui/QGraphicsWidget>
+ #include <prtypes.h>
+ #include <nsIDOMSimpleGestureEvent.h>
+ #include <math.h>
+diff --git a/widget/src/qt/mozSwipeGesture.h b/widget/src/qt/mozSwipeGesture.h
+index 012efcf..a3d3ed0 100644
+--- a/widget/src/qt/mozSwipeGesture.h
++++ b/widget/src/qt/mozSwipeGesture.h
+@@ -41,9 +41,9 @@
+ #ifndef MOZSWIPEGESTURE_H
+ #define MOZSWIPEGESTURE_H
+ 
+-#include <QGestureRecognizer>
+-#include <QGesture>
+-#include <QTouchEvent>
++#include <QtGui/QGestureRecognizer>
++#include <QtGui/QGesture>
++#include <QtGui/QTouchEvent>
+ 
+ class MozSwipeGestureRecognizer: public QGestureRecognizer
+ {
+diff --git a/widget/src/qt/mozqorientationsensorfilter.h b/widget/src/qt/mozqorientationsensorfilter.h
+index f785d20..afdbd3a 100644
+--- a/widget/src/qt/mozqorientationsensorfilter.h
++++ b/widget/src/qt/mozqorientationsensorfilter.h
+@@ -40,8 +40,8 @@
+ 
+ #include <QtSensors/QOrientationReading>
+ #include <QtSensors/QOrientationFilter>
+-#include <QObject>
+-#include <QTransform>
++#include <QtCore/QObject>
++#include <QtGui/QTransform>
+ 
+ using namespace QtMobility;
+ 
+diff --git a/widget/src/qt/nsAppShell.cpp b/widget/src/qt/nsAppShell.cpp
+index 91e60c6..ba57f8a 100644
+--- a/widget/src/qt/nsAppShell.cpp
++++ b/widget/src/qt/nsAppShell.cpp
+@@ -37,12 +37,12 @@
+  * ***** END LICENSE BLOCK ***** */
+ 
+ #include "nsAppShell.h"
+-#include <qapplication.h>
++#include <QtGui/QApplication>
+ #include <unistd.h>
+ #include <fcntl.h>
+ #include <errno.h>
+ 
+-#include <qabstracteventdispatcher.h>
++#include <QtCore/QAbstractEventDispatcher>
+ 
+ #include "prenv.h"
+ #include "nsQAppInstance.h"
+diff --git a/widget/src/qt/nsAppShell.h b/widget/src/qt/nsAppShell.h
+index 0541ca1..f40b65a 100644
+--- a/widget/src/qt/nsAppShell.h
++++ b/widget/src/qt/nsAppShell.h
+@@ -39,7 +39,7 @@
+ #ifndef nsAppShell_h__
+ #define nsAppShell_h__
+ 
+-#include <qsocketnotifier.h>
++#include <QtCore/QSocketNotifier>
+ #include "nsBaseAppShell.h"
+ #include "nsCOMPtr.h"
+ 
+diff --git a/widget/src/qt/nsBidiKeyboard.cpp b/widget/src/qt/nsBidiKeyboard.cpp
+index dffc5e2..b2c691e 100644
+--- a/widget/src/qt/nsBidiKeyboard.cpp
++++ b/widget/src/qt/nsBidiKeyboard.cpp
+@@ -36,8 +36,8 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ 
+-#include <Qt>
+-#include <QApplication>
++#include <QtCore/Qt>
++#include <QtGui/QApplication>
+ 
+ #include "nsBidiKeyboard.h"
+ 
+diff --git a/widget/src/qt/nsClipboard.cpp b/widget/src/qt/nsClipboard.cpp
+index 40f84f0..8a578c2 100644
+--- a/widget/src/qt/nsClipboard.cpp
++++ b/widget/src/qt/nsClipboard.cpp
+@@ -40,14 +40,14 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ 
+-#include <QApplication>
+-#include <QMimeData>
+-#include <QString>
+-#include <QStringList>
+-#include <QByteArray>
+-#include <QImage>
+-#include <QImageWriter>
+-#include <QBuffer>
++#include <QtGui/QApplication>
++#include <QtCore/QMimeData>
++#include <QtCore/QString>
++#include <QtCore/QStringList>
++#include <QtCore/QByteArray>
++#include <QtGui/QImage>
++#include <QtGui/QImageWriter>
++#include <QtCore/QBuffer>
+ 
+ #include "nsClipboard.h"
+ #include "nsISupportsPrimitives.h"
+diff --git a/widget/src/qt/nsClipboard.h b/widget/src/qt/nsClipboard.h
+index 7cb944f..d6e75ea 100644
+--- a/widget/src/qt/nsClipboard.h
++++ b/widget/src/qt/nsClipboard.h
+@@ -45,7 +45,7 @@
+ #include "nsAutoPtr.h"
+ #include "nsCOMPtr.h"
+ 
+-#include <qclipboard.h>
++#include <QtGui/QClipboard>
+ 
+ /* Native Qt Clipboard wrapper */
+ class nsClipboard : public nsIClipboard
+diff --git a/widget/src/qt/nsDeviceContextSpecQt.cpp b/widget/src/qt/nsDeviceContextSpecQt.cpp
+index d3aba4c..ecf841b 100644
+--- a/widget/src/qt/nsDeviceContextSpecQt.cpp
++++ b/widget/src/qt/nsDeviceContextSpecQt.cpp
+@@ -41,8 +41,8 @@
+  * ***** END LICENSE BLOCK ***** */
+ 
+ 
+-#include <QTemporaryFile>
+-#include <QPrinterInfo>
++#include <QtCore/QTemporaryFile>
++#include <QtGui/QPrinterInfo>
+ 
+ #define SET_PRINTER_FEATURES_VIA_PREFS 1
+ #define PRINTERFEATURES_PREF "print.tmp.printerfeatures"
+diff --git a/widget/src/qt/nsDragService.cpp b/widget/src/qt/nsDragService.cpp
+index 144230c..fd37b64 100644
+--- a/widget/src/qt/nsDragService.cpp
++++ b/widget/src/qt/nsDragService.cpp
+@@ -36,8 +36,8 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ 
+-#include "qmimedata.h"
+-#include "qwidget.h"
++#include <QtCore/QMimeData>
++#include <QtGui/QWidget>
+ 
+ #include "nsDragService.h"
+ #include "nsISupportsPrimitives.h"
+diff --git a/widget/src/qt/nsDragService.h b/widget/src/qt/nsDragService.h
+index 5a3e5bb..7b97467 100644
+--- a/widget/src/qt/nsDragService.h
++++ b/widget/src/qt/nsDragService.h
+@@ -39,7 +39,7 @@
+ #ifndef nsDragService_h__
+ #define nsDragService_h__
+ 
+-#include <qdrag.h>
++#include <QtGui/QDrag>
+ 
+ #include "nsBaseDragService.h"
+ 
+diff --git a/widget/src/qt/nsFilePicker.h b/widget/src/qt/nsFilePicker.h
+index 5dd5d56..668a847 100644
+--- a/widget/src/qt/nsFilePicker.h
++++ b/widget/src/qt/nsFilePicker.h
+@@ -40,8 +40,8 @@
+ #ifndef NSFILEPICKER_H
+ #define NSFILEPICKER_H
+ 
+-#include <qfiledialog.h>
+-#include <qpointer.h>
++#include <QtGui/QFileDialog>
++#include <QtCore/QPointer>
+ #include "nsBaseFilePicker.h"
+ #include "nsString.h"
+ #include "nsIURI.h"
+diff --git a/widget/src/qt/nsIdleServiceQt.cpp b/widget/src/qt/nsIdleServiceQt.cpp
+index bc8d0e2..f2a768b 100644
+--- a/widget/src/qt/nsIdleServiceQt.cpp
++++ b/widget/src/qt/nsIdleServiceQt.cpp
+@@ -37,8 +37,8 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ 
+-#ifndef MOZ_PLATFORM_MAEMO
+-#include <QX11Info>
++#if defined(MOZ_X11) && !defined(MOZ_PLATFORM_MAEMO)
++#include <QtGui/QX11Info>
+ #endif
+ 
+ #include "nsIdleServiceQt.h"
+@@ -46,7 +46,7 @@
+ #include "nsDebug.h"
+ #include "prlink.h"
+ 
+-#ifndef MOZ_PLATFORM_MAEMO
++#if defined(MOZ_X11) && !defined(MOZ_PLATFORM_MAEMO)
+ typedef PRBool (*_XScreenSaverQueryExtension_fn)(Display* dpy, int* event_base,
+                                                  int* error_base);
+ 
+@@ -65,7 +65,7 @@ static PRBool sInitialized = PR_FALSE;
+ NS_IMPL_ISUPPORTS2(nsIdleServiceQt, nsIIdleService, nsIdleService)
+ 
+ nsIdleServiceQt::nsIdleServiceQt()
+-#ifndef MOZ_PLATFORM_MAEMO
++#if defined(MOZ_X11) && !defined(MOZ_PLATFORM_MAEMO)
+     : mXssInfo(nsnull)
+ #endif
+ {
+@@ -75,7 +75,7 @@ static void Initialize()
+ {
+     sInitialized = PR_TRUE;
+ 
+-#ifndef MOZ_PLATFORM_MAEMO
++#if defined(MOZ_X11) && !defined(MOZ_PLATFORM_MAEMO)
+     // This will leak - See comments in ~nsIdleServiceQt().
+     PRLibrary* xsslib = PR_LoadLibrary("libXss.so.1");
+     if (!xsslib) {
+@@ -93,7 +93,7 @@ static void Initialize()
+ 
+ nsIdleServiceQt::~nsIdleServiceQt()
+ {
+-#ifndef MOZ_PLATFORM_MAEMO
++#if defined(MOZ_X11) && !defined(MOZ_PLATFORM_MAEMO)
+     if (mXssInfo)
+         XFree(mXssInfo);
+ 
+@@ -112,7 +112,7 @@ nsIdleServiceQt::~nsIdleServiceQt()
+ bool
+ nsIdleServiceQt::PollIdleTime(PRUint32 *aIdleTime)
+ {
+-#ifndef MOZ_PLATFORM_MAEMO
++#if defined(MOZ_X11) && !defined(MOZ_PLATFORM_MAEMO)
+     // Ask xscreensaver about idle time:
+     *aIdleTime = 0;
+ 
+@@ -148,7 +148,7 @@ nsIdleServiceQt::PollIdleTime(PRUint32 *aIdleTime)
+ bool
+ nsIdleServiceQt::UsePollMode()
+ {
+-#ifdef MOZ_PLATFORM_MAEMO
++#if defined(MOZ_X11) && !defined(MOZ_PLATFORM_MAEMO)
+     return false;
+ #endif
+     return true;
+diff --git a/widget/src/qt/nsIdleServiceQt.h b/widget/src/qt/nsIdleServiceQt.h
+index b1eb769..9faa202 100644
+--- a/widget/src/qt/nsIdleServiceQt.h
++++ b/widget/src/qt/nsIdleServiceQt.h
+@@ -42,7 +42,7 @@
+ 
+ #include "nsIdleService.h"
+ 
+-#ifndef MOZ_PLATFORM_MAEMO
++#if defined(MOZ_X11) && !defined(MOZ_PLATFORM_MAEMO)
+ #include <X11/Xlib.h>
+ #include <X11/Xutil.h>
+ 
+@@ -66,7 +66,7 @@ public:
+ 
+ private:
+     ~nsIdleServiceQt();
+-#ifndef MOZ_PLATFORM_MAEMO
++#if defined(MOZ_X11) && !defined(MOZ_PLATFORM_MAEMO)
+     XScreenSaverInfo* mXssInfo;
+ #endif
+ 
+diff --git a/widget/src/qt/nsLookAndFeel.cpp b/widget/src/qt/nsLookAndFeel.cpp
+index fde2f4c..b0be781 100644
+--- a/widget/src/qt/nsLookAndFeel.cpp
++++ b/widget/src/qt/nsLookAndFeel.cpp
+@@ -38,17 +38,17 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ 
+-#include <QPalette>
+-#include <QApplication>
+-#include <QStyle>
++#include <QtGui/QPalette>
++#include <QtGui/QApplication>
++#include <QtGui/QStyle>
+ 
+ #include "nsLookAndFeel.h"
+ 
+-#include <qglobal.h>
++#include <QtCore/qglobal.h>
+ 
+ #undef NS_LOOKANDFEEL_DEBUG
+ #ifdef NS_LOOKANDFEEL_DEBUG
+-#include <QDebug>
++#include <QtCore/QDebug>
+ #endif
+ 
+ #define QCOLOR_TO_NS_RGB(c) \
+diff --git a/widget/src/qt/nsNativeThemeQt.cpp b/widget/src/qt/nsNativeThemeQt.cpp
+index 5a2a411..216323e 100644
+--- a/widget/src/qt/nsNativeThemeQt.cpp
++++ b/widget/src/qt/nsNativeThemeQt.cpp
+@@ -38,16 +38,16 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ 
+-#include <QApplication>
+-#include <QStyle>
+-#include <QPalette>
+-#include <QRect>
+-#include <QPainter>
+-#include <QStyleOption>
+-#include <QStyleOptionFrameV2>
+-#include <QStyleOptionButton>
+-#include <QFlags>
+-#include <QStyleOptionComboBox>
++#include <QtGui/QApplication>
++#include <QtGui/QStyle>
++#include <QtGui/QPalette>
++#include <QtCore/QRect>
++#include <QtGui/QPainter>
++#include <QtGui/QStyleOption>
++#include <QtGui/QStyleOptionFrameV2>
++#include <QtGui/QStyleOptionButton>
++#include <QtCore/QFlags>
++#include <QtGui/QStyleOptionComboBox>
+ 
+ #include "nsIFrame.h"
+ 
+diff --git a/widget/src/qt/nsNativeThemeQt.h b/widget/src/qt/nsNativeThemeQt.h
+index 69ae36f..1535a87 100644
+--- a/widget/src/qt/nsNativeThemeQt.h
++++ b/widget/src/qt/nsNativeThemeQt.h
+@@ -39,8 +39,8 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ 
+-#include <QStyle>
+-#include <QPalette>
++#include <QtGui/QStyle>
++#include <QtGui/QPalette>
+ 
+ #include "nsITheme.h"
+ #include "nsCOMPtr.h"
+diff --git a/widget/src/qt/nsPrintSettingsQt.cpp b/widget/src/qt/nsPrintSettingsQt.cpp
+index 71469d9..db5bdb6 100644
+--- a/widget/src/qt/nsPrintSettingsQt.cpp
++++ b/widget/src/qt/nsPrintSettingsQt.cpp
+@@ -37,8 +37,8 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ 
+-#include <QPrinter>
+-#include <QDebug>
++#include <QtGui/QPrinter>
++#include <QtCore/QDebug>
+ #include "nsPrintSettingsQt.h"
+ #include "nsILocalFile.h"
+ #include "nsCRTGlue.h"
+diff --git a/widget/src/qt/nsPrintSettingsQt.h b/widget/src/qt/nsPrintSettingsQt.h
+index fb1f88c..3541877 100644
+--- a/widget/src/qt/nsPrintSettingsQt.h
++++ b/widget/src/qt/nsPrintSettingsQt.h
+@@ -40,7 +40,7 @@
+ #ifndef nsPrintSettingsQt_h_
+ #define nsPrintSettingsQt_h_
+ 
+-#include <QSharedPointer>
++#include <QtCore/QSharedPointer>
+ #include "nsPrintSettingsImpl.h"
+ #define NS_PRINTSETTINGSQT_IID \
+ {0x5bc4c746, 0x8970, 0x43a3, {0xbf, 0xb1, 0x5d, 0xe1, 0x74, 0xaf, 0x7c, 0xea}}
+diff --git a/widget/src/qt/nsScreenManagerQt.cpp b/widget/src/qt/nsScreenManagerQt.cpp
+index b5999af..7790017 100644
+--- a/widget/src/qt/nsScreenManagerQt.cpp
++++ b/widget/src/qt/nsScreenManagerQt.cpp
+@@ -37,8 +37,8 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ 
+-#include "qdesktopwidget.h"
+-#include "qapplication.h"
++#include <QtGui/QDesktopWidget>
++#include <QtGui/QApplication>
+ 
+ #include "nsScreenManagerQt.h"
+ #include "nsScreenQt.h"
+diff --git a/widget/src/qt/nsScreenQt.cpp b/widget/src/qt/nsScreenQt.cpp
+index c818ab6..7e22e06 100644
+--- a/widget/src/qt/nsScreenQt.cpp
++++ b/widget/src/qt/nsScreenQt.cpp
+@@ -37,12 +37,12 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ 
+-#include <qcolor.h>
+-#include <qcolormap.h>
+-#include <qrect.h>
+-#include <qdesktopwidget.h>
+-#include <qapplication.h>
+-#include <QTransform>
++#include <QtGui/QColor>
++#include <QtGui/QColormap>
++#include <QtCore/QRect>
++#include <QtGui/QDesktopWidget>
++#include <QtGui/QApplication>
++#include <QtGui/QTransform>
+ 
+ #include "nsScreenQt.h"
+ #include "nsXULAppAPI.h"
+diff --git a/widget/src/qt/nsSound.cpp b/widget/src/qt/nsSound.cpp
+index dc3fe7f..e731a96 100644
+--- a/widget/src/qt/nsSound.cpp
++++ b/widget/src/qt/nsSound.cpp
+@@ -36,8 +36,8 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ 
+-#include <QApplication>
+-#include <QSound>
++#include <QtGui/QApplication>
++#include <QtGui/QSound>
+ 
+ #include <string.h>
+ 
+diff --git a/widget/src/qt/nsToolkit.h b/widget/src/qt/nsToolkit.h
+index d67d108..54e21bf 100644
+--- a/widget/src/qt/nsToolkit.h
++++ b/widget/src/qt/nsToolkit.h
+@@ -38,7 +38,7 @@
+ #ifndef nsToolkit_h__      
+ #define nsToolkit_h__
+ 
+-#include <QPixmap>
++#include <QtGui/QPixmap>
+ 
+ #include "nsIToolkit.h"
+ #include "nsString.h"
+diff --git a/widget/src/qt/nsWindow.cpp b/widget/src/qt/nsWindow.cpp
+index 723be50..0f314e4 100644
+--- a/widget/src/qt/nsWindow.cpp
++++ b/widget/src/qt/nsWindow.cpp
+@@ -47,7 +47,6 @@
+ #include <QtGui/QDesktopWidget>
+ #include <QtGui/QCursor>
+ #include <QtGui/QIcon>
+-#include <QtGui/QX11Info>
+ #include <QtGui/QGraphicsScene>
+ #include <QtGui/QGraphicsView>
+ #include <QtGui/QGraphicsSceneContextMenuEvent>
+@@ -57,14 +56,14 @@
+ #include <QtGui/QGraphicsSceneWheelEvent>
+ #include <QtGui/QGraphicsSceneResizeEvent>
+ #include <QtGui/QStyleOptionGraphicsItem>
+-#include <QPaintEngine>
++#include <QtGui/QPaintEngine>
+ 
+ #include <QtCore/QDebug>
+ #include <QtCore/QEvent>
+ #include <QtCore/QVariant>
+ #if (QT_VERSION >= QT_VERSION_CHECK(4, 6, 0))
+-#include <QPinchGesture>
+-#include <QGestureRecognizer>
++#include <QtGui/QPinchGesture>
++#include <QtGui/QGestureRecognizer>
+ #include "mozSwipeGesture.h"
+ static Qt::GestureType gSwipeGestureId = Qt::CustomGesture;
+ 
+@@ -78,7 +77,7 @@ using namespace QtMobility;
+ #endif // QT version check 4.6
+ 
+ #ifdef MOZ_X11
+-#include <QX11Info>
++#include <QtGui/QX11Info>
+ #include <X11/Xlib.h>
+ #endif //MOZ_X11
+ 
+@@ -115,7 +114,9 @@ using namespace QtMobility;
+ #include "nsAutoPtr.h"
+ 
+ #include "gfxQtPlatform.h"
++#ifdef MOZ_X11
+ #include "gfxXlibSurface.h"
++#endif
+ #include "gfxQPainterSurface.h"
+ #include "gfxContext.h"
+ #include "gfxImageSurface.h"
+@@ -812,10 +813,14 @@ nsWindow::GetNativeData(PRUint32 aDataType)
+         break;
+ 
+     case NS_NATIVE_DISPLAY:
++#ifdef MOZ_X11
+         {
+             QWidget *widget = GetViewWidget();
+             return widget ? widget->x11Info().display() : nsnull;
+         }
++#else
++        return nsnull;
++#endif
+         break;
+ 
+     case NS_NATIVE_GRAPHIC: {
+@@ -1155,6 +1160,7 @@ nsWindow::DoPaint(QPainter* aPainter, const QStyleOptionGraphicsItem* aOption, Q
+ 
+     // Handle buffered painting mode
+     if (renderMode == gfxQtPlatform::RENDER_BUFFERED) {
++#ifdef MOZ_X11
+         if (gBufferSurface->GetType() == gfxASurface::SurfaceTypeXlib) {
+             // Paint offscreen pixmap to QPainter
+             static QPixmap gBufferPixmap;
+@@ -1165,7 +1171,9 @@ nsWindow::DoPaint(QPainter* aPainter, const QStyleOptionGraphicsItem* aOption, Q
+             aPainter->drawPixmap(QPoint(rect.x, rect.y), gBufferPixmap,
+                                  QRect(0, 0, rect.width, rect.height));
+ 
+-        } else if (gBufferSurface->GetType() == gfxASurface::SurfaceTypeImage) {
++        } else
++#endif
++        if (gBufferSurface->GetType() == gfxASurface::SurfaceTypeImage) {
+             // in raster mode we can just wrap gBufferImage as QImage and paint directly
+             gfxImageSurface *imgs = static_cast<gfxImageSurface*>(gBufferSurface.get());
+             QImage img(imgs->Data(),
+@@ -1178,6 +1186,7 @@ nsWindow::DoPaint(QPainter* aPainter, const QStyleOptionGraphicsItem* aOption, Q
+         }
+     } else if (renderMode == gfxQtPlatform::RENDER_DIRECT) {
+         QRect trans = aPainter->transform().mapRect(r).toRect();
++#ifdef MOZ_X11
+         if (gBufferSurface->GetType() == gfxASurface::SurfaceTypeXlib) {
+             nsRefPtr<gfxASurface> widgetSurface = GetSurfaceForQWidget(aWidget);
+             nsRefPtr<gfxContext> ctx = new gfxContext(widgetSurface);
+@@ -1185,11 +1194,17 @@ nsWindow::DoPaint(QPainter* aPainter, const QStyleOptionGraphicsItem* aOption, Q
+             ctx->Rectangle(gfxRect(trans.x(), trans.y(), trans.width(), trans.height()), PR_TRUE);
+             ctx->Clip();
+             ctx->Fill();
+-        } else if (gBufferSurface->GetType() == gfxASurface::SurfaceTypeImage) {
++        } else
++#endif
++        if (gBufferSurface->GetType() == gfxASurface::SurfaceTypeImage) {
+ #ifdef MOZ_HAVE_SHMIMAGE
+             if (gShmImage) {
+                 gShmImage->Put(aWidget, trans);
+-            } else
++            }
++#endif
++#ifdef MOZ_X11
++#ifdef MOZ_HAVE_SHMIMAGE
++            else
+ #endif
+             if (gBufferSurface) {
+                 nsRefPtr<gfxASurface> widgetSurface = GetSurfaceForQWidget(aWidget);
+@@ -1199,6 +1214,7 @@ nsWindow::DoPaint(QPainter* aPainter, const QStyleOptionGraphicsItem* aOption, Q
+                 ctx->Clip();
+                 ctx->Fill();
+             }
++#endif
+         }
+     }
+ 
+@@ -1835,7 +1851,6 @@ nsWindow::OnKeyPressEvent(QKeyEvent *aEvent)
+ 
+     // send the key press event
+     return DispatchEvent(&event);
+- }
+ #endif
+ }
+ 
+@@ -2270,6 +2285,7 @@ nsWindow::SetWindowClass(const nsAString &xulWinType)
+     nsXPIDLString brandName;
+     GetBrandName(brandName);
+ 
++#ifdef MOZ_X11
+     XClassHint *class_hint = XAllocClassHint();
+     if (!class_hint)
+       return NS_ERROR_OUT_OF_MEMORY;
+@@ -2311,6 +2327,7 @@ nsWindow::SetWindowClass(const nsAString &xulWinType)
+     nsMemory::Free(class_hint->res_class);
+     nsMemory::Free(class_hint->res_name);
+     XFree(class_hint);
++#endif
+ 
+     return NS_OK;
+ }
+@@ -2486,6 +2503,7 @@ nsWindow::HideWindowChrome(PRBool aShouldHide)
+         NativeShow(PR_TRUE);
+     }
+ 
++#ifdef MOZ_X11
+     // For some window managers, adding or removing window decorations
+     // requires unmapping and remapping our toplevel window.  Go ahead
+     // and flush the queue here so that we don't end up with a BadWindow
+@@ -2494,6 +2512,7 @@ nsWindow::HideWindowChrome(PRBool aShouldHide)
+     QWidget *widget = GetViewWidget();
+     NS_ENSURE_TRUE(widget, NS_ERROR_FAILURE);
+     XSync(widget->x11Info().display(), False);
++#endif
+ 
+     return NS_OK;
+ }
+diff --git a/widget/src/qt/nsWindow.h b/widget/src/qt/nsWindow.h
+index 2f94164..8c132ea 100644
+--- a/widget/src/qt/nsWindow.h
++++ b/widget/src/qt/nsWindow.h
+@@ -41,9 +41,9 @@
+ #ifndef __nsWindow_h__
+ #define __nsWindow_h__
+ 
+-#include <QKeyEvent>
+-#include <qgraphicswidget.h>
+-#include <QTime>
++#include <QtGui/QKeyEvent>
++#include <QtGui/QGraphicsWidget>
++#include <QtCore/QTime>
+ 
+ #include "nsAutoPtr.h"
+ 
+diff --git a/widget/src/shared/nsShmImage.cpp b/widget/src/shared/nsShmImage.cpp
+index 5364488..7f2d9d9 100644
+--- a/widget/src/shared/nsShmImage.cpp
++++ b/widget/src/shared/nsShmImage.cpp
+@@ -42,7 +42,7 @@
+ #include <gtk/gtk.h>
+ #include <gdk/gdkx.h>
+ #elif defined(MOZ_WIDGET_QT)
+-#include <QWidget>
++#include <QtGui/QWidget>
+ #endif
+ 
+ #include "nsShmImage.h"
+-- 
+1.7.0.4
+
