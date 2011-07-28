@@ -33,6 +33,7 @@ do_debug_extract() {
 do_debug() {
     for f in ${CT_DEBUG_FACILITY_LIST}; do
         do_debug_${f}_build
+        rm -f "${CT_DEBUGROOT_DIR}/usr/lib/"*.la
     done
 }
 

@@ -29,6 +29,7 @@ do_target_me_harder_cairo_build() {
         --mandir=/usr/share/man                                 \
         --infodir=/usr/share/info                               \
         --prefix=/usr                                           \
+        --enable-tee                                            \
         --enable-qt=yes
 
     CT_DoExecLog ALL make ${JOBSFLAGS}

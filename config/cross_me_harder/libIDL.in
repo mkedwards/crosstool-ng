@@ -1,0 +1,21 @@
+# libIDL
+# depends on ! BACKEND
+
+choice
+    bool
+    prompt "libIDL version"
+# Don't remove next line
+# CT_INSERT_VERSION_BELOW
+
+config LIBIDL_V_0_8_14
+    bool
+    prompt "0.8.14 (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
+endchoice
+
+config LIBIDL_VERSION
+    string
+# Don't remove next line
+# CT_INSERT_VERSION_STRING_BELOW
+    default "0.8.14" if LIBIDL_V_0_8_14

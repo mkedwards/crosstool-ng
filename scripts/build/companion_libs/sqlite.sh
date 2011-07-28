@@ -31,12 +31,13 @@ do_sqlite() {
 
     CT_DoExecLog CFG                                            \
     CC="${CT_HOST}-gcc"                                         \
-    CFLAGS="-g -Os -fPIC -DPIC"                                 \
+    CFLAGS="-g -Os -fPIC -DPIC -DSQLITE_SECURE_DELETE -DSQLITE_ENABLE_FTS3 -DSQLITE_ENABLE_UNLOCK_NOTIFY" \
     "${CT_SRC_DIR}/sqlite-${CT_SQLITE_VERSION}/configure"       \
         --build=${CT_BUILD}                                     \
         --host=${CT_HOST}                                       \
         --target=${CT_TARGET}                                   \
         --prefix="${CT_PREFIX_DIR}"                             \
+        --enable-threadsafe                                     \
         --enable-shared                                         \
         --enable-static
     # --enable-shared because nspr builds a shared library linked against sqlite

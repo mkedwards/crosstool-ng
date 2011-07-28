@@ -25,6 +25,8 @@ do_debug_libeXosip2_build() {
 
     cp ../../config.cache .
     CT_DoExecLog CFG                                            \
+    OSIP_CFLAGS="-I${CT_DEBUGROOT_DIR}/usr/include"             \
+    OSIP_LIBS="-L${CT_DEBUGROOT_DIR}/usr/lib -losip2 -losipparser2" \
     PKG_CONFIG="${CT_TARGET}-pkg-config --define-variable=prefix=${CT_SYSROOT_DIR}/usr" \
     CFLAGS="-g -Os -fPIC -DPIC"                                 \
     CXXFLAGS="-g -Os -fPIC -DPIC"                               \
