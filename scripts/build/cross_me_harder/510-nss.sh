@@ -145,6 +145,10 @@ do_cross_me_harder_nss_build() {
     cp -rL dist/public/dbm dist/public/nss "${CT_SYSROOT_DIR}/usr/include"
     CT_DoExecLog ALL \
     cp -L $(find dist -name '*.so' -type l) "${CT_SYSROOT_DIR}/usr/lib"
+    CT_DoExecLog ALL \
+    cp -L $(find dist -name '*.chk' -type l) "${CT_SYSROOT_DIR}/usr/lib"
+    CT_DoExecLog ALL \
+    cp -L $(find dist -name 'libcrmf.a' -type l) "${CT_SYSROOT_DIR}/usr/lib"
 
     CT_Popd
 
@@ -311,6 +315,7 @@ if test "$echo_libs" = "yes"; then
 	  libdirs="$libdirs $i"
         fi
       done
+      echo $libdirs
 fi      
 
 CT_EOF
