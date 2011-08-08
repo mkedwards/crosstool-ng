@@ -1,0 +1,827 @@
+From d08a1daccb73c4119e8f1387c126fd754f1ab7fc Mon Sep 17 00:00:00 2001
+From: michaedw in build chroot <build@ctbu-bld6.cisco.com>
+Date: Fri, 5 Aug 2011 21:23:32 +0000
+Subject: [PATCH] improve Qt integration
+
+---
+ content/base/test/Makefile.in                      |    4 ++++
+ content/base/test/TestGetURL.cpp                   |    3 +++
+ content/base/test/TestNativeXMLHttpRequest.cpp     |    3 +++
+ content/base/test/TestPlainTextSerializer.cpp      |    3 +++
+ editor/txmgr/tests/Makefile.in                     |    4 ++++
+ editor/txmgr/tests/TestTXMgr.cpp                   |    3 +++
+ gfx/thebes/GLContextProviderEGL.cpp                |    3 ++-
+ gfx/thebes/gfxQtPlatform.cpp                       |    9 +--------
+ netwerk/system/qt/nsQtNetworkLinkService.cpp       |    6 +++++-
+ netwerk/system/qt/nsQtNetworkManager.cpp           |    8 +++++---
+ netwerk/system/qt/nsQtNetworkManager.h             |    2 +-
+ startupcache/test/Makefile.in                      |    4 ++++
+ startupcache/test/TestStartupCache.cpp             |    4 ++++
+ storage/test/Makefile.in                           |    1 +
+ storage/test/storage_test_harness_tail.h           |    3 +++
+ storage/test/test_deadlock_detector.cpp            |    8 ++++++++
+ toolkit/components/places/tests/cpp/Makefile.in    |    4 ++++
+ .../places/tests/cpp/places_test_harness_tail.h    |    3 +++
+ widget/src/qt/nsWindow.cpp                         |    6 ++++--
+ xpcom/reflect/xptcall/src/md/test/invoke_test.cpp  |    9 ++++++++-
+ xpcom/reflect/xptcall/src/md/test/stub_test.cpp    |    9 ++++++++-
+ xpcom/reflect/xptcall/tests/TestXPTCInvoke.cpp     |    9 ++++++++-
+ xpcom/tests/Makefile.in                            |    1 +
+ xpcom/tests/ShowAlignments.cpp                     |    9 ++++++++-
+ xpcom/tests/ShowSSEConfig.cpp                      |    9 ++++++++-
+ xpcom/tests/TestAtoms.cpp                          |    9 ++++++++-
+ xpcom/tests/TestAutoPtr.cpp                        |    9 ++++++++-
+ xpcom/tests/TestCOMPtr.cpp                         |    8 +++++++-
+ xpcom/tests/TestCOMPtrEq.cpp                       |    8 +++++++-
+ xpcom/tests/TestCRT.cpp                            |    9 ++++++++-
+ xpcom/tests/TestCallTemplates.cpp                  |    9 ++++++++-
+ xpcom/tests/TestCheckedInt.cpp                     |    9 ++++++++-
+ xpcom/tests/TestHarness.h                          |   18 ++++++++++++++++++
+ xpcom/tests/TestPriorityQueue.cpp                  |    9 ++++++++-
+ xpcom/tests/TestRefPtr.cpp                         |    8 +++++++-
+ xpcom/tests/TestSTLWrappers.cpp                    |   10 +++++++++-
+ xpcom/tests/TestStorageStream.cpp                  |    9 ++++++++-
+ xpcom/tests/TestStringAPI.cpp                      |   10 +++++++++-
+ xpcom/tests/TestTextFormatter.cpp                  |   11 +++++++++--
+ 39 files changed, 228 insertions(+), 35 deletions(-)
+
+diff --git a/content/base/test/Makefile.in b/content/base/test/Makefile.in
+index 25eace6..652335a 100644
+--- a/content/base/test/Makefile.in
++++ b/content/base/test/Makefile.in
+@@ -60,6 +60,10 @@ XPCSHELL_TESTS = \
+                unit \
+                $(NULL)
+ 
++LOCAL_INCLUDES	= \
++		$(MOZ_QT_CFLAGS) \
++		$(NULL)
++
+ include $(topsrcdir)/config/rules.mk
+ 
+ # Split files arbitrarily in two groups to not run into too-long command lines
+diff --git a/content/base/test/TestGetURL.cpp b/content/base/test/TestGetURL.cpp
+index 3108921..6c83856 100644
+--- a/content/base/test/TestGetURL.cpp
++++ b/content/base/test/TestGetURL.cpp
+@@ -101,6 +101,9 @@ int main(int argc, char** argv)
+     exit(0);
+   }
+ 
++  gArgc = argc;
++  gArgv = argv;
++
+   ScopedXPCOM xpcom("XMLHttpRequest");
+   if (xpcom.failed())
+     return 1;
+diff --git a/content/base/test/TestNativeXMLHttpRequest.cpp b/content/base/test/TestNativeXMLHttpRequest.cpp
+index 9942547..7657770 100644
+--- a/content/base/test/TestNativeXMLHttpRequest.cpp
++++ b/content/base/test/TestNativeXMLHttpRequest.cpp
+@@ -122,6 +122,9 @@ nsresult TestNativeXMLHttpRequest()
+ 
+ int main(int argc, char** argv)
+ {
++  gArgc = argc;
++  gArgv = argv;
++
+   ScopedXPCOM xpcom("XMLHttpRequest");
+   if (xpcom.failed())
+     return 1;
+diff --git a/content/base/test/TestPlainTextSerializer.cpp b/content/base/test/TestPlainTextSerializer.cpp
+index 8b76aee..397a7b9 100644
+--- a/content/base/test/TestPlainTextSerializer.cpp
++++ b/content/base/test/TestPlainTextSerializer.cpp
+@@ -194,6 +194,9 @@ TestPlainTextSerializer()
+ 
+ int main(int argc, char** argv)
+ {
++  gArgc = argc;
++  gArgv = argv;
++
+   ScopedXPCOM xpcom("PlainTextSerializer");
+   if (xpcom.failed())
+     return 1;
+diff --git a/editor/txmgr/tests/Makefile.in b/editor/txmgr/tests/Makefile.in
+index 40bbab9..4c55126 100644
+--- a/editor/txmgr/tests/Makefile.in
++++ b/editor/txmgr/tests/Makefile.in
+@@ -46,4 +46,8 @@ include $(DEPTH)/config/autoconf.mk
+ 
+ CPP_UNIT_TESTS = TestTXMgr.cpp
+ 
++LOCAL_INCLUDES	= \
++		$(MOZ_QT_CFLAGS) \
++		$(NULL)
++
+ include $(topsrcdir)/config/rules.mk
+diff --git a/editor/txmgr/tests/TestTXMgr.cpp b/editor/txmgr/tests/TestTXMgr.cpp
+index e6b1502..dc078b0 100644
+--- a/editor/txmgr/tests/TestTXMgr.cpp
++++ b/editor/txmgr/tests/TestTXMgr.cpp
+@@ -4711,6 +4711,9 @@ aggregation_batch_stress_test()
+ int
+ main (int argc, char *argv[])
+ {
++  gArgc = argc;
++  gArgv = argv;
++
+   ScopedXPCOM xpcom("nsITransactionManager");
+   if (xpcom.failed())
+     return 1;
+diff --git a/gfx/thebes/GLContextProviderEGL.cpp b/gfx/thebes/GLContextProviderEGL.cpp
+index 85805f7..0cd1fbb 100644
+--- a/gfx/thebes/GLContextProviderEGL.cpp
++++ b/gfx/thebes/GLContextProviderEGL.cpp
+@@ -133,6 +133,7 @@ public:
+ };
+ 
+ #elif defined(MOZ_WIDGET_QT)
++#include <cstring>
+ #include <QtGui/QWidget>
+ #include <QtOpenGL/QGLWidget>
+ #define GLdouble_defined 1
+@@ -1583,7 +1584,7 @@ GLContextProviderEGL::CreateForWindow(nsIWidget *aWidget)
+     if (!viewport)
+         return nsnull;
+ 
+-    if (viewport->paintEngine()->type() == QPaintEngine::OpenGL2) {
++    if (0 == strcmp("QGLWidget", viewport->metaObject()->className())) {
+         // Qt widget viewport already have GL context created by Qt
+         // Create dummy GLContextEGL class
+         nsRefPtr<GLContextEGL> glContext =
+diff --git a/gfx/thebes/gfxQtPlatform.cpp b/gfx/thebes/gfxQtPlatform.cpp
+index 443e1ae..0a32bcf 100644
+--- a/gfx/thebes/gfxQtPlatform.cpp
++++ b/gfx/thebes/gfxQtPlatform.cpp
+@@ -83,7 +83,6 @@
+ 
+ #define DEFAULT_RENDER_MODE RENDER_DIRECT
+ 
+-static QPaintEngine::Type sDefaultQtPaintEngineType = QPaintEngine::X11;
+ gfxFontconfigUtils *gfxQtPlatform::sFontconfigUtils = nsnull;
+ static cairo_user_data_key_t cairo_qt_pixmap_key;
+ static void do_qt_pixmap_unref (void *data)
+@@ -152,11 +151,6 @@ gfxQtPlatform::gfxQtPlatform()
+         default:
+             mRenderMode = RENDER_QPAINTER;
+     }
+-
+-    // Qt doesn't provide a public API to detect the graphicssystem type. We hack
+-    // around this by checking what type of graphicssystem a test QPixmap uses.
+-    QPixmap pixmap(1, 1);
+-    sDefaultQtPaintEngineType = pixmap.paintEngine()->type();
+ }
+ 
+ gfxQtPlatform::~gfxQtPlatform()
+@@ -210,8 +204,7 @@ gfxQtPlatform::CreateOffscreenSurface(const gfxIntSize& size,
+     }
+ #endif
+ 
+-    if ((mRenderMode == RENDER_BUFFERED || mRenderMode == RENDER_DIRECT) &&
+-        sDefaultQtPaintEngineType != QPaintEngine::X11) {
++    if (mRenderMode == RENDER_BUFFERED || mRenderMode == RENDER_DIRECT) {
+       newSurface = new gfxImageSurface(size, imageFormat);
+       return newSurface.forget();
+     }
+diff --git a/netwerk/system/qt/nsQtNetworkLinkService.cpp b/netwerk/system/qt/nsQtNetworkLinkService.cpp
+index 11d7d28..6d50f3f 100644
+--- a/netwerk/system/qt/nsQtNetworkLinkService.cpp
++++ b/netwerk/system/qt/nsQtNetworkLinkService.cpp
+@@ -43,6 +43,8 @@
+ #include "nsString.h"
+ #include "mozilla/Services.h"
+ 
++nsQtNetworkManager* gQtNetworkManager = nsnull;
++
+ NS_IMPL_ISUPPORTS2(nsQtNetworkLinkService,
+                    nsINetworkLinkService,
+                    nsIObserver)
+@@ -117,6 +119,8 @@ nsQtNetworkLinkService::Init(void)
+ nsresult
+ nsQtNetworkLinkService::Shutdown()
+ {
+-  gQtNetworkManager->closeSession();
++  if (gQtNetworkManager) {
++    gQtNetworkManager->closeSession();
++  }
+   return NS_OK;
+ }
+diff --git a/netwerk/system/qt/nsQtNetworkManager.cpp b/netwerk/system/qt/nsQtNetworkManager.cpp
+index 10462c8..af06cb1 100644
+--- a/netwerk/system/qt/nsQtNetworkManager.cpp
++++ b/netwerk/system/qt/nsQtNetworkManager.cpp
+@@ -58,7 +58,9 @@ nsQtNetworkManager::nsQtNetworkManager(QObject* parent)
+ nsQtNetworkManager::~nsQtNetworkManager()
+ {
+     closeSession();
+-    networkSession->deleteLater();
++    if (networkSession) {
++        networkSession->deleteLater();
++    }
+ }
+ 
+ PRBool
+@@ -141,7 +143,7 @@ nsQtNetworkManager::openSession()
+     // this only means we did not shutdown before...
+     // renew Session every time
+     // fix/workaround for prestart bug
+-    if (!networkSession) {
++    if (networkSession) {
+         networkSession->close();
+         networkSession->deleteLater();
+     }
+@@ -168,7 +170,7 @@ nsQtNetworkManager::openSession()
+ void
+ nsQtNetworkManager::closeSession()
+ {
+-    if (!networkSession) {
++    if (networkSession) {
+         networkSession->close();
+     }
+ }
+diff --git a/netwerk/system/qt/nsQtNetworkManager.h b/netwerk/system/qt/nsQtNetworkManager.h
+index b9d139f..55d639f 100644
+--- a/netwerk/system/qt/nsQtNetworkManager.h
++++ b/netwerk/system/qt/nsQtNetworkManager.h
+@@ -47,7 +47,7 @@
+ 
+ class nsQtNetworkManager;
+ 
+-static nsQtNetworkManager* gQtNetworkManager = nsnull;
++extern nsQtNetworkManager* gQtNetworkManager;
+ 
+ class nsQtNetworkManager : public QObject
+ {
+diff --git a/startupcache/test/Makefile.in b/startupcache/test/Makefile.in
+index 2bdadf9..822eef6 100644
+--- a/startupcache/test/Makefile.in
++++ b/startupcache/test/Makefile.in
+@@ -50,4 +50,8 @@ CPP_UNIT_TESTS = TestStartupCache.cpp
+ EXTRA_DSO_LIBS += xul
+ LIBS += $(MOZ_COMPONENT_LIBS)
+ 
++LOCAL_INCLUDES	= \
++		$(MOZ_QT_CFLAGS) \
++		$(NULL)
++
+ include $(topsrcdir)/config/rules.mk
+diff --git a/startupcache/test/TestStartupCache.cpp b/startupcache/test/TestStartupCache.cpp
+index 1ca2933..4082505 100644
+--- a/startupcache/test/TestStartupCache.cpp
++++ b/startupcache/test/TestStartupCache.cpp
+@@ -318,6 +318,10 @@ int main(int argc, char** argv)
+ {
+   int rv = 0;
+   nsresult rv2;
++
++  gArgc = argc;
++  gArgv = argv;
++
+   ScopedXPCOM xpcom("Startup Cache");
+   
+   if (NS_FAILED(TestStartupWriteRead()))
+diff --git a/storage/test/Makefile.in b/storage/test/Makefile.in
+index 781d769..8268763 100644
+--- a/storage/test/Makefile.in
++++ b/storage/test/Makefile.in
+@@ -75,6 +75,7 @@ endif
+ 
+ LOCAL_INCLUDES = \
+   -I$(srcdir)/../src \
++  $(MOZ_QT_CFLAGS) \
+   $(NULL)
+ 
+ LIBS = \
+diff --git a/storage/test/storage_test_harness_tail.h b/storage/test/storage_test_harness_tail.h
+index 65a7be2..200e509 100644
+--- a/storage/test/storage_test_harness_tail.h
++++ b/storage/test/storage_test_harness_tail.h
+@@ -49,6 +49,9 @@ int
+ main(int aArgc,
+      char **aArgv)
+ {
++  gArgc = aArgc;
++  gArgv = aArgv;
++
+   ScopedXPCOM xpcom(TEST_NAME);
+ 
+   for (size_t i = 0; i < NS_ARRAY_LENGTH(gTests); i++)
+diff --git a/storage/test/test_deadlock_detector.cpp b/storage/test/test_deadlock_detector.cpp
+index e299e39..c9e463e 100644
+--- a/storage/test/test_deadlock_detector.cpp
++++ b/storage/test/test_deadlock_detector.cpp
+@@ -54,6 +54,7 @@
+ #include "SQLiteMutex.h"
+ 
+ #include "TestHarness.h"
++#include <cstring>
+ 
+ using namespace mozilla;
+ 
+@@ -585,6 +586,13 @@ ContentionNoDeadlock()
+ int
+ main(int argc, char** argv)
+ {
++    char* sArgv[2];
++    sArgv[0] = argv[0];
++    sArgv[1] = strdup("-qws");
++
++    gArgc = 2;
++    gArgv = sArgv;
++
+     if (1 < argc) {
+         // XXX can we run w/o scoped XPCOM?
+         const char* test = argv[1];
+diff --git a/toolkit/components/places/tests/cpp/Makefile.in b/toolkit/components/places/tests/cpp/Makefile.in
+index c05c0f8..d47ebd3 100644
+--- a/toolkit/components/places/tests/cpp/Makefile.in
++++ b/toolkit/components/places/tests/cpp/Makefile.in
+@@ -50,4 +50,8 @@ CPP_UNIT_TESTS = \
+   test_IHistory.cpp \
+   $(NULL)
+ 
++LOCAL_INCLUDES	= \
++		$(MOZ_QT_CFLAGS) \
++		$(NULL)
++
+ include $(topsrcdir)/config/rules.mk
+diff --git a/toolkit/components/places/tests/cpp/places_test_harness_tail.h b/toolkit/components/places/tests/cpp/places_test_harness_tail.h
+index 98baa19..fd879c1 100644
+--- a/toolkit/components/places/tests/cpp/places_test_harness_tail.h
++++ b/toolkit/components/places/tests/cpp/places_test_harness_tail.h
+@@ -96,6 +96,9 @@ int
+ main(int aArgc,
+      char** aArgv)
+ {
++  gArgc = aArgc;
++  gArgv = aArgv;
++
+   ScopedXPCOM xpcom(TEST_NAME);
+ 
+   do_test_pending();
+diff --git a/widget/src/qt/nsWindow.cpp b/widget/src/qt/nsWindow.cpp
+index 0f314e4..8cc3d11 100644
+--- a/widget/src/qt/nsWindow.cpp
++++ b/widget/src/qt/nsWindow.cpp
+@@ -43,6 +43,8 @@
+  *
+  * ***** END LICENSE BLOCK ***** */
+ 
++#include <cstring>
++
+ #include <QtGui/QApplication>
+ #include <QtGui/QDesktopWidget>
+ #include <QtGui/QCursor>
+@@ -2708,8 +2710,8 @@ PRBool
+ nsWindow::IsAcceleratedQView(QGraphicsView *view)
+ {
+     if (view && view->viewport()) {
+-        QPaintEngine::Type type = view->viewport()->paintEngine()->type();
+-        return (type == QPaintEngine::OpenGL || type == QPaintEngine::OpenGL2);
++        const char* class_name = view->viewport()->metaObject()->className();
++        return (0 == strcmp(class_name, "QGLWidget"));
+     }
+     return PR_FALSE;
+ }
+diff --git a/xpcom/reflect/xptcall/src/md/test/invoke_test.cpp b/xpcom/reflect/xptcall/src/md/test/invoke_test.cpp
+index 376ba58..833b780 100644
+--- a/xpcom/reflect/xptcall/src/md/test/invoke_test.cpp
++++ b/xpcom/reflect/xptcall/src/md/test/invoke_test.cpp
+@@ -219,8 +219,15 @@ DoInvoke(void* that, PRUint32 index,
+ #endif
+ /***************************************************************************/
+ 
+-int main()
++int gArgc;
++char** gArgv;
++
++int
++main(int argc, char** argv)
+ {
++  gArgc = argc;
++  gArgv = argv;
++
+   nsXPCVariant params1[2] = {1,2};
+   nsXPCVariant params2[2] = {2,4};
+   nsXPCVariant params3[2] = {3,6};
+diff --git a/xpcom/reflect/xptcall/src/md/test/stub_test.cpp b/xpcom/reflect/xptcall/src/md/test/stub_test.cpp
+index 1093529..d6b99db 100644
+--- a/xpcom/reflect/xptcall/src/md/test/stub_test.cpp
++++ b/xpcom/reflect/xptcall/src/md/test/stub_test.cpp
+@@ -190,8 +190,15 @@ STUB_ENTRY(1)
+ STUB_ENTRY(2)
+ STUB_ENTRY(3)
+ 
+-int main()
++int gArgc;
++char** gArgv;
++
++int
++main(int argc, char** argv)
+ {
++  gArgc = argc;
++  gArgv = argv;
++
+   foo* a = new bar();
+   baz* b = new baz();
+ 
+diff --git a/xpcom/reflect/xptcall/tests/TestXPTCInvoke.cpp b/xpcom/reflect/xptcall/tests/TestXPTCInvoke.cpp
+index 8ac823d..3391d3d 100644
+--- a/xpcom/reflect/xptcall/tests/TestXPTCInvoke.cpp
++++ b/xpcom/reflect/xptcall/tests/TestXPTCInvoke.cpp
+@@ -342,8 +342,15 @@ InvokeTestTarget::PassTwoStrings(const char* s1, const char* s2, char** retval)
+     return NS_OK;
+ }
+ 
+-int main()
++int gArgc;
++char** gArgv;
++
++int
++main(int argc, char** argv)
+ {
++    gArgc = argc;
++    gArgv = argv;
++
+     InvokeTestTarget *test = new InvokeTestTarget();
+ 
+     /* here we make the global 'check for alloc failure' checker happy */
+diff --git a/xpcom/tests/Makefile.in b/xpcom/tests/Makefile.in
+index 7bb958f..5ce2847 100644
+--- a/xpcom/tests/Makefile.in
++++ b/xpcom/tests/Makefile.in
+@@ -168,6 +168,7 @@ endif
+ LOCAL_INCLUDES	= \
+                 -I$(srcdir)/../ds \
+ 		-I$(srcdir)/services \
++		$(MOZ_QT_CFLAGS) \
+ 		$(NULL)
+ 
+ libs::
+diff --git a/xpcom/tests/ShowAlignments.cpp b/xpcom/tests/ShowAlignments.cpp
+index 921cade..3952da1 100644
+--- a/xpcom/tests/ShowAlignments.cpp
++++ b/xpcom/tests/ShowAlignments.cpp
+@@ -46,8 +46,15 @@ struct S {
+   short s;
+ };
+ 
+-int main()
++int gArgc;
++char** gArgv;
++
++int
++main(int argc, char** argv)
+ {
++  gArgc = argc;
++  gArgv = argv;
++
+   static const char str[] =
+     "Type %s has size %u and alignment requirement %u\n";
+   #define SHOW_TYPE(t_) \
+diff --git a/xpcom/tests/ShowSSEConfig.cpp b/xpcom/tests/ShowSSEConfig.cpp
+index e8bcd57..21f7a5f 100644
+--- a/xpcom/tests/ShowSSEConfig.cpp
++++ b/xpcom/tests/ShowSSEConfig.cpp
+@@ -38,8 +38,15 @@
+ #include "mozilla/SSE.h"
+ #include <stdio.h>
+ 
+-int main()
++int gArgc;
++char** gArgv;
++
++int
++main(int argc, char** argv)
+ {
++  gArgc = argc;
++  gArgv = argv;
++
+   printf("CPUID detection present: %s\n",
+ #ifdef MOZILLA_SSE_HAVE_CPUID_DETECTION
+          "yes"
+diff --git a/xpcom/tests/TestAtoms.cpp b/xpcom/tests/TestAtoms.cpp
+index dedd1a0..d038be6 100644
+--- a/xpcom/tests/TestAtoms.cpp
++++ b/xpcom/tests/TestAtoms.cpp
+@@ -287,8 +287,15 @@ tests[] =
+ 
+ using namespace TestAtoms;
+ 
+-int main()
++int gArgc;
++char** gArgv;
++
++int
++main(int argc, char** argv)
+   {
++    gArgc = argc;
++    gArgv = argv;
++
+     {
+       nsCOMPtr<nsIServiceManager> servMan;
+       NS_InitXPCOM2(getter_AddRefs(servMan), nsnull, nsnull);
+diff --git a/xpcom/tests/TestAutoPtr.cpp b/xpcom/tests/TestAutoPtr.cpp
+index de866b5..c62beb8 100644
+--- a/xpcom/tests/TestAutoPtr.cpp
++++ b/xpcom/tests/TestAutoPtr.cpp
+@@ -184,8 +184,15 @@ static void DoSomethingWithConstTestRefObjectBaseB(const TestRefObjectBaseB *aIn
+            static_cast<const void*>(aIn));
+ }
+ 
+-int main()
++int gArgc;
++char** gArgv;
++
++int
++main(int argc, char** argv)
+ {
++    gArgc = argc;
++    gArgv = argv;
++
+     {
+         printf("Should create one |TestObject|:\n");
+         nsAutoPtr<TestObject> pobj( new TestObject() );
+diff --git a/xpcom/tests/TestCOMPtr.cpp b/xpcom/tests/TestCOMPtr.cpp
+index ca377ba..e61f60b 100644
+--- a/xpcom/tests/TestCOMPtr.cpp
++++ b/xpcom/tests/TestCOMPtr.cpp
+@@ -363,9 +363,15 @@ TestBloat_Smart()
+ 
+ nsCOMPtr<IFoo> gFoop;
+ 
++int gArgc;
++char** gArgv;
++
+ int
+-main()
++main(int argc, char** argv)
+   {
++    gArgc = argc;
++    gArgv = argv;
++
+     printf(">>main()\n");
+ 
+ 		printf("sizeof(nsCOMPtr<IFoo>) --> %u\n", unsigned(sizeof(nsCOMPtr<IFoo>)));
+diff --git a/xpcom/tests/TestCOMPtrEq.cpp b/xpcom/tests/TestCOMPtrEq.cpp
+index 97dc45f..888c6bf 100644
+--- a/xpcom/tests/TestCOMPtrEq.cpp
++++ b/xpcom/tests/TestCOMPtrEq.cpp
+@@ -78,9 +78,15 @@ NS_DEFINE_STATIC_IID_ACCESSOR(nsICOMPtrEqTestFoo2, NS_ICOMPTREQTESTFOO2_IID)
+ 
+ #endif
+ 
++int gArgc;
++char** gArgv;
++
+ int
+-main()
++main(int argc, char** argv)
+   {
++    gArgc = argc;
++    gArgv = argv;
++
+     nsCOMPtr<nsICOMPtrEqTestFoo> s;
+     nsICOMPtrEqTestFoo* r = 0;
+     const nsCOMPtr<nsICOMPtrEqTestFoo> sc;
+diff --git a/xpcom/tests/TestCRT.cpp b/xpcom/tests/TestCRT.cpp
+index f33dea2..174298a 100644
+--- a/xpcom/tests/TestCRT.cpp
++++ b/xpcom/tests/TestCRT.cpp
+@@ -119,8 +119,15 @@ static Test tests[] = {
+ 
+ using namespace TestCRT;
+ 
+-int main()
++int gArgc;
++char** gArgv;
++
++int
++main(int argc, char** argv)
+ {
++  gArgc = argc;
++  gArgv = argv;
++
+   Test* tp = tests;
+   for (int i = 0; i < NUM_TESTS; i++, tp++) {
+     Check(tp->s1, tp->s2, tp->n);
+diff --git a/xpcom/tests/TestCallTemplates.cpp b/xpcom/tests/TestCallTemplates.cpp
+index 86bc925..02b0bb1 100644
+--- a/xpcom/tests/TestCallTemplates.cpp
++++ b/xpcom/tests/TestCallTemplates.cpp
+@@ -79,8 +79,15 @@ NS_IMPL_ISUPPORTS2(nsTestService, nsITestService, nsISupportsWeakReference)
+     {0xae, 0xd2, 0x1a, 0xb6, 0xdd, 0xba, 0xfe, 0x53}}
+ static NS_DEFINE_CID(kTestServiceCID, NS_TEST_SERVICE_CID);
+ 
+-int main()
++int gArgc;
++char** gArgv;
++
++int
++main(int argc, char** argv)
+ {
++    gArgc = argc;
++    gArgv = argv;
++
+     /*
+      * NOTE:  This does NOT demonstrate how these functions are
+      * intended to be used.  They are intended for filling in out
+diff --git a/xpcom/tests/TestCheckedInt.cpp b/xpcom/tests/TestCheckedInt.cpp
+index 949a6b2..178b1e5 100644
+--- a/xpcom/tests/TestCheckedInt.cpp
++++ b/xpcom/tests/TestCheckedInt.cpp
+@@ -468,8 +468,15 @@ void test()
+ 
+ } // end namespace CheckedInt_test
+ 
+-int main()
++int gArgc;
++char** gArgv;
++
++int
++main(int argc, char** argv)
+ {
++    gArgc = argc;
++    gArgv = argv;
++
+     CheckedInt_test::test<PRInt8>();
+     CheckedInt_test::test<PRUint8>();
+     CheckedInt_test::test<PRInt16>();
+diff --git a/xpcom/tests/TestHarness.h b/xpcom/tests/TestHarness.h
+index c3aa366..9e2cfa3 100644
+--- a/xpcom/tests/TestHarness.h
++++ b/xpcom/tests/TestHarness.h
+@@ -56,10 +56,21 @@
+ #include "nsIFile.h"
+ #include "nsIProperties.h"
+ #include "nsXULAppAPI.h"
++
++#if defined(MOZ_WIDGET_QT)
++/* The "anti-header" */
++#  include "mozilla/mozalloc_undef_macro_wrappers.h"
++#include <QtGui/QApplication>
++#include <QtCore/QScopedPointer>
++#endif // MOZ_WIDGET_QT
++
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <stdarg.h>
+ 
++int    gArgc;
++char **gArgv;
++
+ static PRUint32 gFailCount = 0;
+ 
+ /**
+@@ -253,6 +264,10 @@ class ScopedXPCOM : public nsIDirectoryServiceProvider2
+       mTestName = testName;
+       printf("Running %s tests...\n", mTestName);
+ 
++#if defined(MOZ_WIDGET_QT)
++      mApp.reset(new QApplication(gArgc, gArgv));
++#endif
++
+       nsresult rv = NS_InitXPCOM2(&mServMgr, NULL, this);
+       if (NS_FAILED(rv))
+       {
+@@ -370,6 +385,9 @@ class ScopedXPCOM : public nsIDirectoryServiceProvider2
+     nsIServiceManager* mServMgr;
+     nsCOMPtr<nsIDirectoryServiceProvider> mDirSvcProvider;
+     nsCOMPtr<nsIFile> mProfD;
++#if defined(MOZ_WIDGET_QT)
++    QScopedPointer<QApplication> mApp;
++#endif
+ };
+ 
+ NS_IMPL_QUERY_INTERFACE2(
+diff --git a/xpcom/tests/TestPriorityQueue.cpp b/xpcom/tests/TestPriorityQueue.cpp
+index 797edba..45a53b5 100644
+--- a/xpcom/tests/TestPriorityQueue.cpp
++++ b/xpcom/tests/TestPriorityQueue.cpp
+@@ -84,8 +84,15 @@ public:
+   }
+ };
+ 
+-int main()
++int gArgc;
++char** gArgv;
++
++int
++main(int argc, char** argv)
+ {
++  gArgc = argc;
++  gArgv = argv;
++
+   nsTPriorityQueue<int> queue;
+ 
+   NS_ABORT_IF_FALSE(queue.IsEmpty(), "Queue not initially empty");
+diff --git a/xpcom/tests/TestRefPtr.cpp b/xpcom/tests/TestRefPtr.cpp
+index 65a3555..a6a899b 100644
+--- a/xpcom/tests/TestRefPtr.cpp
++++ b/xpcom/tests/TestRefPtr.cpp
+@@ -363,9 +363,15 @@ TestBloat_Smart()
+ 
+ nsRefPtr<Foo> gFoop;
+ 
++int gArgc;
++char** gArgv;
++
+ int
+-main()
++main(int argc, char** argv)
+   {
++    gArgc = argc;
++    gArgv = argv;
++
+     printf(">>main()\n");
+ 
+ 		printf("sizeof(nsRefPtr<Foo>) --> %u\n", unsigned(sizeof(nsRefPtr<Foo>)));
+diff --git a/xpcom/tests/TestSTLWrappers.cpp b/xpcom/tests/TestSTLWrappers.cpp
+index c4d387a..ff54c70 100644
+--- a/xpcom/tests/TestSTLWrappers.cpp
++++ b/xpcom/tests/TestSTLWrappers.cpp
+@@ -20,7 +20,15 @@
+ #  define CATCH(e)  if (0)
+ #endif
+ 
+-int main() {
++int gArgc;
++char** gArgv;
++
++int
++main(int argc, char** argv)
++{
++    gArgc = argc;
++    gArgv = argv;
++
+     std::vector<int> v;
+     int rv = 1;
+ 
+diff --git a/xpcom/tests/TestStorageStream.cpp b/xpcom/tests/TestStorageStream.cpp
+index 4701bd8..94bfd80 100644
+--- a/xpcom/tests/TestStorageStream.cpp
++++ b/xpcom/tests/TestStorageStream.cpp
+@@ -40,8 +40,15 @@
+ #include "nsIOutputStream.h"
+ #include "nsCOMPtr.h"
+ 
+-int main()
++int gArgc;
++char** gArgv;
++
++int
++main(int argc, char** argv)
+ {
++  gArgc = argc;
++  gArgv = argv;
++
+   char kData[4096];
+   memset(kData, 0, sizeof(kData));
+ 
+diff --git a/xpcom/tests/TestStringAPI.cpp b/xpcom/tests/TestStringAPI.cpp
+index 91031cf..7bbc9bd 100644
+--- a/xpcom/tests/TestStringAPI.cpp
++++ b/xpcom/tests/TestStringAPI.cpp
+@@ -226,7 +226,15 @@ int testCompressWhitespace() {
+   return ret;
+ }
+ 
+-int main() {
++int gArgc;
++char** gArgv;
++
++int
++main(int argc, char** argv)
++{
++  gArgc = argc;
++  gArgv = argv;
++
+   int rv = 0;
+   rv += testEmpty();
+   rv += testAccess();
+diff --git a/xpcom/tests/TestTextFormatter.cpp b/xpcom/tests/TestTextFormatter.cpp
+index 2477be7..52fe1ba 100644
+--- a/xpcom/tests/TestTextFormatter.cpp
++++ b/xpcom/tests/TestTextFormatter.cpp
+@@ -40,8 +40,15 @@
+ #include <nsStringGlue.h>
+ #include <stdio.h>
+ 
+-int main() 
+-{  
++int gArgc;
++char** gArgv;
++
++int
++main(int argc, char** argv)
++{
++  gArgc = argc;
++  gArgv = argv;
++
+   int test_ok = true;
+ 
+   nsAutoString fmt(NS_LITERAL_STRING("%3$s %4$S %1$d %2$d %2$d %3$s"));
+-- 
+1.7.0.4
+
