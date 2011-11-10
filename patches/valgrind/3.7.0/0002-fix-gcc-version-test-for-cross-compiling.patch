@@ -1,0 +1,27 @@
+From 6eb4231a278cd1ea2d27cc9bab3a10eb34b939b5 Mon Sep 17 00:00:00 2001
+From: Michael Edwards <m.k.edwards@gmail.com>
+Date: Thu, 10 Nov 2011 06:58:21 +0000
+Subject: [PATCH] fix gcc version test for cross-compiling
+
+---
+ configure.in |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/configure.in b/configure.in
+index c84462c..4044346 100644
+--- a/configure.in
++++ b/configure.in
+@@ -107,8 +107,8 @@ AC_MSG_CHECKING([for a supported version of gcc])
+ #
+ [gcc_version=`${CC} --version \
+              | head -n 1 \
+-             | $SED 's/i686-apple-darwin10//' \
+-             | $SED 's/i686-apple-darwin11//' \
++             | $SED 's/[^ ]*-gcc/gcc/' \
++             | $SED 's/([^)]*)//g' \
+              | $SED 's/^[^0-9]*\([0-9.]*\).*$/\1/'`]
+ 
+ is_clang="notclang"
+-- 
+1.7.5.4
+

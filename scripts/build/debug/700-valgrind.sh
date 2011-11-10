@@ -16,6 +16,11 @@ do_debug_valgrind_build() {
     CT_Pushd "${CT_BUILD_DIR}/build-valgrind"
 
     CT_DoLog EXTRA "Configuring valgrind"
+
+    CT_DoExecLog CFG                                            \
+    ACLOCAL="aclocal -I ${CT_SYSROOT_DIR}/usr/share/aclocal -I ${CT_PREFIX_DIR}/share/aclocal" \
+    autoreconf -fiv
+
     cp ../../config.cache .
     CT_DoExecLog CFG                                            \
     ./configure                                                 \

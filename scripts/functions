@@ -1119,6 +1119,8 @@ CT_DoLoadState(){
     # (for example, read-only bash internals)
     CT_DoLog STATE "  Restoring environment"
     . "${state_dir}/env.sh" >/dev/null 2>&1 || true
+    # Reset step count to fix subsequent restarts
+    CT_STEP_COUNT=2
 
     # Restore the new RESTART and STOP steps
     CT_RESTART="${old_RESTART}"

@@ -169,7 +169,7 @@ do_debug_gdb_build() {
         # Building a native gdb also builds a gdbserver
         find "${CT_DEBUGROOT_DIR}" -type f -name gdbserver -exec rm -fv {} \; 2>&1 |CT_DoLog ALL
 
-        CT_EndStep # native gdb build
+        CT_EndStep
     fi
 
     if [ "${CT_GDB_GDBSERVER}" = "y" ]; then
