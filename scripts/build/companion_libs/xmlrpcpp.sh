@@ -16,7 +16,9 @@ do_xmlrpcpp_get() {
 
 do_xmlrpcpp_extract() {
     CT_Extract "xmlrpc++${CT_XMLRPCPP_VERSION}"
-    mv "${CT_SRC_DIR}/xmlrpc++${CT_XMLRPCPP_VERSION}" "${CT_SRC_DIR}/xmlrpcpp-${CT_XMLRPCPP_VERSION}"
+    if [ -d "${CT_SRC_DIR}/xmlrpc++${CT_XMLRPCPP_VERSION}" ]; then
+        mv "${CT_SRC_DIR}/xmlrpc++${CT_XMLRPCPP_VERSION}" "${CT_SRC_DIR}/xmlrpcpp-${CT_XMLRPCPP_VERSION}"
+    fi
     CT_Patch "xmlrpcpp" "${CT_XMLRPCPP_VERSION}"
 }
 

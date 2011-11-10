@@ -7,9 +7,9 @@ choice
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
-config UDEV_V_169
+config UDEV_V_172
     bool
-    prompt "169 (EXPERIMENTAL)"
+    prompt "172 (EXPERIMENTAL)"
     depends on EXPERIMENTAL
 
 endchoice
@@ -18,4 +18,4 @@ config UDEV_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
-    default "169" if UDEV_V_169
+    default "172" if UDEV_V_172

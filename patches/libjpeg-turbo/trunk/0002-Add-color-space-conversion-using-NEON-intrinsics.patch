@@ -1,14 +1,14 @@
-From be431eb3d35e5de7c3d04fb046c8f09b5b701b64 Mon Sep 17 00:00:00 2001
-From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
-Date: Tue, 5 Jul 2011 20:30:30 +0000
-Subject: [PATCH] Add color space conversion using NEON intrinsics
+From 47d2def60d178b4e601a7aab90d0db85735fe0f7 Mon Sep 17 00:00:00 2001
+From: Michael Edwards <m.k.edwards@gmail.com>
+Date: Wed, 9 Nov 2011 17:58:17 +0000
+Subject: [PATCH 2/4] Add color space conversion using NEON intrinsics
 
 ---
  simd/jsimd_arm.c |  168 +++++++++++++++++++++++++++++++++++++++++++++++++++---
  1 files changed, 159 insertions(+), 9 deletions(-)
 
 diff --git a/simd/jsimd_arm.c b/simd/jsimd_arm.c
-index 51fa4fa..14b6369 100644
+index 97fe47d..8ac769a 100644
 --- a/simd/jsimd_arm.c
 +++ b/simd/jsimd_arm.c
 @@ -234,9 +234,9 @@ inline static int16_8x8_t idct_helper_8x8(int16x4_t idct_constants, int16_8x8_t
@@ -44,7 +44,7 @@ index 51fa4fa..14b6369 100644
    b.half[0].val[3] = r.val[0];
    b.half[1].val[3] = r.val[1];
  
-@@ -469,11 +469,163 @@ jsimd_rgb_gray_convert (j_compress_ptr cinfo,
+@@ -510,11 +510,163 @@ jsimd_rgb_gray_convert (j_compress_ptr cinfo,
  {
  }
  
@@ -208,7 +208,7 @@ index 51fa4fa..14b6369 100644
    void (*neonfct)(JDIMENSION, JSAMPIMAGE, JDIMENSION, JSAMPARRAY, int);
  
    switch(cinfo->out_color_space)
-@@ -501,9 +653,7 @@ jsimd_ycc_rgb_convert (j_decompress_ptr cinfo,
+@@ -542,9 +694,7 @@ jsimd_ycc_rgb_convert (j_decompress_ptr cinfo,
        break;
    }
  
@@ -220,5 +220,5 @@ index 51fa4fa..14b6369 100644
  
  GLOBAL(int)
 -- 
-1.7.0.4
+1.7.5.4
 

@@ -2,7 +2,7 @@
 
 do_target_me_harder_c_ares_get() {
     CT_GetFile "c-ares-${CT_C_ARES_VERSION}" .tar.gz \
-               http://c-ares.haxx.se
+               http://c-ares.haxx.se/download
 }
 
 do_target_me_harder_c_ares_extract() {

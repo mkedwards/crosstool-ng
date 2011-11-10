@@ -2,9 +2,9 @@
 
 do_cross_me_harder_tz_get() {
     CT_GetFile "tzcode${CT_TZ_VERSION}" .tar.gz \
-               ftp://elsie.nci.nih.gov/pub
+               http://www.iana.org/time-zones/repository/releases
     CT_GetFile "tzdata${CT_TZDATA_VERSION}" .tar.gz \
-               ftp://elsie.nci.nih.gov/pub
+               http://www.iana.org/time-zones/repository/releases
 }
 
 do_cross_me_harder_tz_extract() {

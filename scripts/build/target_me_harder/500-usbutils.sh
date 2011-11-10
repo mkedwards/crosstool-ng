@@ -1,8 +1,14 @@
 # Build script for usbutils
 
 do_target_me_harder_usbutils_get() {
-    CT_GetFile "usbutils-${CT_USBUTILS_VERSION}" \
-               http://www.kernel.org/pub/linux/utils/usb/usbutils
+    CT_GetFile "usbutils_${CT_USBUTILS_VERSION}.orig" .tar.gz               \
+               {ftp,http}://ftp.de.debian.org/debian/pool/main/u/usbutils/
+    # Create a link so that the following steps are easier to do:
+    CT_Pushd "${CT_TARBALLS_DIR}"
+    usbutils_ext=$(CT_GetFileExtension "usbutils_${CT_USBUTILS_VERSION}.orig")
+    ln -sf "usbutils_${CT_USBUTILS_VERSION}.orig${usbutils_ext}"              \
+           "usbutils-${CT_USBUTILS_VERSION}${usbutils_ext}"
+    CT_Popd
 }
 
 do_target_me_harder_usbutils_extract() {

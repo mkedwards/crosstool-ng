@@ -1,14 +1,14 @@
-From 07d8e4e144372f356db43457f960b7760fdccf45 Mon Sep 17 00:00:00 2001
-From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
-Date: Thu, 30 Jun 2011 22:08:41 +0000
-Subject: [PATCH] Implement jsimd_idct_ifast() using NEON intrinsics
+From d5a31d5d234f5700ccf87fc4a1d2c06294cad49c Mon Sep 17 00:00:00 2001
+From: Michael Edwards <m.k.edwards@gmail.com>
+Date: Wed, 9 Nov 2011 17:57:04 +0000
+Subject: [PATCH 1/4] Implement jsimd_idct_ifast() using NEON intrinsics
 
 ---
  jddctmgr.c       |   18 ++-
  simd/jsimd.h     |    1 +
  simd/jsimd_arm.c |  519 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
- turbojpeg.c      |    1 +
- 4 files changed, 524 insertions(+), 15 deletions(-)
+ turbojpeg.c      |    2 +
+ 4 files changed, 525 insertions(+), 15 deletions(-)
 
 diff --git a/jddctmgr.c b/jddctmgr.c
 index 044e469..6b9063c 100644
@@ -53,7 +53,7 @@ index 044e469..6b9063c 100644
  #endif
      case DCTSIZE:
 diff --git a/simd/jsimd.h b/simd/jsimd.h
-index 39a0867..645c087 100644
+index 6ee99cc..99026c2 100644
 --- a/simd/jsimd.h
 +++ b/simd/jsimd.h
 @@ -18,6 +18,7 @@
@@ -65,7 +65,7 @@ index 39a0867..645c087 100644
  /* Short forms of external names for systems with brain-damaged linkers. */
  
 diff --git a/simd/jsimd_arm.c b/simd/jsimd_arm.c
-index 1a5cdd3..51fa4fa 100644
+index a9d920c..97fe47d 100644
 --- a/simd/jsimd_arm.c
 +++ b/simd/jsimd_arm.c
 @@ -15,6 +15,8 @@
@@ -381,7 +381,7 @@ index 1a5cdd3..51fa4fa 100644
    env = getenv("JSIMD_FORCE_NO_SIMD");
    if ((env != NULL) && (strcmp(env, "1") == 0))
      simd_support = 0;
-@@ -452,8 +742,11 @@ jsimd_can_idct_2x2 (void)
+@@ -532,8 +822,11 @@ jsimd_can_idct_2x2 (void)
    if (sizeof(ISLOW_MULT_TYPE) != 2)
      return 0;
  
@@ -395,7 +395,7 @@ index 1a5cdd3..51fa4fa 100644
  
    return 0;
  }
-@@ -475,8 +768,11 @@ jsimd_can_idct_4x4 (void)
+@@ -555,8 +848,11 @@ jsimd_can_idct_4x4 (void)
    if (sizeof(ISLOW_MULT_TYPE) != 2)
      return 0;
  
@@ -409,7 +409,7 @@ index 1a5cdd3..51fa4fa 100644
  
    return 0;
  }
-@@ -486,8 +782,70 @@ jsimd_idct_2x2 (j_decompress_ptr cinfo, jpeg_component_info * compptr,
+@@ -566,8 +862,70 @@ jsimd_idct_2x2 (j_decompress_ptr cinfo, jpeg_component_info * compptr,
                  JCOEFPTR coef_block, JSAMPARRAY output_buf,
                  JDIMENSION output_col)
  {
@@ -481,7 +481,7 @@ index 1a5cdd3..51fa4fa 100644
  }
  
  GLOBAL(void)
-@@ -495,8 +853,78 @@ jsimd_idct_4x4 (j_decompress_ptr cinfo, jpeg_component_info * compptr,
+@@ -575,8 +933,78 @@ jsimd_idct_4x4 (j_decompress_ptr cinfo, jpeg_component_info * compptr,
                  JCOEFPTR coef_block, JSAMPARRAY output_buf,
                  JDIMENSION output_col)
  {
@@ -561,7 +561,7 @@ index 1a5cdd3..51fa4fa 100644
  }
  
  GLOBAL(int)
-@@ -552,8 +980,83 @@ jsimd_idct_ifast (j_decompress_ptr cinfo, jpeg_component_info * compptr,
+@@ -649,8 +1077,83 @@ jsimd_idct_ifast (j_decompress_ptr cinfo, jpeg_component_info * compptr,
                  JCOEFPTR coef_block, JSAMPARRAY output_buf,
                  JDIMENSION output_col)
  {
@@ -647,17 +647,18 @@ index 1a5cdd3..51fa4fa 100644
  
  GLOBAL(void)
 diff --git a/turbojpeg.c b/turbojpeg.c
-index c890bc0..97461da 100644
+index 9fc60ce..748293d 100644
 --- a/turbojpeg.c
 +++ b/turbojpeg.c
-@@ -214,6 +214,7 @@ static void setDecompDefaults(struct jpeg_decompress_struct *dinfo,
- 			_throw("Unsupported pixel format");
+@@ -224,6 +224,8 @@ static int setDecompDefaults(struct jpeg_decompress_struct *dinfo,
  		#endif
  	}
+ 
 +	dinfo->dct_method=JDCT_IFAST;
- }
- 
- 
++
+ 	#if JCS_EXTENSIONS!=1
+ 	bailout:
+ 	#endif
 -- 
-1.7.0.4
+1.7.5.4
 

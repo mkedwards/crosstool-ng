@@ -1,7 +1,7 @@
-From b032468cc6463a0965a91fd47bf65623c3df3472 Mon Sep 17 00:00:00 2001
-From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
-Date: Wed, 6 Jul 2011 00:45:10 +0000
-Subject: [PATCH] Add two more bits of fractional coefficient
+From b21faed5a4fafabd6a034fad55b3bbae12617141 Mon Sep 17 00:00:00 2001
+From: Michael Edwards <m.k.edwards@gmail.com>
+Date: Wed, 9 Nov 2011 17:59:03 +0000
+Subject: [PATCH 3/4] Add two more bits of fractional coefficient
 
 ---
  jdct.h           |    2 ++
@@ -128,10 +128,10 @@ index cb3acaf..a70ed8f 100644
  #ifndef JDCT_FASTEST		/* may be overridden in jconfig.h */
  #define JDCT_FASTEST  JDCT_IFAST
 diff --git a/simd/jsimd_arm.c b/simd/jsimd_arm.c
-index 14b6369..db87d7c 100644
+index 8ac769a..43e95e0 100644
 --- a/simd/jsimd_arm.c
 +++ b/simd/jsimd_arm.c
-@@ -895,7 +895,7 @@ jsimd_can_idct_2x2 (void)
+@@ -975,7 +975,7 @@ jsimd_can_idct_2x2 (void)
    if ((simd_support & JSIMD_ARM_NEON)) {
      if ((simd_support & JSIMD_ARM_NEON_ASM))
        return 1;
@@ -140,7 +140,7 @@ index 14b6369..db87d7c 100644
    }
  
    return 0;
-@@ -921,7 +921,7 @@ jsimd_can_idct_4x4 (void)
+@@ -1001,7 +1001,7 @@ jsimd_can_idct_4x4 (void)
    if ((simd_support & JSIMD_ARM_NEON)) {
      if ((simd_support & JSIMD_ARM_NEON_ASM))
        return 1;
@@ -149,7 +149,7 @@ index 14b6369..db87d7c 100644
    }
  
    return 0;
-@@ -973,7 +973,7 @@ jsimd_idct_2x2 (j_decompress_ptr cinfo, jpeg_component_info * compptr,
+@@ -1053,7 +1053,7 @@ jsimd_idct_2x2 (j_decompress_ptr cinfo, jpeg_component_info * compptr,
        vpaddlq_s16(vqaddq_s16(coef.half[1].val[2], coef.half[1].val[3])));
      int16x4_t all = vqrshrn_n_s32(vcombine_s32(
        vpadd_s32(vget_low_s32(half0), vget_high_s32(half0)),
@@ -158,7 +158,7 @@ index 14b6369..db87d7c 100644
  
      int16x4_t zero4 = vdup_n_s16(0);
      uint8x8_t result = vreinterpret_u8_s8(vqmovn_s16(vcombine_s16(all, zero4)));
-@@ -1035,11 +1035,11 @@ jsimd_idct_4x4 (j_decompress_ptr cinfo, jpeg_component_info * compptr,
+@@ -1115,11 +1115,11 @@ jsimd_idct_4x4 (j_decompress_ptr cinfo, jpeg_component_info * compptr,
      uint8x16_t result;
      result = vreinterpretq_u8_s8(vcombine_s8(
        vqmovn_s16(vcombine_s16(
@@ -174,7 +174,7 @@ index 14b6369..db87d7c 100644
  
      uint8x16_t v128 = vdupq_n_u8(128);
      result = vaddq_u8(result, v128);
-@@ -1104,8 +1104,11 @@ jsimd_can_idct_ifast (void)
+@@ -1199,8 +1199,11 @@ jsimd_can_idct_ifast (void)
    if (IFAST_SCALE_BITS != 2)
      return 0;
  
@@ -188,7 +188,7 @@ index 14b6369..db87d7c 100644
  
    return 0;
  }
-@@ -1157,13 +1160,17 @@ jsimd_idct_ifast (j_decompress_ptr cinfo, jpeg_component_info * compptr,
+@@ -1254,13 +1257,17 @@ jsimd_idct_ifast (j_decompress_ptr cinfo, jpeg_component_info * compptr,
    {
      uint8x16x4_t result;
      result.val[0] = vreinterpretq_u8_s8(vcombine_s8(
@@ -211,5 +211,5 @@ index 14b6369..db87d7c 100644
      uint8x16_t v128 = vdupq_n_u8(128);
      result.val[0] = vaddq_u8(result.val[0], v128);
 -- 
-1.7.0.4
+1.7.5.4
 

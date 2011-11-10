@@ -218,6 +218,9 @@ config NCURSES_TARGET
 
 config PCRE
     bool
+    select ZLIB_TARGET
+    select BZIP2_TARGET
+    select XZ_TARGET
     select COMPLIBS
 
 config PCRE_TARGET

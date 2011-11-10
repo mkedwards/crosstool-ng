@@ -1,14 +1,14 @@
-From 6239a490e8e7a843760661b1294d091629ecc130 Mon Sep 17 00:00:00 2001
-From: michaedw in build chroot <build@ctbu-bld5.cisco.com>
-Date: Thu, 7 Jul 2011 20:24:05 +0000
-Subject: [PATCH] Implement compression using NEON intrinsics
+From d1993ae0d603093a3c28e2ef6dafcab8191fd05d Mon Sep 17 00:00:00 2001
+From: Michael Edwards <m.k.edwards@gmail.com>
+Date: Wed, 9 Nov 2011 18:02:28 +0000
+Subject: [PATCH 4/4] Implement compression using NEON intrinsics
 
 ---
- jcdctmgr.c       |   59 ++++---
+ jcdctmgr.c       |   59 +++++---
  jdct.h           |    5 +-
- simd/jsimd_arm.c |  470 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
- turbojpeg.c      |    1 +
- 4 files changed, 507 insertions(+), 28 deletions(-)
+ simd/jsimd_arm.c |  461 ++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ turbojpeg.c      |    2 +
+ 4 files changed, 487 insertions(+), 40 deletions(-)
 
 diff --git a/jcdctmgr.c b/jcdctmgr.c
 index 711f9da..bcc518e 100644
@@ -151,7 +151,7 @@ index bfd55b3..734c096 100644
   * work in floating-point ones.
   * Quantization of the output coefficients is done by jcdctmgr.c. This
 diff --git a/simd/jsimd_arm.c b/simd/jsimd_arm.c
-index db87d7c..dd06b6e 100644
+index 43e95e0..e9dae4c 100644
 --- a/simd/jsimd_arm.c
 +++ b/simd/jsimd_arm.c
 @@ -29,15 +29,87 @@
@@ -370,35 +370,32 @@ index db87d7c..dd06b6e 100644
    for (i = 0; i < 2; ++i) {
      for (j = 0; j < 4; ++j) {
        fprintf(stderr, "   %6d %6d %6d %6d %6d %6d %6d %6d\n",
-@@ -785,6 +959,22 @@ jsimd_can_convsamp (void)
- {
-   init_simd();
+@@ -836,8 +1010,11 @@ jsimd_can_convsamp (void)
+   if (sizeof(DCTELEM) != 2)
+     return 0;
  
-+  /* The code is optimised for these values only */
-+  if (DCTSIZE != 8)
-+    return 0;
-+  if (sizeof(JCOEF) != 2)
-+    return 0;
-+  if (BITS_IN_JSAMPLE != 8)
-+    return 0;
-+  if (sizeof(JDIMENSION) != 4)
-+    return 0;
-+
+-  if (simd_support & JSIMD_ARM_NEON)
+-    return 1;
 +  if ((simd_support & JSIMD_ARM_NEON)) {
 +    if ((simd_support & JSIMD_ARM_NEON_ASM))
-+      return 0;
++      return 1;
 +    return 2;
 +  }
-+
+ 
    return 0;
  }
- 
-@@ -800,6 +990,80 @@ GLOBAL(void)
+@@ -854,8 +1031,85 @@ GLOBAL(void)
  jsimd_convsamp (JSAMPARRAY sample_data, JDIMENSION start_col,
                  DCTELEM * workspace)
  {
+-  if (simd_support & JSIMD_ARM_NEON)
 +  if (!(simd_support & JSIMD_ARM_NEON))
 +    return;
++
++  if (simd_support & JSIMD_ARM_NEON_ASM) {
+     jsimd_convsamp_neon(sample_data, start_col, workspace);
++    return;
++  }
 +
 +  int8x16_t v128 = vdupq_n_s8(-128);
 +  int8x16x2_t samples;
@@ -474,39 +471,32 @@ index db87d7c..dd06b6e 100644
  }
  
  GLOBAL(void)
-@@ -821,6 +1085,26 @@ jsimd_can_fdct_ifast (void)
- {
-   init_simd();
+@@ -883,8 +1137,11 @@ jsimd_can_fdct_ifast (void)
+   if (sizeof(DCTELEM) != 2)
+     return 0;
  
-+  /* The code is optimised for these values only */
-+  if (DCTSIZE != 8)
-+    return 0;
-+  if (sizeof(JCOEF) != 2)
-+    return 0;
-+  if (BITS_IN_JSAMPLE != 8)
-+    return 0;
-+  if (sizeof(JDIMENSION) != 4)
-+    return 0;
-+  if (sizeof(IFAST_MULT_TYPE) != 2)
-+    return 0;
-+  if (IFAST_SCALE_BITS != 2)
-+    return 0;
-+
+-  if (simd_support & JSIMD_ARM_NEON)
+-    return 1;
 +  if ((simd_support & JSIMD_ARM_NEON)) {
 +    if ((simd_support & JSIMD_ARM_NEON_ASM))
-+      return 0;
++      return 1;
 +    return 2;
 +  }
-+
+ 
    return 0;
  }
- 
-@@ -840,6 +1124,66 @@ jsimd_fdct_islow (DCTELEM * data)
+@@ -905,8 +1162,71 @@ jsimd_fdct_islow (DCTELEM * data)
  GLOBAL(void)
  jsimd_fdct_ifast (DCTELEM * data)
  {
+-  if (simd_support & JSIMD_ARM_NEON)
 +  if (!(simd_support & JSIMD_ARM_NEON))
 +    return;
++
++  if (simd_support & JSIMD_ARM_NEON_ASM) {
+     jsimd_fdct_ifast_neon(data);
++    return;
++  }
 +
 +  int16_8x8_t coef;
 +
@@ -568,35 +558,32 @@ index db87d7c..dd06b6e 100644
  }
  
  GLOBAL(void)
-@@ -852,6 +1196,22 @@ jsimd_can_quantize (void)
- {
-   init_simd();
+@@ -927,8 +1247,11 @@ jsimd_can_quantize (void)
+   if (sizeof(DCTELEM) != 2)
+     return 0;
  
-+  /* The code is optimised for these values only */
-+  if (DCTSIZE != 8)
-+    return 0;
-+  if (sizeof(JCOEF) != 2)
-+    return 0;
-+  if (BITS_IN_JSAMPLE != 8)
-+    return 0;
-+  if (sizeof(JDIMENSION) != 4)
-+    return 0;
-+
+-  if (simd_support & JSIMD_ARM_NEON)
+-    return 1;
 +  if ((simd_support & JSIMD_ARM_NEON)) {
 +    if ((simd_support & JSIMD_ARM_NEON_ASM))
-+      return 0;
++      return 1;
 +    return 2;
 +  }
-+
+ 
    return 0;
  }
- 
-@@ -867,6 +1227,110 @@ GLOBAL(void)
+@@ -945,8 +1268,115 @@ GLOBAL(void)
  jsimd_quantize (JCOEFPTR coef_block, DCTELEM * divisors,
                  DCTELEM * workspace)
  {
+-  if (simd_support & JSIMD_ARM_NEON)
 +  if (!(simd_support & JSIMD_ARM_NEON))
 +    return;
++
++  if (simd_support & JSIMD_ARM_NEON_ASM) {
+     jsimd_quantize_neon(coef_block, divisors, workspace);
++    return;
++  }
 +
 +  int16x8x4_t* wp = (int16x8x4_t*) workspace;
 +  int16x8x4_t* coefp = (int16x8x4_t*) coef_block;
@@ -702,18 +689,36 @@ index db87d7c..dd06b6e 100644
  }
  
  GLOBAL(void)
+@@ -1196,12 +1626,13 @@ jsimd_can_idct_ifast (void)
+     return 0;
+   if (sizeof(IFAST_MULT_TYPE) != 2)
+     return 0;
+-  if (IFAST_SCALE_BITS != 2)
+-    return 0;
+ 
+   if ((simd_support & JSIMD_ARM_NEON)) {
+-    if ((simd_support & JSIMD_ARM_NEON_ASM))
++    if ((simd_support & JSIMD_ARM_NEON_ASM)) {
++      if (IFAST_SCALE_BITS != 2)
++        return 0;
+       return 1;
++    }
+     return 2;
+   }
+ 
 diff --git a/turbojpeg.c b/turbojpeg.c
-index 97461da..a5a1949 100644
+index 748293d..2618eaa 100644
 --- a/turbojpeg.c
 +++ b/turbojpeg.c
-@@ -182,6 +182,7 @@ static void setCompDefaults(struct jpeg_compress_struct *cinfo,
- 	cinfo->comp_info[0].v_samp_factor=tjMCUHeight[subsamp]/8;
+@@ -185,6 +185,8 @@ static int setCompDefaults(struct jpeg_compress_struct *cinfo,
  	cinfo->comp_info[1].v_samp_factor=1;
  	cinfo->comp_info[2].v_samp_factor=1;
-+	cinfo->dct_method=JDCT_IFAST;
- }
  
- static void setDecompDefaults(struct jpeg_decompress_struct *dinfo,
++	cinfo->dct_method=JDCT_IFAST;
++
+ 	#if JCS_EXTENSIONS!=1
+ 	bailout:
+ 	#endif
 -- 
-1.7.0.4
+1.7.5.4
 

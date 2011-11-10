@@ -17,6 +17,11 @@ config TZ_V_2011g
     prompt "2011g (EXPERIMENTAL)"
     depends on EXPERIMENTAL
 
+config TZ_V_2011i
+    bool
+    prompt "2011i (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
 endchoice
 
 config TZ_VERSION
@@ -25,6 +30,7 @@ config TZ_VERSION
 # CT_INSERT_VERSION_STRING_BELOW
     default "2011d" if TZ_V_2011d
     default "2011g" if TZ_V_2011g
+    default "2011i" if TZ_V_2011i
 
 choice
     bool
@@ -47,6 +53,11 @@ config TZDATA_V_2011h
     prompt "2011h (EXPERIMENTAL)"
     depends on EXPERIMENTAL
 
+config TZDATA_V_2011n
+    bool
+    prompt "2011n (EXPERIMENTAL)"
+    depends on EXPERIMENTAL
+
 endchoice
 
 config TZDATA_VERSION
@@ -56,3 +67,4 @@ config TZDATA_VERSION
     default "2011d" if TZDATA_V_2011d
     default "2011g" if TZDATA_V_2011g
     default "2011h" if TZDATA_V_2011h
+    default "2011n" if TZDATA_V_2011n

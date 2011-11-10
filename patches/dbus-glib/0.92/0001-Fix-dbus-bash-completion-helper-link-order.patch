@@ -1,0 +1,25 @@
+From 95ea31c0016021e644295b9880a991c89a035bdb Mon Sep 17 00:00:00 2001
+From: Michael Edwards <m.k.edwards@gmail.com>
+Date: Thu, 10 Nov 2011 00:12:39 +0000
+Subject: [PATCH] Fix dbus-bash-completion-helper link order
+
+---
+ dbus/Makefile.am |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/dbus/Makefile.am b/dbus/Makefile.am
+index 5f438b8..5733762 100644
+--- a/dbus/Makefile.am
++++ b/dbus/Makefile.am
+@@ -107,7 +107,7 @@ CLEANFILES += dbus-bash-completion.sh
+ 
+ dbus_bash_completion_helper_SOURCES =                 	\
+ 	dbus-bash-completion-helper.c
+-dbus_bash_completion_helper_LDADD=$(DBUS_LIBS) $(DBUS_GLIB_LIBS) $(builddir)/libdbus-gtool.la -lexpat $(builddir)/libdbus-glib-1.la
++dbus_bash_completion_helper_LDADD= $(builddir)/libdbus-gtool.la -lexpat $(builddir)/libdbus-glib-1.la $(DBUS_LIBS) $(DBUS_GLIB_LIBS)
+ 
+ 
+ EXTRA_DIST=dbus-gmarshal.list make-dbus-glib-error-switch.sh make-dbus-glib-error-enum.sh dbus-bash-completion.sh.in
+-- 
+1.7.5.4
+

@@ -7,9 +7,9 @@ choice
 # Don't remove next line
 # CT_INSERT_VERSION_BELOW
 
-config CURL_V_7_21_7
+config CURL_V_7_22_0
     bool
-    prompt "7.21.7 (EXPERIMENTAL)"
+    prompt "7.22.0 (EXPERIMENTAL)"
     depends on EXPERIMENTAL
 
 endchoice
@@ -18,4 +18,4 @@ config CURL_VERSION
     string
 # Don't remove next line
 # CT_INSERT_VERSION_STRING_BELOW
-    default "7.21.7" if CURL_V_7_21_7
+    default "7.22.0" if CURL_V_7_22_0

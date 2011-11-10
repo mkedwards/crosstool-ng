@@ -29,6 +29,9 @@ do_cross_me_harder_nss_build() {
     CT_DoLog DEBUG "Extra config passed: '${host_extra_config[*]}'"
 
     CT_Pushd "security/coreconf"
+    if [ `uname -r | cut -d. -f1` = 3 ]; then
+        cp Linux2.6.mk Linux`uname -r | cut -d. -f1-2`.mk
+    fi
     CT_DoExecLog ALL                                            \
     CPPFLAGS="-I${CT_PREFIX_DIR}/include"                       \
     LDFLAGS="-L${CT_PREFIX_DIR}/lib -Wl,-rpath=${CT_PREFIX_DIR}/lib" \

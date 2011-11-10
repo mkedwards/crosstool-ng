@@ -15,7 +15,9 @@ do_sqlite_get() {
 do_sqlite_extract() {
     CT_Extract "sqlite-autoconf-${CT_SQLITE_VERSION}"
     CT_Pushd "${CT_SRC_DIR}"
-    CT_DoExecLog ALL mv "sqlite-autoconf-${CT_SQLITE_VERSION}" "sqlite-${CT_SQLITE_VERSION}"
+    if [ -d "sqlite-autoconf-${CT_SQLITE_VERSION}" ]; then
+        CT_DoExecLog ALL mv "sqlite-autoconf-${CT_SQLITE_VERSION}" "sqlite-${CT_SQLITE_VERSION}"
+    fi
     CT_Popd
     CT_Patch "sqlite" "${CT_SQLITE_VERSION}"
 }

@@ -1,8 +1,14 @@
 # Build script for util-linux
 
 do_cross_me_harder_util_linux_get() {
-    CT_GetFile "util-linux-${CT_UTIL_LINUX_VERSION}" \
-               "http://www.kernel.org/pub/linux/utils/util-linux/v2.19"
+    CT_GetFile "util-linux_${CT_UTIL_LINUX_VERSION}" \
+               {ftp,http}://ftp.de.debian.org/debian/pool/main/u/util-linux/
+    # Create a link so that the following steps are easier to do:
+    CT_Pushd "${CT_TARBALLS_DIR}"
+    util_linux_ext=$(CT_GetFileExtension "util-linux_${CT_UTIL_LINUX_VERSION}.orig")
+    ln -sf "util-linux_${CT_UTIL_LINUX_VERSION}.orig${util_linux_ext}"              \
+           "util-linux-${CT_UTIL_LINUX_VERSION}${util_linux_ext}"
+    CT_Popd
 }
 
 do_cross_me_harder_util_linux_extract() {

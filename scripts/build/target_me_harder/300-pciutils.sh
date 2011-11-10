@@ -2,7 +2,7 @@
 
 do_target_me_harder_pciutils_get() {
     CT_GetFile "pciutils-${CT_PCIUTILS_VERSION}" \
-               http://www.kernel.org/pub/software/utils/pciutils
+               ftp://atrey.karlin.mff.cuni.cz/pub/linux/pci
 }
 
 do_target_me_harder_pciutils_extract() {

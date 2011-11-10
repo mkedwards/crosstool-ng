@@ -1,8 +1,14 @@
 # Build script for udev
 
 do_target_me_harder_udev_get() {
-    CT_GetFile "udev-${CT_UDEV_VERSION}" \
-               http://www.kernel.org/pub/linux/utils/kernel/hotplug
+    CT_GetFile "udev_${CT_UDEV_VERSION}.orig" .tar.gz               \
+               {ftp,http}://ftp.de.debian.org/debian/pool/main/u/udev/
+    # Create a link so that the following steps are easier to do:
+    CT_Pushd "${CT_TARBALLS_DIR}"
+    udev_ext=$(CT_GetFileExtension "udev_${CT_UDEV_VERSION}.orig")
+    ln -sf "udev_${CT_UDEV_VERSION}.orig${udev_ext}"              \
+           "udev-${CT_UDEV_VERSION}${udev_ext}"
+    CT_Popd
 }
 
 do_target_me_harder_udev_extract() {

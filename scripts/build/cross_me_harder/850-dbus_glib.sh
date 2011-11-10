@@ -12,6 +12,13 @@ do_cross_me_harder_dbus_glib_extract() {
 
 do_cross_me_harder_dbus_glib_build() {
     CT_DoStep EXTRA "Installing cross dbus-glib"
+
+    CT_Pushd "${CT_SRC_DIR}/dbus-glib-${CT_DBUS_GLIB_VERSION}"
+    CT_DoExecLog CFG                                            \
+    ACLOCAL="aclocal -I ${CT_SYSROOT_DIR}/usr/share/aclocal -I ${CT_PREFIX_DIR}/share/aclocal" \
+    autoreconf -fiv
+    CT_Popd
+
     mkdir -p "${CT_BUILD_DIR}/build-dbus-glib-cross"
     CT_Pushd "${CT_BUILD_DIR}/build-dbus-glib-cross"
     
