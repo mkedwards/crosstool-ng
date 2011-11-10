@@ -130,18 +130,11 @@ do_target_me_harder_qt_build() {
 	-no-cups \
 	-no-xmlpatterns \
 	-no-svg \
-	-no-webkit \
-	-no-javascript-jit \
 	-no-script \
 	-no-scripttools \
 	-no-declarative \
 	-no-accessibility \
 	-no-qt3support \
-	-no-kbd-tty \
-	-no-kbd-linuxinput \
-	-no-mouse-pc \
-	-no-mouse-linuxtp \
-	-no-mouse-linuxinput \
 	-no-gfx-multiscreen \
 	-no-gfx-linuxfb \
 	-no-libmng \
@@ -158,6 +151,13 @@ do_target_me_harder_qt_build() {
 	-opengl es2 \
 	-plugin-gfx-simplegl \
 	-plugin-gfx-eglnullws \
+	-no-kbd-tty \
+	-qt-kbd-linuxinput \
+	-qt-mouse-linuxinput \
+	-no-mouse-pc \
+	-no-mouse-linuxtp \
+	-webkit \
+	-javascript-jit \
 	-make libs \
 	-make tools \
 	-make translations \
